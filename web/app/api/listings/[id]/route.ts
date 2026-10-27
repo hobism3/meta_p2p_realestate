@@ -4,7 +4,7 @@ import { getDal } from "@/lib/dal";
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
   const g = guardRead(req);
   if (g) return g;
-  const one = (await customListing(params.id)) ?? seedListing(params.id);
+  const one = seedListing(params.id) ?? (await customListing(params.id));
   if (!one) return notFound("매물 없음");
   return ok(one);
 }

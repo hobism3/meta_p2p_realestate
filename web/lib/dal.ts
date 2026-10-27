@@ -5,6 +5,13 @@ import { Pool } from "pg";
 import { SEED_LISTINGS } from "./listings.ts";
 import { getDb } from "./db.ts";
 
+export interface Tx {
+  run(sql: string, params?: SQLInputValue[]): Promise<void>;
+  all(sql: string, params?: SQLInputValue[]): Promise<Record<string, unknown>[]>;
+  get(sql: string, params?: SQLInputValue[]): Promise<Record<string, unknown> | undefined>;
+  upsertKey(id: string): Promise<void>;
+}
+
 export interface Dal {
   kind: "sqlite" | "pg";
   all(sql: string, params?: SQLInputValue[]): Promise<Record<string, unknown>[]>;
@@ -106,36 +113,25 @@ interface PgClient {
   release(): void;
 }
 
-export interface Tx {
-  run(sql: string, params?: SQLInputValue[]): Promise<void>;
-  all(sql: string, params?: SQLInputValue[]): Promise<Record<string, unknown>[]>;
-  get(sql: string, params?: SQLInputValue[]): Promise<Record<string, unknown> | undefined>;
-  upsertKey(id: string): Promise<void>;
-}
-
 export class PgDal implements Dal {
   kind = "pg" as const;
   private pool: PgPool;
+  private ready: Promise<void> | null = null;
 
   constructor(pool: PgPool) {
     this.pool = pool;
   }
 
-  async all(sql: string, params: unknown[] = []): Promise<Record<string, unknown>[]> {
+  private async rawAll(sql: string, params: unknown[] = []): Promise<Record<string, unknown>[]> {
     const r = await this.pool.query(toPg(sql), params);
     return r.rows;
   }
 
-  async get(sql: string, params: unknown[] = []): Promise<Record<string, unknown> | undefined> {
-    const rows = await this.all(sql, params);
-    return rows[0];
-  }
-
-  async run(sql: string, params: unknown[] = []): Promise<void> {
+  private async rawRun(sql: string, params: unknown[] = []): Promise<void> {
     await this.pool.query(toPg(sql), params);
   }
 
-  async execScript(sql: string): Promise<void> {
+  private async rawExec(sql: string): Promise<void> {
     // pg-mem은 IF NOT EXISTS+제약조건 조합을 지원하지 않는다.
     // 문장 단위로 나눠 already-exists만 넘긴다. 실제 Postgres 동작과 같다.
     for (const part of sql.split(";")) {
@@ -149,33 +145,90 @@ export class PgDal implements Dal {
     }
   }
 
+  private async rawEnsureKeys(): Promise<void> {
+    for (const l of SEED_LISTINGS) {
+      await this.rawRun("INSERT INTO listing_keys (id) VALUES (?) ON CONFLICT (id) DO NOTHING", [l.id]);
+    }
+    const customs = await this.rawAll("SELECT id FROM custom_listings");
+    for (const c of customs) {
+      await this.rawRun("INSERT INTO listing_keys (id) VALUES (?) ON CONFLICT (id) DO NOTHING", [c.id]);
+    }
+  }
+
+  private async migrateInner(only?: string[]): Promise<void> {
+    let rows: Record<string, unknown>[] = [];
+    try {
+      rows = await this.rawAll("SELECT version FROM schema_migrations");
+    } catch {
+      rows = [];
+    }
+    const applied = new Set(rows.map((r) => String(r.version)));
+    for (const m of migrationFiles()) {
+      if ((only && !only.includes(m.version)) || applied.has(m.version)) continue;
+      await this.rawExec(m.sql);
+      await this.rawRun("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)", [
+        m.version,
+        new Date().toISOString(),
+      ]);
+      if (m.version === "001_initial") await this.rawEnsureKeys();
+    }
+    await this.rawEnsureKeys();
+  }
+
+  private ensureReady(): Promise<void> {
+    if (!this.ready) this.ready = this.migrateInner();
+    return this.ready;
+  }
+
+  async all(sql: string, params: SQLInputValue[] = []): Promise<Record<string, unknown>[]> {
+    await this.ensureReady();
+    return this.rawAll(sql, params);
+  }
+
+  async get(sql: string, params: SQLInputValue[] = []): Promise<Record<string, unknown> | undefined> {
+    await this.ensureReady();
+    const rows = await this.rawAll(sql, params);
+    return rows[0];
+  }
+
+  async run(sql: string, params: SQLInputValue[] = []): Promise<void> {
+    await this.ensureReady();
+    await this.rawRun(sql, params);
+  }
+
+  async execScript(sql: string): Promise<void> {
+    await this.rawExec(sql);
+  }
+
   async migrate(): Promise<void> {
-    await this.migrateOnly(migrationFiles().map((m) => m.version));
+    await this.ensureReady();
   }
 
   /** 지정 버전만 적용. 002는 구 SQLite 승격 전용이라 PG 신규 DB 테스트에서 제외한다. */
   async migrateOnly(versions: string[]): Promise<void> {
-    // 버전 테이블 유무를 조회로 먼저 확인. 없으면 001이 만든다.
     let rows: Record<string, unknown>[] = [];
     try {
-      rows = await this.all("SELECT version FROM schema_migrations");
+      rows = await this.rawAll("SELECT version FROM schema_migrations");
     } catch {
       rows = [];
     }
     const applied = new Set(rows.map((r) => String(r.version)));
     for (const m of migrationFiles()) {
       if (!versions.includes(m.version) || applied.has(m.version)) continue;
-      await this.execScript(m.sql);
-      await this.run("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)", [
+      await this.rawExec(m.sql);
+      await this.rawRun("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)", [
         m.version,
         new Date().toISOString(),
       ]);
-      if (m.version === "001_initial") await this.ensureKeys();
+      if (m.version === "001_initial") await this.rawEnsureKeys();
     }
-    await this.ensureKeys();
+    await this.rawEnsureKeys();
+    // 이후 일반 호출도 마이그레이션 완료로 간주한다.
+    if (!this.ready) this.ready = Promise.resolve();
   }
 
   async withTransaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
+    await this.ensureReady();
     // 풀에서 커넥션 하나를 잡아야 BEGIN/COMMIT이 같은 세션에서 실행된다.
     const client = await this.pool.connect();
     const tx: Tx = {
@@ -212,17 +265,13 @@ export class PgDal implements Dal {
   }
 
   async ensureKeys(): Promise<void> {
-    for (const l of SEED_LISTINGS) {
-      await this.run("INSERT INTO listing_keys (id) VALUES (?) ON CONFLICT (id) DO NOTHING", [l.id]);
-    }
-    const customs = await this.all("SELECT id FROM custom_listings");
-    for (const c of customs) {
-      await this.run("INSERT INTO listing_keys (id) VALUES (?) ON CONFLICT (id) DO NOTHING", [c.id]);
-    }
+    await this.ensureReady();
+    await this.rawEnsureKeys();
   }
 
   async upsertKey(id: string): Promise<void> {
-    await this.run("INSERT INTO listing_keys (id) VALUES (?) ON CONFLICT (id) DO NOTHING", [id]);
+    await this.ensureReady();
+    await this.rawRun("INSERT INTO listing_keys (id) VALUES (?) ON CONFLICT (id) DO NOTHING", [id]);
   }
 }
 
@@ -231,7 +280,9 @@ let dal: Dal | null = null;
 export function getDal(): Dal {
   if (dal) return dal;
   if (process.env.DATABASE_URL) {
-    dal = new PgDal(new Pool({ connectionString: process.env.DATABASE_URL }));
+    dal = new PgDal(
+      new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }),
+    );
   } else {
     dal = new SqliteDal();
   }

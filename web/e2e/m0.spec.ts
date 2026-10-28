@@ -55,8 +55,28 @@ test("거래방: 역할·메시지·일정·합의·체크가 된다", async ({ 
 });
 
 test("모바일: 가로 넘침이 없다", async ({ page }) => {
+  for (const path of ["/", "/deal/s01", "/register"]) {
+    await page.goto(path);
+    await page.waitForLoadState("networkidle").catch(() => undefined);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow, path).toBeLessThanOrEqual(1);
+  }
+});
+
+test("지도: 마커 클릭 시 매물과 연동된다", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator(".listing").first()).toBeVisible();
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow).toBeLessThanOrEqual(1);
+  await page.getByRole("button", { name: "지도형" }).click();
+  const marker = page.locator(".leaflet-marker-icon").first();
+  await expect(marker).toBeVisible({ timeout: 20000 });
+  // Leaflet 마커는 포인터를 가로채서 일반 클릭이 막힌다. DOM 클릭을 직접 보낸다.
+  await marker.dispatchEvent("click");
+  await expect(page.locator(".leaflet-tooltip").first()).toBeVisible();
+});
+
+test("지도: 리스트 클릭 시 상세로 이동한다", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "지도형" }).click();
+  await expect(page.locator(".leaflet-marker-icon").first()).toBeVisible({ timeout: 20000 });
+  await page.locator(".side .listing").first().click();
+  await expect(page).toHaveURL(/\/listings\//);
 });

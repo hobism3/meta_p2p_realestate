@@ -82,6 +82,25 @@
 - [ ] 잔여: 방 UI(목록·입장·대화 화면)는 M1-C. 공개 메시지 GET 공개 상태 유지.
 - M1-C 착수 가능. main 병합·운영 배포 금지 유지.
 
+## AI 시연·집톡이 설계 — DONE(문서만, 구현 없음)
+
+- [x] `AI_CHAT_ASSISTANT_SPEC` 개정: M1-B 구조 반영, 데모 에이전트와 분리, 방 스코프·확인주체 구분.
+- [x] `DEMO_AGENT_SPEC` 작성: 시연 모드·005 모델·상태 흐름·API 스케치·검증 시나리오.
+- [ ] AI-1: 005 마이그레이션(author_type·room_agents·demo_scenarios·agent_runs) + 적용 테스트.
+- [ ] AI-2: author_type 서버 강제 + 위조 거부 테스트.
+- [ ] AI-3: mock provider + 시나리오 응답 단위 테스트.
+- [ ] AI-4: invoke API + 루프 가드(사람 1건당 AI 최대 1건, AI 작성에 무반응) 테스트.
+- [ ] AI-5: 집톡이 추출·분류(제안·질문·희망·철회)·충돌 mock 테스트.
+- [ ] AI-6: 집톡이 카드 UI 틀(mock 데이터).
+- [ ] AI-7: 실제 Muse 연동(키 확보 후 수동 검증).
+- [ ] AI-8: 시연 E2E(방 격리·AI 표시·미확정 확인).
+- 전제: 매매 시나리오는 M1-C 매매가격 필드 필요. 무단 배포·운영 DB 테스트 금지.
+- [x] AI-1~AI-6 구현·검증(89/89, 종료코드 0): 005·author 강제·mock 응답·invoke+루프가드·
+  집톡이 추출·카드 UI 틀(`/demo/ziptalk`, mock). 수정 2건: 테스트 문자열(`등급` 미포함) 1건,
+  제안 판정 순서("하자고" 충돌) 1건. 전부 원인 확정 후 수정·재검증.
+- [ ] AI-7: 실제 Muse 연동 — BLOCKED(키 미확보). mock이 기본, provider 로그 분리済.
+- [ ] AI-8: 시연 E2E — BLOCKED(실행 환경). 환경 복구 후 작은 단위로 실행.
+
 ## P4 집톡이 AI 구현 — TODO
 
 - [x] 스펙(`AI_CHAT_ASSISTANT_SPEC.md`).

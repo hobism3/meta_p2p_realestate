@@ -1,0 +1,56 @@
+# 독립 검증 CI. 운영 DB·운영 비밀키를 사용하지 않는다.
+# Push/PR 시 자동 실행. 결과는 GitHub Checks에서 확인한다.
+name: verify
+
+on:
+  push:
+    branches: ["m0-write-block", "m1-*", "main"]
+  pull_request:
+
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: unit + dal
+        run: node --test tests/listings.test.mjs tests/ratelimit.test.mjs tests/auth.test.mjs tests/dal-sqlite.test.mjs tests/dal-pg.test.mjs
+      - name: api + READ_ONLY regression (isolated sqlite, spawned next start)
+        run: node --test tests/api.test.mjs tests/readonly.test.mjs
+
+  playwright:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    env:
+      DB_PATH: ./data/e2e.db
+      WRITE_TOKEN: test-token
+      RATE_LIMIT_PER_MIN: "1000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: e2e (serial, isolated local sqlite)
+        run: npx playwright test --workers=1 --reporter=line
+      - name: keep failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace
+          path: test-results

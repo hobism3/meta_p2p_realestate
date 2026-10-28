@@ -1,10 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { ROLES } from "./listings.ts";
 
-export interface Actor {
+export interface Identity {
   userId: string;
   name: string;
-  role: string;
 }
 
 function b64url(input: string): string {
@@ -15,23 +14,27 @@ function sign(data: string, secret: string): Buffer {
   return createHmac("sha256", secret).update(data).digest();
 }
 
-/** Supabase 형식 JWT(HS256) 검증. 테스트 가능한 순수 함수. */
+/**
+ * Supabase Auth JWT(HS256) 검증. 신원(sub)만 확인한다.
+ * user_metadata.role은 권한 근거로 절대 사용하지 않는다. 역할은 서버 DB가 정한다.
+ */
 export function verifyJwt(
   token: string,
   secret: string,
   nowSec: number = Math.floor(Date.now() / 1000),
-): { sub: string; name: string; role: string } | null {
+): { sub: string; name: string } | null {
   const parts = token.split(".");
   if (parts.length !== 3) return null;
   const [h, p, s] = parts;
   let header: { alg?: string };
-  let payload: { sub?: string; exp?: number; user_metadata?: { name?: string; role?: string } };
+  let payload: { sub?: string; exp?: number; email?: string; user_metadata?: { name?: string } };
   try {
     header = JSON.parse(b64url(h)) as { alg?: string };
     payload = JSON.parse(b64url(p)) as {
       sub?: string;
       exp?: number;
-      user_metadata?: { name?: string; role?: string };
+      email?: string;
+      user_metadata?: { name?: string };
     };
   } catch {
     return null;
@@ -42,12 +45,17 @@ export function verifyJwt(
   if (sig.length !== exp.length || !timingSafeEqual(sig, exp)) return null;
   if (typeof payload.exp === "number" && payload.exp <= nowSec) return null;
   if (!payload.sub) return null;
-  const role = payload.user_metadata?.role ?? "";
-  if (!ROLES.includes(role)) return null;
-  return { sub: payload.sub, name: payload.user_metadata?.name ?? payload.sub, role };
+  const metaName = payload.user_metadata?.name;
+  const name =
+    typeof metaName === "string" && metaName.trim()
+      ? metaName.trim()
+      : typeof payload.email === "string" && payload.email
+        ? payload.email
+        : payload.sub;
+  return { sub: payload.sub, name };
 }
 
-/** 테스트용 토큰 생성. 운영에서는 Supabase가 발급. */
+/** 테스트용 토큰 생성. role은 페이로드에 남기되 서버는 권한으로 쓰지 않는다. */
 export function mintTestToken(
   sub: string,
   name: string,
@@ -62,25 +70,52 @@ export function mintTestToken(
   return `${h}.${p}.${s}`;
 }
 
+export function supabaseConfigured(): boolean {
+  return !!process.env.SUPABASE_JWT_SECRET;
+}
+
+/** dev 별명 인증은 로컬 전용. 운영에서는 secret 없이 쓰기가 전부 401로 닫힌다. */
+export function devAuthAllowed(): boolean {
+  return !supabaseConfigured() && process.env.NODE_ENV !== "production";
+}
+
 /**
- * 작성자 확정. Supabase 모드에서는 토큰 신원과 일치해야 한다.
- * dev 모드에서는 기존처럼 body 값을 쓴다.
+ * 신원 확인. 모든 쓰기 API의 입구.
+ * - dev 허용: 로컬 확인용 익명 신원. 권한 강제는 하지 않는다.
+ * - 운영 무secret: 401로 닫는다.
+ * - supabase 모드: Bearer 검증 실패 시 401.
  */
-export function resolveActor(
-  req: Request,
-  body: { author?: unknown; role?: unknown },
-): { actor: Actor } | { status: number; error: string } {
+export function authenticate(req: Request): { identity: Identity } | { status: number; error: string } {
   const secret = process.env.SUPABASE_JWT_SECRET;
   if (!secret) {
-    const name = String(body.author ?? "").trim();
-    const role = String(body.role ?? "");
-    if (!name) return { status: 400, error: "작성자·내용 필수" };
-    if (!ROLES.includes(role)) return { status: 400, error: "역할 오류" };
-    return { actor: { userId: `dev:${name}`, name, role } };
+    if (process.env.NODE_ENV === "production") return { status: 401, error: "인증 필요" };
+    return { identity: { userId: "dev:anonymous", name: "anonymous" } };
   }
   const auth = req.headers.get("authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
   const v = verifyJwt(token, secret);
   if (!v) return { status: 401, error: "인증 필요" };
-  return { actor: { userId: v.sub, name: v.name, role: v.role } };
+  return { identity: { userId: v.sub, name: v.name } };
 }
+
+/**
+ * 메시지 작성자 확정.
+ * - dev: 기존처럼 body 값을 쓴다(역할 형식은 유지).
+ * - supabase 모드: 토큰 신원을 쓴다. 역할은 호출자가 DB에서 정한다.
+ */
+export function resolveAuthor(
+  req: Request,
+  body: { author?: unknown },
+): { author: Identity } | { status: number; error: string } {
+  if (!supabaseConfigured()) {
+    if (process.env.NODE_ENV === "production") return { status: 401, error: "인증 필요" };
+    const name = String(body.author ?? "").trim();
+    if (!name) return { status: 400, error: "작성자·내용 필수" };
+    return { author: { userId: `dev:${name}`, name } };
+  }
+  const a = authenticate(req);
+  if ("error" in a) return a;
+  return { author: a.identity };
+}
+
+export { ROLES };

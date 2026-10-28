@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { bad, customListing, guardRead, guardWrite, notFound, ok, readJson } from "@/lib/api";
+import { authenticate, supabaseConfigured } from "@/lib/auth";
 import { getDal } from "@/lib/dal";
 import { now, rowToListing } from "@/lib/db";
 import { SEED_LISTINGS, type TradeType } from "@/lib/listings";
@@ -16,6 +17,8 @@ export async function GET(req: Request): Promise<Response> {
 export async function POST(req: Request): Promise<Response> {
   const g = guardWrite(req);
   if (g) return g;
+  const a = authenticate(req);
+  if ("error" in a) return ok({ error: a.error }, a.status);
   const parsed = await readJson(req);
   if ("err" in parsed) return parsed.err;
   const b = parsed.value;
@@ -37,16 +40,18 @@ export async function POST(req: Request): Promise<Response> {
   if (tradeType === "월세" && nums.rent <= 0) return bad("월세 필수");
   const options = Array.isArray(b.options) ? b.options.map(String) : [];
   const id = randomUUID();
+  // 소유자 기록. supabase 모드는 토큰 sub, dev는 게시자 별명.
+  const ownerId = supabaseConfigured() ? a.identity.userId : `dev:${publisher}`;
   const dal = getDal();
   await dal.withTransaction(async (tx) => {
     await tx.run(
       `INSERT INTO custom_listings
-       (id,title,address,trade_type,deposit,rent,fee,area,move_in,options_json,description,publisher,created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       (id,title,address,trade_type,deposit,rent,fee,area,move_in,options_json,description,publisher,owner_id,created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         id, title, address, tradeType as TradeType, nums.deposit,
         tradeType === "전세" ? 0 : nums.rent, nums.fee, nums.area,
-        moveIn, JSON.stringify(options), String(b.description ?? ""), publisher, now(),
+        moveIn, JSON.stringify(options), String(b.description ?? ""), publisher, ownerId, now(),
       ],
     );
     await tx.upsertKey(id);

@@ -1,3 +1,4 @@
+import { authHeaders } from "./client-auth.ts";
 import { SEED_LISTINGS, type Listing } from "./listings.ts";
 
 export async function loadAllListings(): Promise<Listing[]> {
@@ -35,7 +36,7 @@ export interface DealAgreement {
 
 function writeHeaders(): Record<string, string> {
   const t = process.env.NEXT_PUBLIC_WRITE_TOKEN;
-  return t ? { "x-write-token": t } : {};
+  return { ...(t ? { "x-write-token": t } : {}), ...authHeaders() };
 }
 
 async function req(path: string, init?: RequestInit): Promise<unknown> {

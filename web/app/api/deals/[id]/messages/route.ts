@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { bad, guardRead, guardWrite, listingExists, notFound, ok, readJson } from "@/lib/api";
-import { resolveActor } from "@/lib/auth";
+import { ROLES, resolveAuthor, supabaseConfigured } from "@/lib/auth";
+import { participantRole, recordParticipant } from "@/lib/authz";
 import { getDal } from "@/lib/dal";
 import { now } from "@/lib/db";
 
@@ -25,13 +26,23 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const text = String(b.text ?? "").trim();
   if (!text) return bad("작성자·내용 필수");
   if (text.length > 2000) return bad("내용 길이 초과");
-  const resolved = resolveActor(req, b);
+  const resolved = resolveAuthor(req, b);
   if ("error" in resolved) return ok({ error: resolved.error }, resolved.status);
-  const { name: author, role } = resolved.actor;
+  const { userId, name: author } = resolved.author;
+  // 역할은 서버 DB에서 정한다. 토큰의 user_metadata.role은 쓰지 않는다.
+  // dev에서는 기존처럼 body 역할을 검증한다.
+  let role: string;
+  if (supabaseConfigured()) {
+    role = await participantRole(params.id, userId);
+  } else {
+    role = String(b.role ?? "");
+    if (!ROLES.includes(role)) return bad("역할 오류");
+  }
   const id = randomUUID();
   await getDal().run(
-    "INSERT INTO messages (id,listing_id,author,role,text,created_at) VALUES (?,?,?,?,?,?)",
-    [id, params.id, author, role, text, now()],
+    "INSERT INTO messages (id,listing_id,author,role,user_id,text,created_at) VALUES (?,?,?,?,?,?,?)",
+    [id, params.id, author, role, userId, text, now()],
   );
+  await recordParticipant(params.id, userId, role as "landlord" | "tenant");
   return ok({ id }, 201);
 }

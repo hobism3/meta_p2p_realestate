@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { bad, guardRead, guardWrite, listingExists, notFound, ok, readJson } from "@/lib/api";
+import { authenticate } from "@/lib/auth";
 import { getDal } from "@/lib/dal";
 import { now } from "@/lib/db";
 
@@ -17,6 +18,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
 export async function POST(req: Request, { params }: { params: { id: string } }): Promise<Response> {
   const g = guardWrite(req);
   if (g) return g;
+  const a = authenticate(req);
+  if ("error" in a) return ok({ error: a.error }, a.status);
   if (!(await listingExists(params.id))) return notFound("매물 없음");
   const parsed = await readJson(req);
   if ("err" in parsed) return parsed.err;

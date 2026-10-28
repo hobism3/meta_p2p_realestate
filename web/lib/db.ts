@@ -107,6 +107,7 @@ export function rowToListing(r: Record<string, unknown>): Record<string, unknown
     options: JSON.parse(String(r.options_json ?? "[]")),
     description: r.description,
     publisher: r.publisher,
+    ownerId: String(r.owner_id ?? ""),
     verification: { identity: false, ownershipDoc: false },
     synthetic: true,
     editable: true,

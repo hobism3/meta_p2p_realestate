@@ -1,4 +1,5 @@
 import { bad, customListing, guardRead, guardWrite, notFound, ok, readJson, seedListing } from "@/lib/api";
+import { authenticate, supabaseConfigured } from "@/lib/auth";
 import { getDal } from "@/lib/dal";
 
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -14,6 +15,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (g) return g;
   const cur = (await customListing(params.id)) as Record<string, unknown> | null;
   if (!cur) return notFound("시연용 기본 매물은 수정할 수 없습니다");
+  const a = authenticate(req);
+  if ("error" in a) return ok({ error: a.error }, a.status);
+  // 소유자 강제: supabase 모드에서만. dev는 로컬 확인용으로 기존 동작 유지.
+  if (supabaseConfigured()) {
+    const owner = String(cur.ownerId ?? "");
+    if (!owner || owner !== a.identity.userId) return ok({ error: "수정 권한 없음" }, 403);
+  }
   const parsed = await readJson(req);
   if ("err" in parsed) return parsed.err;
   const b = parsed.value;

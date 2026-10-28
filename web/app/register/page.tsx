@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authHeaders } from "../../lib/client-auth";
 import type { Listing, TradeType } from "../../lib/listings";
 
 const EMPTY = {
@@ -60,6 +61,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
         headers: {
           "Content-Type": "application/json",
           ...(token ? { "x-write-token": token } : {}),
+          ...authHeaders(),
         },
         body: JSON.stringify(editId ? {
           title: payload.title, description: payload.description, moveIn: payload.moveIn,

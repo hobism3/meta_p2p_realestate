@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { formatPrice, type Listing } from "../../../lib/listings";
-import { findListing } from "../../../lib/store";
+import { getAccessToken } from "../../../lib/client-auth";
+import { createRoom, findListing } from "../../../lib/store";
 
 export default function DetailPage({ params }: { params: { id: string } }) {
   const [listing, setListing] = useState<Listing | null>(null);
   const [missing, setMissing] = useState(false);
   const [reported, setReported] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [askError, setAskError] = useState("");
   const [isCustom, setIsCustom] = useState(false);
 
   useEffect(() => {
@@ -23,6 +26,23 @@ export default function DetailPage({ params }: { params: { id: string } }) {
   }, [params.id]);
 
   if (missing) return <div className="card">매물을 찾을 수 없습니다. <a href="/">돌아가기</a></div>;
+  const onAsk = async () => {
+    if (!getAccessToken()) {
+      window.location.href = "/login";
+      return;
+    }
+    if (!listing || asking) return;
+    setAsking(true);
+    setAskError("");
+    try {
+      const rid = await createRoom(listing.id);
+      window.location.href = `/rooms/${rid}`;
+    } catch (e) {
+      setAskError(e instanceof Error ? e.message : "문의 실패");
+      setAsking(false);
+    }
+  };
+
   if (!listing) return <div className="card">불러오는 중...</div>;
 
   return (
@@ -62,6 +82,10 @@ export default function DetailPage({ params }: { params: { id: string } }) {
         <p className="meta">게시자: {listing.publisher}. 사실만 표시합니다. 안전·보증을 의미하지 않습니다.</p>
         <p>
           <a className="btn ghost" href={`/deal/${listing.id}`}>거래방 열기</a>{" "}
+          <button className="btn ghost" onClick={onAsk} disabled={asking}>
+            {asking ? "생성 중..." : "문의하기"}
+          </button>{" "}
+          {askError ? <span className="error">{askError}</span> : null}
           {isCustom && <a className="btn ghost" href={`/register?edit=${listing.id}`}>수정하기</a>}{" "}
           {!reported ? (
             <button className="btn ghost" onClick={() => setReported(true)}>허위 매물 신고</button>

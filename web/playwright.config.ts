@@ -36,7 +36,7 @@ export default defineConfig({
         timeout: 120000,
         env: {
           DB_PATH: "./data/e2e.db",
-          WRITE_TOKEN: "test-token",
+          SUPABASE_JWT_SECRET: "test-e2e-secret",
           RATE_LIMIT_PER_MIN: "1000",
           ALLOW_DEV_AUTH: "true",
         },

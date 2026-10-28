@@ -92,6 +92,16 @@
 - [ ] 잔여: 방 UI(목록·입장·대화 화면)는 M1-C. 공개 메시지 GET 공개 상태 유지.
 - M1-C 착수 가능. main 병합·운영 배포 금지 유지.
 
+## VS-1 독립 거래방 UI 연결 — DONE(`m1-auth-rooms`)
+
+- [x] E2E 원인 확정(실측): 구 설정에서 Bearer만 있고 `x-write-token`이 없으면 401.
+  `NEXT_PUBLIC_WRITE_TOKEN` 노출 대신 인증 테스트 사용자(Bearer) 기반으로 전환.
+- [x] 방 UI: 상세 `문의하기`→방 생성→`/rooms/[rid]` 채팅→새로고침 유지. 타인은 `조회 권한 없음`.
+- [x] E2E 20/20(desktop 10·mobile 10, 종료코드 0). 기존 등록·메시지 실패 해소.
+  수정 3건: 방 input placeholder 누락·타인 assertion 엄격모드·trace 경로(`web/test-results`).
+- [x] `node --test` 90/90 유지. 합성 데이터만 사용(격리 sqlite).
+- [ ] Preview 쓰기 테스트 금지: Preview·Production DB 미분리 상태이므로 원격 쓰기 검증은 하지 않음.
+
 ## AI 시연·집톡이 설계 — DONE(문서만, 구현 없음)
 
 - [x] `AI_CHAT_ASSISTANT_SPEC` 개정: M1-B 구조 반영, 데모 에이전트와 분리, 방 스코프·확인주체 구분.

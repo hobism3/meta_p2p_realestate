@@ -17,6 +17,8 @@ export interface DealMessage {
   listing_id: string;
   author: string;
   role: string;
+  room_id?: string | null;
+  author_type?: string;
   text: string;
   created_at: string;
 }
@@ -92,6 +94,29 @@ export function loadRole(id: string): string {
 
 export function saveRole(id: string, role: string): void {
   window.localStorage.setItem(`directhome.role.${id}`, role);
+}
+
+export interface RoomInfo {
+  id: string;
+  listing_id: string;
+  created_by: string;
+  created_at: string;
+}
+
+export async function createRoom(listingId: string): Promise<string> {
+  const body = (await req(`/api/deals/${listingId}/rooms`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  })) as { id: string };
+  return body.id;
+}
+
+export async function loadRoomMessages(rid: string): Promise<DealMessage[]> {
+  return (await req(`/api/rooms/${rid}/messages`)) as DealMessage[];
+}
+
+export async function sendRoomMessage(rid: string, text: string): Promise<void> {
+  await req(`/api/rooms/${rid}/messages`, { method: "POST", body: JSON.stringify({ text }) });
 }
 
 export function seedCount(): number {

@@ -1,4 +1,16 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { mintTestToken } from "../lib/auth";
+
+// 브라우저 E2E는 인증 테스트 사용자(Bearer) 기반이다.
+// 서버는 SUPABASE_JWT_SECRET=test-e2e-secret으로 뜬다.
+const E2E_SECRET = process.env.E2E_JWT_SECRET ?? "test-e2e-secret";
+
+async function loginAs(page: Page, sub: string, name: string, role = "tenant"): Promise<void> {
+  const token = mintTestToken(sub, name, role, E2E_SECRET, Math.floor(Date.now() / 1000) + 3600);
+  await page.addInitScript((t: string) => {
+    window.localStorage.setItem("directhome.access_token", t);
+  }, token);
+}
 
 test("메인: 매물 목록이 보인다", async ({ page }) => {
   await page.goto("/");
@@ -24,9 +36,11 @@ test("상세: 정보와 거래방 링크가 있다", async ({ page }) => {
   await page.goto("/listings/s01");
   await expect(page.getByRole("heading", { name: /신림역 도보 5분/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "거래방 열기" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "문의하기" })).toBeVisible();
 });
 
 test("등록: 폼 제출 후 상세가 열린다", async ({ page }) => {
+  await loginAs(page, "e2e-owner", "E2E등록자");
   await page.goto("/register");
   await page.getByPlaceholder("예: 신림역 도보 5분 원룸").fill("E2E 테스트방");
   await page.getByPlaceholder("예: 서울 관악구 신림로 100 (가상)").fill("서울 관악구 E2E로 1 (가상)");
@@ -41,6 +55,7 @@ test("등록: 폼 제출 후 상세가 열린다", async ({ page }) => {
 
 test("거래방: 역할·메시지·일정·합의·체크가 된다", async ({ page }) => {
   const tag = `E2E${Date.now()}`;
+  await loginAs(page, "e2e-tenant", "E2E세입자");
   await page.goto("/deal/s02");
   await page.getByRole("combobox").first().selectOption("tenant");
   await page.getByPlaceholder("이름(별명)").fill("E2E세입자");
@@ -79,4 +94,22 @@ test("지도: 리스트 클릭 시 상세로 이동한다", async ({ page }) => 
   await expect(page.locator(".leaflet-marker-icon").first()).toBeVisible({ timeout: 20000 });
   await page.locator(".side .listing").first().click();
   await expect(page).toHaveURL(/\/listings\//);
+});
+
+test("방: 문의→생성→채팅→새로고침 유지, 타인은 차단된다", async ({ page, context }) => {
+  const tag = `ROOM${Date.now()}`;
+  await loginAs(page, "e2e-buyer", "E2E매수자");
+  await page.goto("/listings/s02");
+  await page.getByRole("button", { name: "문의하기" }).click();
+  await expect(page).toHaveURL(/\/rooms\//);
+  const roomUrl = page.url();
+  await page.getByPlaceholder("메시지 입력").fill(`${tag} 방 문의`);
+  await page.getByRole("button", { name: "전송" }).click();
+  await expect(page.getByText(`${tag} 방 문의`)).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(`${tag} 방 문의`)).toBeVisible();
+  const other = await context.newPage();
+  await loginAs(other, "e2e-stranger", "E2E타인");
+  await other.goto(roomUrl);
+  await expect(other.locator("p.error")).toContainText(/권한/);
 });

@@ -9,6 +9,14 @@ export default function LoginPage() {
   const [me, setMe] = useState<{ userId: string; name: string; mode: string } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [queryError, setQueryError] = useState("");
+
+  useEffect(() => {
+    const e = new URLSearchParams(window.location.search).get("error");
+    if (e === "unconfigured") setQueryError("서버 인증 미설정입니다. 관리자에게 문의하세요.");
+    else if (e === "provider") setQueryError("지원하지 않는 로그인 방식입니다.");
+    else if (e) setQueryError(e);
+  }, []);
 
   const loadMe = async () => {
     const token = getAccessToken();
@@ -86,6 +94,7 @@ export default function LoginPage() {
             </div>
             <button onClick={login} disabled={busy}>{busy ? "확인 중..." : "로그인"}</button>
             {error ? <p className="error">{error}</p> : null}
+            {queryError ? <p className="error">{queryError}</p> : null}
             <div className="field">
               <label>간편 로그인</label>
               <p className="meta">Supabase에 제공자 설정 후 동작합니다.</p>

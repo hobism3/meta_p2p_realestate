@@ -86,6 +86,15 @@ export default function LoginPage() {
             </div>
             <button onClick={login} disabled={busy}>{busy ? "확인 중..." : "로그인"}</button>
             {error ? <p className="error">{error}</p> : null}
+            <div className="field">
+              <label>간편 로그인</label>
+              <p className="meta">Supabase에 제공자 설정 후 동작합니다.</p>
+              <p>
+                <a className="btn" href="/api/auth/oauth?provider=google">Google로 계속</a>{" "}
+                <a className="btn" href="/api/auth/oauth?provider=kakao">카카오로 계속</a>{" "}
+                <a className="btn" href="/api/auth/oauth?provider=naver">네이버로 계속</a>
+              </p>
+            </div>
           </div>
         )}
         <p><a href="/">돌아가기</a></p>

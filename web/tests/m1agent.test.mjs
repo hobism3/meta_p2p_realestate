@@ -191,4 +191,12 @@ describe("AI-4 invoke와 루프 가드", () => {
     assert.equal(r.status, 200);
     assert.equal(r.body.agents.length, 1);
   });
+
+  it("소셜 진입점은 미설정 시 로그인으로 돌려보낸다", async () => {
+    const r = await fetch(`${BASE}/api/auth/oauth?provider=google`, { redirect: "manual" });
+    assert.equal(r.status, 307);
+    assert.ok(String(r.headers.get("location")).includes("/login?error=unconfigured"));
+    const bad = await fetch(`${BASE}/api/auth/oauth?provider=unknown`, { redirect: "manual" });
+    assert.ok(String(bad.headers.get("location")).includes("/login?error=provider"));
+  });
 });

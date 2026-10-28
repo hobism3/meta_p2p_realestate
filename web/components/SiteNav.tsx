@@ -57,6 +57,7 @@ export default function SiteNav() {
       <a href="/register">매물 등록</a>
       {me ? (
         <>
+          <a href="/rooms">내 거래방</a>
           <span className="meta">{me.name}</span>
           <button className="btn ghost" onClick={logout}>
             로그아웃

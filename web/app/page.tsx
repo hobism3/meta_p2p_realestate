@@ -44,6 +44,7 @@ export default function HomePage() {
   const results = useMemo(() => filterListings(all, f), [all, f]);
 
   const set = (patch: Partial<Filters>) => setF((prev) => ({ ...prev, ...patch }));
+  const buying = f.tradeType === "매매";
 
   return (
     <div className="grid">
@@ -54,6 +55,10 @@ export default function HomePage() {
         </p>
         {loading && <p className="meta">불러오는 중...</p>}
         {error && <p className="error">{error} <button className="btn ghost" onClick={reload}>다시 시도</button></p>}
+        <div className="viewtoggle">
+          <button className={buying ? "btn ghost" : "btn"} onClick={() => set({ tradeType: "", salePriceMax: null })}>월세·전세 구하기</button>
+          <button className={buying ? "btn" : "btn ghost"} onClick={() => set({ tradeType: "매매" })}>집 사기</button>
+        </div>
         <div className="searchbar">
           <input
             placeholder="지역·주소·키워드 검색 (예: 신림로, 투룸)"
@@ -64,6 +69,7 @@ export default function HomePage() {
             <option value="">전체 유형</option>
             <option value="월세">월세</option>
             <option value="전세">전세</option>
+            <option value="매매">매매</option>
           </select>
         </div>
         <div className="searchbar" style={{ marginTop: 8 }}>
@@ -84,6 +90,15 @@ export default function HomePage() {
             <option value="70">월세 70만원 이하</option>
             <option value="90">월세 90만원 이하</option>
             <option value="120">월세 120만원 이하</option>
+          </select>
+          <select
+            value={f.salePriceMax === null ? "" : String(f.salePriceMax)}
+            onChange={(e) => set({ salePriceMax: e.target.value === "" ? null : Number(e.target.value) })}
+          >
+            <option value="">매매가 무관</option>
+            <option value="30000">매매 3억원 이하</option>
+            <option value="50000">매매 5억원 이하</option>
+            <option value="100000">매매 10억원 이하</option>
           </select>
           <select
             value={f.areaMin === null ? "" : String(f.areaMin)}

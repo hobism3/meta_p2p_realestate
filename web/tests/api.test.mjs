@@ -67,10 +67,11 @@ after(() => {
 });
 
 describe("매물 API", () => {
-  it("시드 20건을 반환한다", async () => {
+  it("시드 24건(전월세 20 + 매매 4)을 반환한다", async () => {
     const { status, body } = await api("/api/listings");
     assert.equal(status, 200);
-    assert.equal(body.length, 20);
+    assert.equal(body.length, 24);
+    assert.ok(body.some((l) => l.tradeType === "매매" && l.salePrice > 0));
   });
 
   it("등록 성공 시 201과 uuid를 준다", async () => {
@@ -84,6 +85,36 @@ describe("매물 API", () => {
     assert.equal(r1.status, 201);
     assert.equal(r2.status, 201);
     assert.notEqual(r1.body.id, r2.body.id);
+  });
+
+  it("매매 등록은 매매가를 별도 필드로 저장한다", async () => {
+    const r = await api("/api/listings", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "매매방", address: "서울 관악구 매매로 1 (가상)", tradeType: "매매",
+        deposit: 0, rent: 0, salePrice: 85000, fee: 5, area: 59, moveIn: "2026-12-01",
+        options: [], description: "", publisher: "테스터",
+      }),
+    });
+    assert.equal(r.status, 201);
+    assert.equal(r.body.tradeType, "매매");
+    assert.equal(r.body.salePrice, 85000);
+    assert.equal(r.body.deposit, 0);
+    assert.equal(r.body.rent, 0);
+  });
+
+  it("매매가 없거나 거래유형이 틀리면 400이다", async () => {
+    const base = {
+      title: "매매방", address: "서울 관악구 매매로 1 (가상)", tradeType: "매매",
+      deposit: 0, rent: 0, fee: 5, area: 59, moveIn: "2026-12-01",
+      options: [], description: "", publisher: "테스터",
+    };
+    const noPrice = await api("/api/listings", { method: "POST", body: JSON.stringify(base) });
+    assert.equal(noPrice.status, 400);
+    const badType = await api("/api/listings", {
+      method: "POST", body: JSON.stringify({ ...base, tradeType: "교환", salePrice: 100 }),
+    });
+    assert.equal(badType.status, 400);
   });
 
   it("필수 누락은 400이다", async () => {
@@ -158,6 +189,26 @@ describe("매물 API", () => {
     assert.equal(good.body.title, "불변 수정");
     assert.equal(good.body.address, "서울 관악구 바뀐로 2 (가상)");
     assert.deepEqual(good.body.options, ["에어컨"]);
+  });
+
+  it("매매가 PATCH가 된다", async () => {
+    const created = await api("/api/listings", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "매매불변", address: "서울 관악구 매매로 2 (가상)", tradeType: "매매",
+        deposit: 0, rent: 0, salePrice: 50000, fee: 5, area: 40, moveIn: "2026-12-01",
+        options: [], description: "", publisher: "테스터",
+      }),
+    });
+    const bad1 = await api(`/api/listings/${created.body.id}`, {
+      method: "PATCH", body: JSON.stringify({ salePrice: 0 }),
+    });
+    assert.equal(bad1.status, 400);
+    const good = await api(`/api/listings/${created.body.id}`, {
+      method: "PATCH", body: JSON.stringify({ salePrice: 52000 }),
+    });
+    assert.equal(good.status, 200);
+    assert.equal(good.body.salePrice, 52000);
   });
 });
 

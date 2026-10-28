@@ -28,9 +28,10 @@ export async function POST(req: Request): Promise<Response> {
   const publisher = String(b.publisher ?? "").trim();
   const tradeType = String(b.tradeType ?? "월세");
   if (!title || !address || !moveIn || !publisher) return bad("필수 항목 누락");
-  if (tradeType !== "월세" && tradeType !== "전세") return bad("거래유형 오류");
+  if (tradeType !== "월세" && tradeType !== "전세" && tradeType !== "매매") return bad("거래유형 오류");
   const nums = {
     deposit: Number(b.deposit ?? 0),
+    salePrice: Number(b.salePrice ?? 0),
     rent: Number(b.rent ?? 0),
     fee: Number(b.fee ?? 0),
     area: Number(b.area ?? 0),
@@ -38,6 +39,7 @@ export async function POST(req: Request): Promise<Response> {
   if (Object.values(nums).some((n) => !Number.isFinite(n) || n < 0)) return bad("금액·면적 오류");
   if (nums.area <= 0) return bad("면적 오류");
   if (tradeType === "월세" && nums.rent <= 0) return bad("월세 필수");
+  if (tradeType === "매매" && nums.salePrice <= 0) return bad("매매가 필수");
   const options = Array.isArray(b.options) ? b.options.map(String) : [];
   const id = randomUUID();
   // 소유자 기록. supabase 모드는 토큰 sub, dev는 게시자 별명.
@@ -46,11 +48,11 @@ export async function POST(req: Request): Promise<Response> {
   await dal.withTransaction(async (tx) => {
     await tx.run(
       `INSERT INTO custom_listings
-       (id,title,address,trade_type,deposit,rent,fee,area,move_in,options_json,description,publisher,owner_id,created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       (id,title,address,trade_type,deposit,rent,sale_price,fee,area,move_in,options_json,description,publisher,owner_id,created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         id, title, address, tradeType as TradeType, nums.deposit,
-        tradeType === "전세" ? 0 : nums.rent, nums.fee, nums.area,
+        tradeType === "전세" ? 0 : nums.rent, nums.salePrice, nums.fee, nums.area,
         moveIn, JSON.stringify(options), String(b.description ?? ""), publisher, ownerId, now(),
       ],
     );

@@ -4,12 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { getAccessToken } from "../../../lib/client-auth";
 import {
   loadRoomMessages,
+  loadRoomMeta,
   sendRoomMessage,
   type DealMessage,
+  type RoomMeta,
 } from "../../../lib/store";
 
 export default function RoomPage({ params }: { params: { rid: string } }) {
   const [messages, setMessages] = useState<DealMessage[]>([]);
+  const [meta, setMeta] = useState<RoomMeta | null>(null);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
   const [authed, setAuthed] = useState(false);
@@ -26,8 +29,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
 
   useEffect(() => {
     setAuthed(!!getAccessToken());
+    loadRoomMeta(params.rid).then(setMeta).catch(() => setMeta(null));
     refresh();
-  }, [refresh]);
+    // 상대방 메시지를 5초마다 갱신한다.
+    const t = setInterval(refresh, 5000);
+    return () => clearInterval(t);
+  }, [params.rid, refresh]);
 
   if (!authed) {
     return (
@@ -51,8 +58,17 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   return (
     <div className="grid">
       <section className="card">
-        <h2>독립 거래방</h2>
-        <p className="meta">이 방의 대화는 참여자만 볼 수 있습니다. 합성 데이터 시연용입니다.</p>
+        <h2>{meta?.listing ? meta.listing.title : "독립 거래방"}</h2>
+        <p className="meta">
+          {meta ? (
+            <>
+              <span className={meta.demo ? "badge no" : "badge ok"}>{meta.demo ? "시연 거래방" : "실거래방"}</span>{" "}
+              {meta.listing ? `${meta.listing.tradeType}` : ""} · 이 방의 대화는 참여자만 볼 수 있습니다. 합성 데이터 시연용입니다.
+            </>
+          ) : (
+            "이 방의 대화는 참여자만 볼 수 있습니다. 합성 데이터 시연용입니다."
+          )}
+        </p>
         {error ? <p className="error">{error}</p> : null}
         <div>
           {messages.map((m) => (

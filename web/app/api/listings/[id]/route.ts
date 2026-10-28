@@ -58,11 +58,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       patch[k] = n;
     }
   }
+  if (b.salePrice !== undefined) {
+    const n = Number(b.salePrice);
+    if (!Number.isFinite(n) || n < 0) return bad("금액·면적 오류");
+    patch.sale_price = n;
+  }
   const tradeType = cur.tradeType as string;
   const rent = (patch.rent ?? cur.rent) as number;
   const area = (patch.area ?? cur.area) as number;
   if (area <= 0) return bad("면적 오류");
   if (tradeType === "월세" && rent <= 0) return bad("월세 필수");
+  const salePrice = (patch.sale_price ?? cur.salePrice) as number;
+  if (tradeType === "매매" && salePrice <= 0) return bad("매매가 필수");
   const keys = Object.keys(patch);
   if (keys.length === 0) return bad("변경 없음");
   await getDal().run(

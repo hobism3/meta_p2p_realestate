@@ -82,6 +82,8 @@ const STRANGER = mintTestToken("u-stranger", "타인", "tenant", SECRET, EXP);
 
 let server;
 let roomId;
+let vs2aListing = "";
+let vs2aRoom = "";
 
 async function api(path, init = {}, bearer = null) {
   const r = await fetch(`${BASE}${path}`, {
@@ -204,5 +206,69 @@ describe("AI-4 invoke와 루프 가드", () => {
       const r = await fetch(`${BASE}/api/auth/oauth?provider=${p}`, { redirect: "manual" });
       assert.ok(String(r.headers.get("location")).includes("/login?error=provider"));
     }
+  });
+});
+
+describe("VS-2A 매수 흐름", () => {
+  it("매매 매물은 매매가를 별도로 저장한다", async () => {
+    const r = await api("/api/listings", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "매매집", address: "서울 관악구 매매로 1 (가상)", tradeType: "매매",
+        deposit: 0, rent: 0, salePrice: 85000, fee: 5, area: 59, moveIn: "2026-12-01",
+        options: [], description: "", publisher: "주인",
+      }),
+    }, OWNER);
+    assert.equal(r.status, 201);
+    assert.equal(r.body.tradeType, "매매");
+    assert.equal(r.body.salePrice, 85000);
+    assert.equal(r.body.ownerId, "u-owner2");
+    vs2aListing = r.body.id;
+  });
+  it("매매가 없으면 400이다", async () => {
+    const r = await api("/api/listings", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "매매집", address: "서울 관악구 매매로 1 (가상)", tradeType: "매매",
+        deposit: 0, rent: 0, fee: 5, area: 59, moveIn: "2026-12-01",
+        options: [], description: "", publisher: "주인",
+      }),
+    }, OWNER);
+    assert.equal(r.status, 400);
+  });
+  it("본인 매물 문의는 400이다", async () => {
+    const r = await api(`/api/deals/${vs2aListing}/rooms`, { method: "POST", body: JSON.stringify({}) }, OWNER);
+    assert.equal(r.status, 400);
+  });
+  it("타인 문의로 독립 거래방이 생긴다", async () => {
+    const r = await api(`/api/deals/${vs2aListing}/rooms`, { method: "POST", body: JSON.stringify({}) }, HUMAN);
+    assert.equal(r.status, 201);
+    vs2aRoom = r.body.id;
+  });
+  it("참여자 메시지를 공유하고 제삼자는 403이다", async () => {
+    const s = await api(`/api/rooms/${vs2aRoom}/messages`, {
+      method: "POST", body: JSON.stringify({ text: "85000에 삽니다" }),
+    }, HUMAN);
+    assert.equal(s.status, 201);
+    const o = await api(`/api/rooms/${vs2aRoom}/messages`, {}, OWNER);
+    assert.ok(o.body.some((m) => m.text === "85000에 삽니다"));
+    assert.equal((await api(`/api/rooms/${vs2aRoom}/messages`, {}, STRANGER)).status, 403);
+    assert.equal((await api(`/api/rooms/${vs2aRoom}/messages`)).status, 401);
+  });
+  it("내 방 목록에 보인다", async () => {
+    const mine = await api("/api/rooms", {}, HUMAN);
+    assert.ok(mine.body.some((r) => r.id === vs2aRoom && r.demo === false));
+    const other = await api("/api/rooms", {}, STRANGER);
+    assert.ok(other.body.every((r) => r.id !== vs2aRoom));
+  });
+  it("방 메타는 멤버만 본다", async () => {
+    const m = await api(`/api/rooms/${vs2aRoom}`, {}, HUMAN);
+    assert.equal(m.status, 200);
+    assert.equal(m.body.listing.title, "매매집");
+    assert.equal(m.body.demo, false);
+    assert.equal((await api(`/api/rooms/${vs2aRoom}`, {}, STRANGER)).status, 403);
+  });
+  it("공용 스레드 조회는 인증이 필요하다", async () => {
+    assert.equal((await api(`/api/deals/${vs2aListing}/messages`)).status, 401);
   });
 });

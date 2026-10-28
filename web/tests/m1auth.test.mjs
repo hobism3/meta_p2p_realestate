@@ -87,9 +87,9 @@ describe("M1-A 인증 없음 401", () => {
     assert.equal((await api("/api/deals/s01/agreements", { method: "POST", body: JSON.stringify({ text: "합의" }) })).status, 401);
     assert.equal((await api("/api/deals/s01/checklist", { method: "PUT", body: JSON.stringify({ checks: {} }) })).status, 401);
   });
-  it("조회는 토큰 없이 200이다", async () => {
+  it("매물 조회는 토큰 없이 200이다", async () => {
     assert.equal((await api("/api/listings")).status, 200);
-    assert.equal((await api("/api/deals/s01/messages")).status, 200);
+    assert.equal((await api("/api/deals/s01/messages")).status, 401);
   });
 });
 
@@ -114,7 +114,10 @@ describe("M1-A 소유자 403과 정상 흐름", () => {
     assert.equal(m1.status, 201);
     const m2 = await api(`/api/deals/${id}/messages`, { method: "POST", body: JSON.stringify({ text: "위조 글" }) }, forgedTok);
     assert.equal(m2.status, 201);
-    const list = await api(`/api/deals/${id}/messages`);
+    const denied = await api(`/api/deals/${id}/messages`);
+    assert.equal(denied.status, 401);
+    const list = await api(`/api/deals/${id}/messages`, {}, ownerTok);
+    assert.equal(list.status, 200);
     const byOwner = list.body.find((m) => m.id === m1.body.id);
     const byForged = list.body.find((m) => m.id === m2.body.id);
     assert.equal(byOwner.role, "landlord");

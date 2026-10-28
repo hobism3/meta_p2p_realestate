@@ -6,7 +6,7 @@ import type { Listing, TradeType } from "../../lib/listings";
 
 const EMPTY = {
   title: "", address: "", tradeType: "월세" as TradeType,
-  deposit: "", rent: "", fee: "", area: "", moveIn: "",
+  deposit: "", rent: "", salePrice: "", fee: "", area: "", moveIn: "",
   options: "", description: "", publisher: "",
 };
 
@@ -30,8 +30,8 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
         setIsCustom(true);
         setForm({
           title: l.title, address: l.address, tradeType: l.tradeType,
-          deposit: String(l.deposit), rent: String(l.rent), fee: String(l.fee),
-          area: String(l.area), moveIn: l.moveIn,
+          deposit: String(l.deposit), rent: String(l.rent), salePrice: String(l.salePrice ?? 0),
+          fee: String(l.fee), area: String(l.area), moveIn: l.moveIn,
           options: l.options.join(", "), description: l.description, publisher: l.publisher,
         });
       })
@@ -46,9 +46,11 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
       setError("필수 항목 누락"); return;
     }
     if (form.tradeType === "월세" && !form.rent.trim()) { setError("필수 항목 누락: 월세"); return; }
+    if (form.tradeType === "매매" && !form.salePrice.trim()) { setError("필수 항목 누락: 매매가"); return; }
     const payload = {
       title: form.title.trim(), address: form.address.trim(), tradeType: form.tradeType,
       deposit: Number(form.deposit || 0), rent: Number(form.rent || 0),
+      salePrice: Number(form.salePrice || 0),
       fee: Number(form.fee || 0), area: Number(form.area || 0),
       moveIn: form.moveIn.trim(),
       options: form.options.split(",").map((s) => s.trim()).filter(Boolean),
@@ -65,7 +67,8 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
         },
         body: JSON.stringify(editId ? {
           title: payload.title, description: payload.description, moveIn: payload.moveIn,
-          deposit: payload.deposit, rent: payload.rent, fee: payload.fee, area: payload.area,
+          deposit: payload.deposit, rent: payload.rent, salePrice: payload.salePrice,
+          fee: payload.fee, area: payload.area,
           address: payload.address, publisher: payload.publisher, options: payload.options,
         } : payload),
       });
@@ -93,6 +96,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
           ["address", "주소 *", "예: 서울 관악구 신림로 100 (가상)"],
           ["deposit", "보증금(만원) *", "예: 1000"],
           ["rent", "월세(만원, 월세만) *", "예: 65"],
+          ["salePrice", "매매가(만원, 매매만) *", "예: 85000"],
           ["fee", "관리비(만원)", "예: 8"],
           ["area", "면적(㎡) *", "예: 23"],
           ["moveIn", "입주 가능일 *", "예: 2026-11-10 또는 즉시 입주"],
@@ -110,6 +114,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
           <select value={form.tradeType} onChange={(e) => set("tradeType", e.target.value)} disabled={!!editId}>
             <option value="월세">월세</option>
             <option value="전세">전세</option>
+            <option value="매매">매매</option>
           </select>
         </div>
         {error && <p className="error">{error}</p>}

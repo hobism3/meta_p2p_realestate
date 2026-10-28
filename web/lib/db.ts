@@ -105,6 +105,7 @@ export function rowToListing(r: Record<string, unknown>): Record<string, unknown
     tradeType: r.trade_type,
     deposit: r.deposit,
     rent: r.rent,
+    salePrice: Number(r.sale_price ?? 0),
     fee: r.fee,
     area: r.area,
     moveIn: r.move_in,

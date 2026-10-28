@@ -119,6 +119,28 @@ export async function sendRoomMessage(rid: string, text: string): Promise<void> 
   await req(`/api/rooms/${rid}/messages`, { method: "POST", body: JSON.stringify({ text }) });
 }
 
+export interface MyRoom {
+  id: string;
+  listing_id: string;
+  created_at: string;
+  listing_title: string;
+  demo: boolean;
+}
+
+export async function loadMyRooms(): Promise<MyRoom[]> {
+  return (await req("/api/rooms")) as MyRoom[];
+}
+
+export interface RoomMeta {
+  room: RoomInfo;
+  listing: { id: string; title: string; tradeType: string; salePrice: number } | null;
+  demo: boolean;
+}
+
+export async function loadRoomMeta(rid: string): Promise<RoomMeta> {
+  return (await req(`/api/rooms/${rid}`)) as RoomMeta;
+}
+
 export function seedCount(): number {
   return SEED_LISTINGS.length;
 }

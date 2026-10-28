@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { bad, guardRead, guardWrite, listingExists, notFound, ok, readJson } from "@/lib/api";
-import { ROLES, resolveAuthor, supabaseConfigured } from "@/lib/auth";
+import { authenticate, ROLES, resolveAuthor, supabaseConfigured } from "@/lib/auth";
 import { participantRole, recordParticipant } from "@/lib/authz";
 import { getDal } from "@/lib/dal";
 import { now } from "@/lib/db";
@@ -9,6 +9,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
   const g = guardRead(req);
   if (g) return g;
   if (!(await listingExists(params.id))) return notFound("매물 없음");
+  const a = await authenticate(req);
+  if ("error" in a) return ok({ error: a.error }, a.status);
   const rows = await getDal().all(
     "SELECT * FROM messages WHERE listing_id = ? AND room_id IS NULL ORDER BY created_at ASC",
     [params.id],

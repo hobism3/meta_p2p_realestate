@@ -52,7 +52,11 @@ export default function DetailPage({ params }: { params: { id: string } }) {
         <h2>{listing.title}</h2>
         <div className="price">{formatPrice(listing)}</div>
         <p className="meta">{listing.address}</p>
-        <p><span className="synth">합성 데이터</span> 실매물·소유자 인증이 아닙니다.</p>
+        {isCustom ? (
+          <p>사용자 등록 매물입니다. 문의하면 소유자와의 독립 거래방이 열립니다.</p>
+        ) : (
+          <p><span className="synth">합성 데이터</span> 소유자 없는 시연 매물입니다. 문의하면 시연 거래방이 열립니다.</p>
+        )}
       </section>
 
       <section className="card">
@@ -60,6 +64,9 @@ export default function DetailPage({ params }: { params: { id: string } }) {
         <table className="spec">
           <tbody>
             <tr><th>거래유형</th><td>{listing.tradeType}</td></tr>
+            {listing.tradeType === "매매" ? (
+              <tr><th>매매가</th><td>{listing.salePrice.toLocaleString()}만원</td></tr>
+            ) : null}
             <tr><th>관리비</th><td>{listing.fee}만원</td></tr>
             <tr><th>면적</th><td>{listing.area}㎡</td></tr>
             <tr><th>입주일</th><td>{listing.moveIn}</td></tr>
@@ -81,7 +88,6 @@ export default function DetailPage({ params }: { params: { id: string } }) {
         </p>
         <p className="meta">게시자: {listing.publisher}. 사실만 표시합니다. 안전·보증을 의미하지 않습니다.</p>
         <p>
-          <a className="btn ghost" href={`/deal/${listing.id}`}>거래방 열기</a>{" "}
           <button className="btn ghost" onClick={onAsk} disabled={asking}>
             {asking ? "생성 중..." : "문의하기"}
           </button>{" "}

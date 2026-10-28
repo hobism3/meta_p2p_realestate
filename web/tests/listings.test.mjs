@@ -28,6 +28,18 @@ describe("가상 매물 데이터", () => {
     const ids = SEED_LISTINGS.map((l) => l.id);
     assert.equal(new Set(ids).size, ids.length);
   });
+  it("매매 시드가 있고 매매가는 별도 필드다", () => {
+    const sales = SEED_LISTINGS.filter((l) => l.tradeType === "매매");
+    assert.ok(sales.length > 0);
+    for (const l of sales) {
+      assert.ok(l.salePrice > 0);
+      assert.equal(l.deposit, 0);
+      assert.equal(l.rent, 0);
+    }
+    for (const l of SEED_LISTINGS.filter((l) => l.tradeType !== "매매")) {
+      assert.equal(l.salePrice, 0);
+    }
+  });
 });
 
 describe("검색·필터", () => {
@@ -38,6 +50,15 @@ describe("검색·필터", () => {
   it("거래유형 필터가 동작한다", () => {
     const r = filterListings(SEED_LISTINGS, { ...EMPTY_FILTERS, tradeType: "전세" });
     assert.ok(r.length > 0 && r.every((l) => l.tradeType === "전세"));
+  });
+  it("매매 유형 필터가 동작한다", () => {
+    const r = filterListings(SEED_LISTINGS, { ...EMPTY_FILTERS, tradeType: "매매" });
+    assert.ok(r.length > 0 && r.every((l) => l.tradeType === "매매"));
+  });
+  it("매매가 상한 필터가 동작한다", () => {
+    const r = filterListings(SEED_LISTINGS, { ...EMPTY_FILTERS, salePriceMax: 40000 });
+    assert.ok(r.length > 0);
+    assert.ok(r.every((l) => l.tradeType === "매매" && l.salePrice <= 40000));
   });
   it("가격·면적 필터가 동작한다", () => {
     const r = filterListings(SEED_LISTINGS, { ...EMPTY_FILTERS, depositMax: 1000, rentMax: 70, areaMin: 23 });
@@ -58,6 +79,10 @@ describe("가격 표기", () => {
     const wolse = SEED_LISTINGS.find((l) => l.tradeType === "월세");
     assert.ok(formatPrice(jeonse).startsWith("전세"));
     assert.ok(formatPrice(wolse).includes("/"));
+  });
+  it("매매는 매매가로 표기한다", () => {
+    const sale = SEED_LISTINGS.find((l) => l.tradeType === "매매");
+    assert.ok(formatPrice(sale).startsWith("매매"));
   });
 });
 

@@ -1,6 +1,7 @@
-# 독립 검증 CI. 운영 DB·운영 비밀키를 사용하지 않는다.
-# Push/PR 시 자동 실행. 결과는 GitHub Checks에서 확인한다.
-name: verify
+# E2E 검증: 격리 로컬 sqlite + 직렬 실행. 실패 시 trace를 보존한다.
+# 실행 환경 문제(브라우저 부재 등)는 성공으로 처리하지 않는다.
+# 별도 워크플로이므로 E2E BLOCKED가 빠른 검증 신호를 가리지 않는다.
+name: verify-e2e
 
 on:
   push:
@@ -8,26 +9,7 @@ on:
   pull_request:
 
 jobs:
-  node-tests:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-      - run: npm ci
-      - run: npm run build
-      - name: unit + dal
-        run: node --test tests/listings.test.mjs tests/ratelimit.test.mjs tests/auth.test.mjs tests/dal-sqlite.test.mjs tests/dal-pg.test.mjs
-      - name: api + READ_ONLY regression (isolated sqlite, spawned next start)
-        run: node --test tests/api.test.mjs tests/readonly.test.mjs
-
-  playwright:
+  e2e:
     runs-on: ubuntu-latest
     defaults:
       run:

@@ -45,6 +45,12 @@
   운영 DB·비밀키 참조 없음(스캔済). push 후 `verify-fast`·`verify-e2e` 2건 시작됨(아래). 결론 확인 후 기록한다.
 - [x] push 성공(2026-10-28): `2040bfd..9c7453d m0-write-block`. 1차 토큰은 `workflow`
   scope 부족으로 거부됨을 확인 후 재시도 없이 중단, 2차 토큰으로 1회 성공. 토큰 미저장.
+- [x] `m1-auth-rooms` push 성공 → Vercel Preview 빌드 success(커밋 상태 success).
+  URL: `https://meta-p2p-realestate-git-m1-auth-rooms-direct-home1.vercel.app`
+- [ ] Preview 외부 검증 — BLOCKED(SSO). 해당 URL은 Vercel Deployment Protection(SSO 로그인)
+  뒤에 있어 외부 미인증 접근 불가. 로컬 DNS도 Vercel 미해결. 측정값 없음, PASS 표시 없음.
+- 주의: Preview는 Vercel 공유 env를 쓰므로 `DATABASE_URL`이 있으면 운영 Supabase에 붙고
+  기동 시 003~005 마이그레이션(추가형)이 적용된다. 분리 필요시 사용자가 Preview env를 분리할 것.
 - [x] M1 분리 브랜치 준비: `m1-auth-rooms`를 main에서 생성(빈 브랜치, 구현 없음).
   보안 운영 반영(READ_ONLY=true·main 병합·배포)은 별도 승인 게이트 유지.
 - [ ] 자격증명 교체: 워크트리·히스토리 키워드 검사 무노출. 운영 대시보드 교체 여부는 사용자 확인 필요.

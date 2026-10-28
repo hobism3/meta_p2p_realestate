@@ -279,7 +279,9 @@ let dal: Dal | null = null;
 
 export function getDal(): Dal {
   if (dal) return dal;
-  if (process.env.DATABASE_URL) {
+  // Preview는 운영 DB와 분리한다. Vercel이 자동 주입하는 VERCEL_ENV로만 판별한다.
+  const preview = process.env.VERCEL_ENV === "preview";
+  if (process.env.DATABASE_URL && !preview) {
     dal = new PgDal(
       new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }),
     );

@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync, mkdirSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { SEED_LISTINGS } from "./listings.ts";
 
@@ -7,7 +8,10 @@ let db: DatabaseSync | null = null;
 let dbPath = "";
 
 export function dbPathFor(): string {
-  return process.env.DB_PATH ?? join(process.cwd(), "data", "directhome.db");
+  if (process.env.DB_PATH) return process.env.DB_PATH;
+  // Vercel 서버리스는 /tmp만 쓰기 가능. Preview 격리 DB는 여기서 돈다(휘발성).
+  if (process.env.VERCEL) return join(tmpdir(), "directhome.db");
+  return join(process.cwd(), "data", "directhome.db");
 }
 
 function migrationsDir(): string {

@@ -18,6 +18,7 @@ jobs:
       DB_PATH: ./data/e2e.db
       WRITE_TOKEN: test-token
       RATE_LIMIT_PER_MIN: "1000"
+      ALLOW_DEV_AUTH: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

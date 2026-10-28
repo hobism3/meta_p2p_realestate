@@ -51,7 +51,7 @@ async function raw(path, init) {
 before(async () => {
   server = spawn("node", ["node_modules/next/dist/bin/next", "start", "-p", String(PORT)], {
     cwd: WEB_ROOT,
-    env: { ...process.env, DB_PATH: DB, WRITE_TOKEN: TOKEN, RATE_LIMIT_PER_MIN: "1000" },
+    env: { ...process.env, DB_PATH: DB, WRITE_TOKEN: TOKEN, RATE_LIMIT_PER_MIN: "1000", ALLOW_DEV_AUTH: "true" },
     stdio: "ignore",
   });
   await waitUp();

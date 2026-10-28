@@ -42,25 +42,25 @@ describe("JWT 검증", () => {
 });
 
 describe("dev 인증 허용", () => {
-  it("secret 없으면 로컬에서 dev 허용", () => {
+  it("ALLOW_DEV_AUTH=true에서 dev 허용", () => {
     delete process.env.SUPABASE_JWT_SECRET;
-    delete process.env.NODE_ENV;
+    process.env.ALLOW_DEV_AUTH = "true";
     assert.equal(devAuthAllowed(), true);
+    delete process.env.ALLOW_DEV_AUTH;
   });
-  it("운영에서는 secret 없이 dev 불가", () => {
+  it("플래그 없으면 secret 없이 dev 불가", () => {
     delete process.env.SUPABASE_JWT_SECRET;
-    process.env.NODE_ENV = "production";
+    delete process.env.ALLOW_DEV_AUTH;
     assert.equal(devAuthAllowed(), false);
     const r = authenticate(req());
     assert.equal(r.status, 401);
-    delete process.env.NODE_ENV;
   });
 });
 
 describe("작성자 확정", () => {
   it("dev 모드에서는 body를 쓴다", () => {
     delete process.env.SUPABASE_JWT_SECRET;
-    delete process.env.NODE_ENV;
+    process.env.ALLOW_DEV_AUTH = "true";
     const r = resolveAuthor(req(), { author: "테스터" });
     assert.deepEqual(r.author, { userId: "dev:테스터", name: "테스터" });
   });

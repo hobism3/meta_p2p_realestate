@@ -53,7 +53,23 @@
 - [x] 서버 DB + DAL 이중 지원 + 외래키 + 버전관리.
 - [x] dev 별명 + Supabase JWT 검증 코드. 실연동은 계정 설정만 남음.
 - [x] 거래방 서버 공유. author·role 구분.
-- [ ] Supabase Auth 로그인 UI. BLOCKED 아님, TODO.
+- [x] Supabase Auth 로그인 UI → M1-A에서 구현. 아래 참조.
+
+## M1-A 사용자 인증 — DONE(코드, `m1-auth-rooms`)
+
+- [x] 구현: `003_authn.sql`(owner_id·user_id·participants), `lib/auth.ts`(신원만 검증,
+  role 비권한)·`lib/authz.ts`(DB 역할)·전 쓰기 API 인증·`/api/auth/login·logout·me`·
+  `/login` UI·Bearer 배선. dev 별명은 `ALLOW_DEV_AUTH=true` 명시 로컬 전용
+  (운영 무플래그 쓰기 401). `user_metadata.role` 권한 사용 금지.
+- [x] 검증: `node --test` 총 68건 통과(auth 10·m1auth 8·api 15·readonly 11·단위·DAL 9).
+  격리 sqlite, 운영 DB 미사용. 수정 1건: `next start`가 NODE_ENV=production을 강제해
+  dev 판별 불가 → 플래그 방식으로 교체 후 재빌드·68/68 green.
+- [ ] 실제 Supabase 연동 미검증: self-mint HS256 토큰으로만 검증. 실값 투입 후
+  `/login` 수동 확인이 남음. 그 전까지 공개 데모에 개인정보·실제 거래 대화 금지.
+- [ ] 공용 메시지 조회 권한 잔여: 메시지 GET은 로그인 없이 공개(M1-B에서 해결).
+  기존 공용 메시지를 개인방에 자동 귀속시키지 않음.
+- [ ] M1-B 착수 가능: Listing·DealRoom 분리 설계 유지. M1-B·집톡이 미구현.
+- main 병합·운영 배포 금지 유지. CI 미실행은 PASS로 표시하지 않음.
 
 ## P4 집톡이 AI 구현 — TODO
 

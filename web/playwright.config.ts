@@ -38,6 +38,7 @@ export default defineConfig({
           DB_PATH: "./data/e2e.db",
           WRITE_TOKEN: "test-token",
           RATE_LIMIT_PER_MIN: "1000",
+          ALLOW_DEV_AUTH: "true",
         },
       },
   projects: [

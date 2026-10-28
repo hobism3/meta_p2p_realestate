@@ -22,5 +22,6 @@
 - E2E: Playwright 데스크톱·모바일 둘 다 통과. 워커 간 데이터 격리 필수.
 - E2E 실행은 `--workers=1` 직렬 + 테스트 전용 DB(pid별 sqlite·`data/e2e.db`). 운영 DB 대상 등록·메시지 E2E 금지.
 - Playwright 브라우저 경로는 프로젝트 내 벤더링(`web/.playwright-browsers`)으로 고정. 전역 timeout과 webServer 기동·종료 시간을 분리한다(전역 예산 고갈 시 teardown이 잘려 종료코드 1이 된다).
-- CI: PR·브랜치 push 시 `verify` 워크플로(Node 22, build, 단위·API, 격리 Playwright, 실패 trace 보존) 통과. 운영 DB·운영 비밀키 사용 금지. CI 미실행·실패 상태에서 병합·배포 금지.
+- CI: PR·브랜치 push 시 `verify-fast`(build·단위·API·보안)와 `verify-e2e`(격리 Playwright·실패 trace) 통과. 운영 DB·운영 비밀키 사용 금지. CI 미실행·실패 상태에서 병합·배포 금지. E2E 환경 실패는 성공으로 처리하지 않고 별도 BLOCKED로 기록.
+- 인증 변경: dev 별명 인증은 `ALLOW_DEV_AUTH=true` 명시 시에만. 운영에서 secret·플래그 없이 쓰기가 열리면 게이트 실패.
 - 보안 변경: READ_ONLY 회귀(`tests/readonly.test.mjs` 쓰기 403·조회 200) 통과 없이 main 병합 금지.

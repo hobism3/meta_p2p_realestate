@@ -74,9 +74,13 @@ export function supabaseConfigured(): boolean {
   return !!process.env.SUPABASE_JWT_SECRET;
 }
 
-/** dev 별명 인증은 로컬 전용. 운영에서는 secret 없이 쓰기가 전부 401로 닫힌다. */
+/**
+ * dev 별명 인증은 명시적 로컬 전용(ALLOW_DEV_AUTH=true).
+ * next start는 NODE_ENV를 production으로 강제하므로 NODE_ENV로 dev를 판별할 수 없다.
+ * 운영(플래그 없음)에서는 secret 없이 쓰기가 전부 401로 닫힌다.
+ */
 export function devAuthAllowed(): boolean {
-  return !supabaseConfigured() && process.env.NODE_ENV !== "production";
+  return !supabaseConfigured() && process.env.ALLOW_DEV_AUTH === "true";
 }
 
 /**
@@ -88,7 +92,7 @@ export function devAuthAllowed(): boolean {
 export function authenticate(req: Request): { identity: Identity } | { status: number; error: string } {
   const secret = process.env.SUPABASE_JWT_SECRET;
   if (!secret) {
-    if (process.env.NODE_ENV === "production") return { status: 401, error: "인증 필요" };
+    if (!devAuthAllowed()) return { status: 401, error: "인증 필요" };
     return { identity: { userId: "dev:anonymous", name: "anonymous" } };
   }
   const auth = req.headers.get("authorization") ?? "";
@@ -108,7 +112,7 @@ export function resolveAuthor(
   body: { author?: unknown },
 ): { author: Identity } | { status: number; error: string } {
   if (!supabaseConfigured()) {
-    if (process.env.NODE_ENV === "production") return { status: 401, error: "인증 필요" };
+    if (!devAuthAllowed()) return { status: 401, error: "인증 필요" };
     const name = String(body.author ?? "").trim();
     if (!name) return { status: 400, error: "작성자·내용 필수" };
     return { author: { userId: `dev:${name}`, name } };

@@ -51,8 +51,11 @@
   health 200(`db:up`)·listings 200(합성 시드)·`/` 200 렌더·`/login` 200(개인정보 경고)·
   `/api/auth/me` 무토큰 401·공용 스레드 200(빈 배열). POST 401·타인 403·로그인 성공·모바일은
   미확인(서버 측 GET 전용 + 로컬 DNS 불가). 실행 안 한 항목 PASS 표시 없음.
-- 주의: Preview는 Vercel 공유 env를 쓰므로 `DATABASE_URL`이 있으면 운영 Supabase에 붙고
-  기동 시 003~005 마이그레이션(추가형)이 적용된다. 분리 필요시 사용자가 Preview env를 분리할 것.
+- [x] 분리 구현(`2210522`): `VERCEL_ENV=preview`이면 `DATABASE_URL` 무시하고 sqlite.
+  로컬 실측 `PREVIEW-KIND=sqlite`. `/api/health`에 `kind` 추가.
+- [ ] 분리 외부 증명: Preview `/api/health`에 `"kind":"sqlite"`가 보여야 완료.
+  현재 응답은 구형(`{"ok":true,"db":"up"}`, kind 없음)이라 신배포 미반영. 증명 전까지
+  Preview 쓰기 테스트 계속 금지. Production은 Supabase 유지.
 - [x] M1 분리 브랜치 준비: `m1-auth-rooms`를 main에서 생성(빈 브랜치, 구현 없음).
   보안 운영 반영(READ_ONLY=true·main 병합·배포)은 별도 승인 게이트 유지.
 - [ ] 자격증명 교체: 워크트리·히스토리 키워드 검사 무노출. 운영 대시보드 교체 여부는 사용자 확인 필요.

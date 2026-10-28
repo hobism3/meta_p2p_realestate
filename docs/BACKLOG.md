@@ -53,9 +53,13 @@
   미확인(서버 측 GET 전용 + 로컬 DNS 불가). 실행 안 한 항목 PASS 표시 없음.
 - [x] 분리 구현(`2210522`): `VERCEL_ENV=preview`이면 `DATABASE_URL` 무시하고 sqlite.
   로컬 실측 `PREVIEW-KIND=sqlite`. `/api/health`에 `kind` 추가.
-- [ ] 분리 외부 증명: Preview `/api/health`에 `"kind":"sqlite"`가 보여야 완료.
-  현재 응답은 구형(`{"ok":true,"db":"up"}`, kind 없음)이라 신배포 미반영. 증명 전까지
-  Preview 쓰기 테스트 계속 금지. Production은 Supabase 유지.
+- [x] 분리 외부 증명 완료: Preview `/api/health` → `{"ok":true,"db":"up","kind":"sqlite"}`.
+  매물 목록도 sqlite 시드에서 정상 200. Preview 쓰기 테스트 금지 해제(휘발성 sqlite, 운영 무관).
+  Production은 Supabase 유지.
+- [x] Preview sqlite `down` 수정(`80db5ee`, 푸시済): Vercel 서버리스 쓰기 가능 경로(`/tmp`)로
+  변경. 재배포 후 `/api/health`가 `{"ok":true,"db":"up","kind":"sqlite"}`여야 정상.
+- 소셜 제공자 확정(공식 문서): Google·카카오는 Supabase 내장, 네이버는 미지원.
+  네이버 버튼은 `custom:naver` 식별자로 전달하며 대시보드 Custom OAuth 등록이 필요하다.
 - [x] M1 분리 브랜치 준비: `m1-auth-rooms`를 main에서 생성(빈 브랜치, 구현 없음).
   보안 운영 반영(READ_ONLY=true·main 병합·배포)은 별도 승인 게이트 유지.
 - [ ] 자격증명 교체: 워크트리·히스토리 키워드 검사 무노출. 운영 대시보드 교체 여부는 사용자 확인 필요.

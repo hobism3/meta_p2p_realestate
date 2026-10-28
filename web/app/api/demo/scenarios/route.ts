@@ -13,7 +13,7 @@ export async function POST(req: Request): Promise<Response> {
   const w = guardWrite(req);
   if (w) return w;
   if (process.env.ALLOW_DEMO_SETUP !== "true") return ok({ error: "시연 설정 불가" }, 403);
-  const a = authenticate(req);
+  const a = await authenticate(req);
   if ("error" in a) return ok({ error: a.error }, a.status);
   const parsed = await readJson(req);
   if ("err" in parsed) return parsed.err;

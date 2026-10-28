@@ -53,6 +53,7 @@
   미확인(서버 측 GET 전용 + 로컬 DNS 불가). 실행 안 한 항목 PASS 표시 없음.
 - [x] 분리 구현(`2210522`): `VERCEL_ENV=preview`이면 `DATABASE_URL` 무시하고 sqlite.
   로컬 실측 `PREVIEW-KIND=sqlite`. `/api/health`에 `kind` 추가.
+- [x] 개발 방식 변경: `main`에서 직접 개발. Preview 따로 검증하지 않음.
 - [x] 분리 외부 증명 완료: Preview `/api/health` → `{"ok":true,"db":"up","kind":"sqlite"}`.
   매물 목록도 sqlite 시드에서 정상 200. Preview 쓰기 테스트 금지 해제(휘발성 sqlite, 운영 무관).
   Production은 Supabase 유지.

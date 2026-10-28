@@ -26,6 +26,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const text = String(b.text ?? "").trim();
   if (!text) return bad("작성자·내용 필수");
   if (text.length > 2000) return bad("내용 길이 초과");
+  // 작성자 유형은 서버가 확정한다. 클라이언트 위장은 400으로 거부한다.
+  if (b.author_type !== undefined && b.author_type !== "human") return bad("작성자 유형 오류");
   const resolved = resolveAuthor(req, b);
   if ("error" in resolved) return ok({ error: resolved.error }, resolved.status);
   const { userId, name: author } = resolved.author;
@@ -40,8 +42,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
   const id = randomUUID();
   await getDal().run(
-    "INSERT INTO messages (id,listing_id,author,role,user_id,text,created_at) VALUES (?,?,?,?,?,?,?)",
-    [id, params.id, author, role, userId, text, now()],
+    "INSERT INTO messages (id,listing_id,author,role,user_id,author_type,text,created_at) VALUES (?,?,?,?,?,?,?,?)",
+    [id, params.id, author, role, userId, "human", text, now()],
   );
   await recordParticipant(params.id, userId, role as "landlord" | "tenant");
   return ok({ id }, 201);

@@ -37,13 +37,16 @@ export async function POST(req: Request, { params }: { params: { rid: string } }
   if ("err" in r) return r.err;
   const parsed = await readJson(req);
   if ("err" in parsed) return parsed.err;
+  if (parsed.value.author_type !== undefined && parsed.value.author_type !== "human") {
+    return bad("작성자 유형 오류");
+  }
   const text = String(parsed.value.text ?? "").trim();
   if (!text) return bad("내용 필수");
   if (text.length > 2000) return bad("내용 길이 초과");
   const id = randomUUID();
   await getDal().run(
-    "INSERT INTO messages (id,listing_id,author,role,user_id,room_id,text,created_at) VALUES (?,?,?,?,?,?,?,?)",
-    [id, r.room.listing_id, r.identity.name, "", r.identity.userId, params.rid, text, now()],
+    "INSERT INTO messages (id,listing_id,author,role,user_id,author_type,room_id,text,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+    [id, r.room.listing_id, r.identity.name, "", r.identity.userId, "human", params.rid, text, now()],
   );
   return ok({ id }, 201);
 }

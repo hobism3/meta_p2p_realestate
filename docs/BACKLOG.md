@@ -47,8 +47,10 @@
   scope 부족으로 거부됨을 확인 후 재시도 없이 중단, 2차 토큰으로 1회 성공. 토큰 미저장.
 - [x] `m1-auth-rooms` push 성공 → Vercel Preview 빌드 success(커밋 상태 success).
   URL: `https://meta-p2p-realestate-git-m1-auth-rooms-direct-home1.vercel.app`
-- [ ] Preview 외부 검증 — BLOCKED(SSO). 해당 URL은 Vercel Deployment Protection(SSO 로그인)
-  뒤에 있어 외부 미인증 접근 불가. 로컬 DNS도 Vercel 미해결. 측정값 없음, PASS 표시 없음.
+- [x] Preview 외부 검증(보호 해제 후, GET만 실측).
+  health 200(`db:up`)·listings 200(합성 시드)·`/` 200 렌더·`/login` 200(개인정보 경고)·
+  `/api/auth/me` 무토큰 401·공용 스레드 200(빈 배열). POST 401·타인 403·로그인 성공·모바일은
+  미확인(서버 측 GET 전용 + 로컬 DNS 불가). 실행 안 한 항목 PASS 표시 없음.
 - 주의: Preview는 Vercel 공유 env를 쓰므로 `DATABASE_URL`이 있으면 운영 Supabase에 붙고
   기동 시 003~005 마이그레이션(추가형)이 적용된다. 분리 필요시 사용자가 Preview env를 분리할 것.
 - [x] M1 분리 브랜치 준비: `m1-auth-rooms`를 main에서 생성(빈 브랜치, 구현 없음).

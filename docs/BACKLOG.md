@@ -59,6 +59,9 @@
   Production은 Supabase 유지.
 - [x] Preview sqlite `down` 수정(`80db5ee`, 푸시済): Vercel 서버리스 쓰기 가능 경로(`/tmp`)로
   변경. 재배포 후 `/api/health`가 `{"ok":true,"db":"up","kind":"sqlite"}`여야 정상.
+- [x] 운영 배포 성공(`84011fd`, Vercel success). CI fast·e2e 둘 다 success — 기존 14/18 실패 해소.
+  Preview 실패(`7b04e9c`)는 원인 확정: 해당 커밋에 demo setup `await` 누락이 있었고,
+  후속 `5e91161`에 포함되어 해소. 무시해도 됨. main=`m1-auth-rooms`=`84011fd`.
 - 소셜 제공자 확정(공식 문서): Google·카카오는 Supabase 내장, 네이버는 미지원.
   네이버 버튼은 `custom:naver` 식별자로 전달하며 대시보드 Custom OAuth 등록이 필요하다.
 - [x] M1 분리 브랜치 준비: `m1-auth-rooms`를 main에서 생성(빈 브랜치, 구현 없음).

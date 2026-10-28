@@ -9,7 +9,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
   if (g) return g;
   if (!(await listingExists(params.id))) return notFound("매물 없음");
   const rows = await getDal().all(
-    "SELECT * FROM visits WHERE listing_id = ? ORDER BY visit_date ASC, visit_time ASC",
+    "SELECT * FROM visits WHERE listing_id = ? AND room_id IS NULL ORDER BY visit_date ASC, visit_time ASC",
     [params.id],
   );
   return ok(rows);

@@ -1,0 +1,47 @@
+import { randomUUID } from "node:crypto";
+import { bad, guardRead, guardWrite, notFound, ok, readJson } from "@/lib/api";
+import { authenticate } from "@/lib/auth";
+import { getDal } from "@/lib/dal";
+import { now } from "@/lib/db";
+import { getRoom, isRoomMember, type Room } from "@/lib/rooms";
+
+async function guard(req: Request, rid: string): Promise<{ err: Response } | { room: Room }> {
+  const g = guardRead(req);
+  if (g) return { err: g };
+  const room = await getRoom(rid);
+  if (!room) return { err: notFound("거래방 없음") };
+  const a = authenticate(req);
+  if ("error" in a) return { err: ok({ error: a.error }, a.status) };
+  if (!(await isRoomMember(rid, a.identity.userId))) return { err: ok({ error: "조회 권한 없음" }, 403) };
+  return { room };
+}
+
+export async function GET(req: Request, { params }: { params: { rid: string } }): Promise<Response> {
+  const r = await guard(req, params.rid);
+  if ("err" in r) return r.err;
+  const rows = await getDal().all("SELECT * FROM agreements WHERE room_id = ? ORDER BY created_at ASC", [
+    params.rid,
+  ]);
+  return ok(rows);
+}
+
+export async function POST(req: Request, { params }: { params: { rid: string } }): Promise<Response> {
+  const w = guardWrite(req);
+  if (w) return w;
+  const r = await guard(req, params.rid);
+  if ("err" in r) return r.err;
+  const parsed = await readJson(req);
+  if ("err" in parsed) return parsed.err;
+  const text = String(parsed.value.text ?? "").trim();
+  if (!text) return bad("내용 필수");
+  if (text.length > 2000) return bad("내용 길이 초과");
+  const id = randomUUID();
+  await getDal().run("INSERT INTO agreements (id,listing_id,text,room_id,created_at) VALUES (?,?,?,?,?)", [
+    id,
+    r.room.listing_id,
+    text,
+    params.rid,
+    now(),
+  ]);
+  return ok({ id }, 201);
+}

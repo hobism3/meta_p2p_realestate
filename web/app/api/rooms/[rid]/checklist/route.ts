@@ -8,7 +8,7 @@ async function guard(req: Request, rid: string): Promise<{ err: Response } | { r
   if (g) return { err: g };
   const room = await getRoom(rid);
   if (!room) return { err: notFound("거래방 없음") };
-  const a = authenticate(req);
+  const a = await authenticate(req);
   if ("error" in a) return { err: ok({ error: a.error }, a.status) };
   if (!(await isRoomMember(rid, a.identity.userId))) return { err: ok({ error: "조회 권한 없음" }, 403) };
   return { room };

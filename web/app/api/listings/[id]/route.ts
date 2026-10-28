@@ -15,7 +15,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (g) return g;
   const cur = (await customListing(params.id)) as Record<string, unknown> | null;
   if (!cur) return notFound("시연용 기본 매물은 수정할 수 없습니다");
-  const a = authenticate(req);
+  const a = await authenticate(req);
   if ("error" in a) return ok({ error: a.error }, a.status);
   // 소유자 강제: supabase 모드에서만. dev는 로컬 확인용으로 기존 동작 유지.
   if (supabaseConfigured()) {

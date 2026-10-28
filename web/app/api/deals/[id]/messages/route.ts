@@ -28,7 +28,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (text.length > 2000) return bad("내용 길이 초과");
   // 작성자 유형은 서버가 확정한다. 클라이언트 위장은 400으로 거부한다.
   if (b.author_type !== undefined && b.author_type !== "human") return bad("작성자 유형 오류");
-  const resolved = resolveAuthor(req, b);
+  const resolved = await resolveAuthor(req, b);
   if ("error" in resolved) return ok({ error: resolved.error }, resolved.status);
   const { userId, name: author } = resolved.author;
   // 역할은 서버 DB에서 정한다. 토큰의 user_metadata.role은 쓰지 않는다.

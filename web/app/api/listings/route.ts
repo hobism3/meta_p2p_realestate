@@ -17,7 +17,7 @@ export async function GET(req: Request): Promise<Response> {
 export async function POST(req: Request): Promise<Response> {
   const g = guardWrite(req);
   if (g) return g;
-  const a = authenticate(req);
+  const a = await authenticate(req);
   if ("error" in a) return ok({ error: a.error }, a.status);
   const parsed = await readJson(req);
   if ("err" in parsed) return parsed.err;

@@ -11,7 +11,7 @@ export async function PATCH(
   if (w) return w;
   const room = await getRoom(params.rid);
   if (!room) return notFound("거래방 없음");
-  const a = authenticate(req);
+  const a = await authenticate(req);
   if ("error" in a) return ok({ error: a.error }, a.status);
   if (!(await isRoomMember(params.rid, a.identity.userId))) return ok({ error: "수정 권한 없음" }, 403);
   const parsed = await readJson(req);

@@ -12,7 +12,7 @@ export async function GET(req: Request, { params }: { params: { rid: string } })
   if (g) return g;
   const room = await getRoom(params.rid);
   if (!room) return notFound("거래방 없음");
-  const a = authenticate(req);
+  const a = await authenticate(req);
   if ("error" in a) return ok({ error: a.error }, a.status);
   if (!(await isRoomMember(params.rid, a.identity.userId))) return ok({ error: "조회 권한 없음" }, 403);
   const agents = await getDal().all("SELECT side, disclosure_label FROM room_agents WHERE room_id = ?", [
@@ -31,7 +31,7 @@ export async function POST(req: Request, { params }: { params: { rid: string } }
   if (w) return w;
   const room = await getRoom(params.rid);
   if (!room) return notFound("거래방 없음");
-  const a = authenticate(req);
+  const a = await authenticate(req);
   if ("error" in a) return ok({ error: a.error }, a.status);
   if (!(await isRoomMember(params.rid, a.identity.userId))) return ok({ error: "호출 권한 없음" }, 403);
   const parsed = await readJson(req);

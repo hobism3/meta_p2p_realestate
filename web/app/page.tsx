@@ -34,6 +34,13 @@ export default function HomePage() {
 
   useEffect(reload, []);
 
+  // Supabase가 콜백 대신 Site URL로 돌려보낸 경우 토큰을 회수한다.
+  useEffect(() => {
+    if (window.location.hash.includes("access_token")) {
+      window.location.replace(`/auth/callback${window.location.hash}`);
+    }
+  }, []);
+
   const results = useMemo(() => filterListings(all, f), [all, f]);
 
   const set = (patch: Partial<Filters>) => setF((prev) => ({ ...prev, ...patch }));

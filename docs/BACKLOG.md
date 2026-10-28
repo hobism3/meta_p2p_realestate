@@ -42,7 +42,9 @@
     장시간 명령 실행기 spawn도 이후 실패(`SpawnReadyDeadlineExpired`, 단문 명령은 정상).
   - 잔여: 실행 환경 복구 후 mobile 지도·넘침, desktop 나머지를 작은 단위로 실행. 18건 일괄 재실행 금지.
 - [ ] CI 최초 실행: `verify.yml` 구성済(Node 22·build·단위/API·격리 Playwright·실패 trace).
-  운영 DB·비밀키 참조 없음(스캔済). push 승인 후 첫 실행 결과를 Checks에서 확인해야 한다.
+  운영 DB·비밀키 참조 없음(스캔済). push 후 `verify-fast`·`verify-e2e` 2건 시작됨(아래). 결론 확인 후 기록한다.
+- [x] push 성공(2026-10-28): `2040bfd..9c7453d m0-write-block`. 1차 토큰은 `workflow`
+  scope 부족으로 거부됨을 확인 후 재시도 없이 중단, 2차 토큰으로 1회 성공. 토큰 미저장.
 - [x] M1 분리 브랜치 준비: `m1-auth-rooms`를 main에서 생성(빈 브랜치, 구현 없음).
   보안 운영 반영(READ_ONLY=true·main 병합·배포)은 별도 승인 게이트 유지.
 - [ ] 자격증명 교체: 워크트리·히스토리 키워드 검사 무노출. 운영 대시보드 교체 여부는 사용자 확인 필요.

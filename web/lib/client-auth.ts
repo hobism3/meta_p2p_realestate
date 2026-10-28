@@ -8,11 +8,11 @@ export function getAccessToken(): string | null {
 }
 
 export function setAccessToken(token: string): void {
-  window.localStorage.setItem(KEY, token);
+  window.localStorage.setItem(KEY, token); window.dispatchEvent(new Event("directhome:auth"));
 }
 
 export function clearAccessToken(): void {
-  window.localStorage.removeItem(KEY);
+  window.localStorage.removeItem(KEY); window.dispatchEvent(new Event("directhome:auth"));
 }
 
 export function authHeaders(): Record<string, string> {

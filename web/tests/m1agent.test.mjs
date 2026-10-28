@@ -199,4 +199,10 @@ describe("AI-4 invoke와 루프 가드", () => {
     const bad = await fetch(`${BASE}/api/auth/oauth?provider=unknown`, { redirect: "manual" });
     assert.ok(String(bad.headers.get("location")).includes("/login?error=provider"));
   });
+  it("카카오·네이버는 지원하지 않는다(Google만 제공)", async () => {
+    for (const p of ["kakao", "naver"]) {
+      const r = await fetch(`${BASE}/api/auth/oauth?provider=${p}`, { redirect: "manual" });
+      assert.ok(String(r.headers.get("location")).includes("/login?error=provider"));
+    }
+  });
 });

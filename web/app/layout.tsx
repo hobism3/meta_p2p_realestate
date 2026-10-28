@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
+import SiteNav from "../components/SiteNav";
 
 export const metadata: Metadata = {
   title: "DirectHome - 소형 월세 직거래",
@@ -14,11 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="topbar">
           <a className="brand" href="/">DirectHome</a>
           <span className="tag">가상 매물 MVP</span>
-          <nav>
-            <a href="/">탐색</a>
-            <a href="/register">매물 등록</a>
-            <a href="/login">로그인</a>
-          </nav>
+          <SiteNav />
         </header>
         <main className="container">{children}</main>
         <footer className="footer">

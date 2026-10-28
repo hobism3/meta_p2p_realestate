@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-const PROVIDERS = ["google", "kakao", "naver"] as const;
+const PROVIDERS = ["google"] as const;
 
-// google·kakao는 Supabase 내장 제공자. naver는 내장이 없어서 대시보드에
-// Custom OAuth 제공자를 같은 식별자로 등록해야 동작한다.
+// Google은 Supabase 내장 제공자다. 소셜 로그인은 Google만 제공한다.
+
 function providerId(p: string): string {
-  return p === "naver" ? "custom:naver" : p;
+  return p;
 }
 
 // 소셜 로그인 진입점. Supabase authorize로 리다이렉트한다.

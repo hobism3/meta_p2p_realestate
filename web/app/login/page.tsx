@@ -97,11 +97,9 @@ export default function LoginPage() {
             {queryError ? <p className="error">{queryError}</p> : null}
             <div className="field">
               <label>간편 로그인</label>
-              <p className="meta">Supabase에 제공자 설정 후 동작합니다.</p>
+              <p className="meta">Google 계정으로 계속합니다.</p>
               <p>
-                <a className="btn" href="/api/auth/oauth?provider=google">Google로 계속</a>{" "}
-                <a className="btn" href="/api/auth/oauth?provider=kakao">카카오로 계속</a>{" "}
-                <a className="btn" href="/api/auth/oauth?provider=naver">네이버로 계속</a>
+                <a className="btn" href="/api/auth/oauth?provider=google">Google로 계속</a>
               </p>
             </div>
           </div>

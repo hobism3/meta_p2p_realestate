@@ -1,5 +1,8 @@
 # DirectHome v2 아키텍처
 
+- 정본 문서: 제품은 `PRODUCT.md`, 결정은 `DECISIONS.md`, 배포는 `DEPLOYMENT.md`.
+- 이 문서는 기술 상세만 둔다. 중복 서술 금지.
+
 ## 1. MVP 구성 가안
 
 - 웹 프론트: 매물 검색·상세, 거래방, 체크리스트 화면.

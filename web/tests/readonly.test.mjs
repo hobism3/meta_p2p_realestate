@@ -85,9 +85,9 @@ describe("READ_ONLY 조회 정상", () => {
     assert.equal(await api("/api/listings/s01"), 200);
   });
   it("공용 메시지 조회는 로그인이 필요하다", async () => {
-    assert.equal(await api("/api/deals/s01/messages"), 401);
+    assert.equal(await api("/api/deals/s01/messages"), 410);
   });
   it("체크리스트 조회가 200이다", async () => {
-    assert.equal(await api("/api/deals/s01/checklist"), 200);
+    assert.equal(await api("/api/deals/s01/checklist"), 410);
   });
 });

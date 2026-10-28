@@ -32,10 +32,9 @@ test("메인: 지도형 전환 시 지도가 보인다", async ({ page }) => {
   await expect(page.locator(".mapbox").first()).toBeVisible();
 });
 
-test("상세: 정보와 거래방 링크가 있다", async ({ page }) => {
+test("상세: 정보와 문의 버튼이 있다", async ({ page }) => {
   await page.goto("/listings/s01");
   await expect(page.getByRole("heading", { name: /신림역 도보 5분/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: "거래방 열기" })).toBeVisible();
   await expect(page.getByRole("button", { name: "문의하기" })).toBeVisible();
 });
 
@@ -53,24 +52,21 @@ test("등록: 폼 제출 후 상세가 열린다", async ({ page }) => {
   await expect(page.getByRole("link", { name: "상세 보기" })).toBeVisible();
 });
 
-test("거래방: 역할·메시지·일정·합의·체크가 된다", async ({ page }) => {
-  const tag = `E2E${Date.now()}`;
-  await loginAs(page, "e2e-tenant", "E2E세입자");
-  await page.goto("/deal/s02");
-  await page.getByRole("combobox").first().selectOption("tenant");
-  await page.getByPlaceholder("이름(별명)").fill("E2E세입자");
-  await page.getByPlaceholder("메시지 입력").fill(`${tag} 문의합니다`);
+test("시연방: 문의→AI 첫인사→대화→새로고침 유지", async ({ page }) => {
+  await loginAs(page, "e2e-buyer", "E2E매수자");
+  await page.goto("/listings/s21");
+  await page.getByRole("button", { name: "문의하기" }).click();
+  await expect(page).toHaveURL(/\/rooms\//);
+  await expect(page.getByText("AI 매도자").first()).toBeVisible();
+  await page.getByPlaceholder("메시지 입력").fill("매매가 얼마인가요?");
   await page.getByRole("button", { name: "전송" }).click();
-  await expect(page.getByText(`${tag} 문의합니다`)).toBeVisible();
-  await page.getByPlaceholder("예: 보증금 1000만원, 월세 65만원, 11월 10일 입주").fill(`${tag} 합의`);
-  await page.getByRole("button", { name: "기록" }).click();
-  await expect(page.getByText(`${tag} 합의`)).toBeVisible();
-  await page.getByText("신분 확인").check();
-  await expect(page.getByText("신분 확인")).toBeChecked();
+  await expect(page.getByText("가격은").first()).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("가격은").first()).toBeVisible();
 });
 
 test("모바일: 가로 넘침이 없다", async ({ page }) => {
-  for (const path of ["/", "/deal/s01", "/register"]) {
+  for (const path of ["/", "/login", "/register"]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle").catch(() => undefined);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

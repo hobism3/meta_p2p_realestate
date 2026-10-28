@@ -1,42 +1,14 @@
-import { bad, guardRead, guardWrite, listingExists, notFound, ok, readJson } from "@/lib/api";
-import { authenticate } from "@/lib/auth";
-import { getDal } from "@/lib/dal";
+import { gone, guardRead, guardWrite } from "@/lib/api";
 
-export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
+// 구 공용 거래방 API는 폐쇄됐다(410). 과거 데이터는 보존한다.
+export async function GET(req: Request): Promise<Response> {
   const g = guardRead(req);
   if (g) return g;
-  if (!(await listingExists(params.id))) return notFound("매물 없음");
-  const rows = await getDal().all("SELECT item, state FROM checklist WHERE listing_id = ?", [
-    params.id,
-  ]);
-  const checks: Record<string, string> = {};
-  for (const r of rows) checks[String(r.item)] = String(r.state);
-  return ok(checks);
+  return gone();
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }): Promise<Response> {
+export async function PUT(req: Request): Promise<Response> {
   const g = guardWrite(req);
   if (g) return g;
-  const a = await authenticate(req);
-  if ("error" in a) return ok({ error: a.error }, a.status);
-  if (!(await listingExists(params.id))) return notFound("매물 없음");
-  const parsed = await readJson(req);
-  if ("err" in parsed) return parsed.err;
-  const checks = parsed.value.checks;
-  if (checks === null || typeof checks !== "object" || Array.isArray(checks)) return bad("형식 오류");
-  const entries = Object.entries(checks as Record<string, unknown>);
-  if (entries.length > 50) return bad("항목 수 초과");
-  for (const [item] of entries) {
-    if (item.length > 100) return bad("항목명 길이 초과");
-  }
-  const dal = getDal();
-  await dal.withTransaction(async (tx) => {
-    for (const [item, state] of entries) {
-      await tx.run(
-        "INSERT INTO checklist (listing_id,item,state) VALUES (?,?,?) ON CONFLICT(listing_id,item) DO UPDATE SET state=excluded.state",
-        [params.id, item, state === "done" ? "done" : ""],
-      );
-    }
-  });
-  return ok({ ok: true });
+  return gone();
 }

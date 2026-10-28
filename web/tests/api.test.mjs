@@ -212,77 +212,43 @@ describe("매물 API", () => {
   });
 });
 
-describe("거래방 API", () => {
-  it("양측 메시지를 저장·조회한다", async () => {
-    const m1 = await api("/api/deals/s01/messages", {
-      method: "POST",
-      body: JSON.stringify({ author: "집주인", role: "landlord", text: "보증금 1000입니다" }),
-    });
-    const m2 = await api("/api/deals/s01/messages", {
-      method: "POST",
-      body: JSON.stringify({ author: "세입자", role: "tenant", text: "900에 해주세요" }),
-    });
-    assert.equal(m1.status, 201);
-    assert.equal(m2.status, 201);
-    const { status, body } = await api("/api/deals/s01/messages");
-    assert.equal(status, 200);
-    assert.ok(body.some((m) => m.role === "landlord"));
-    assert.ok(body.some((m) => m.role === "tenant"));
+describe("구 공용 거래방 API 폐쇄", () => {
+  it("공용 메시지·방문·합의·체크 조회는 410이다", async () => {
+    for (const p of [
+      "/api/deals/s01/messages",
+      "/api/deals/s01/visits",
+      "/api/deals/s01/agreements",
+      "/api/deals/s01/checklist",
+    ]) {
+      assert.equal((await api(p)).status, 410);
+    }
   });
 
-  it("잘못된 역할은 400이다", async () => {
-    const { status } = await api("/api/deals/s01/messages", {
-      method: "POST",
-      body: JSON.stringify({ author: "x", role: "중개인", text: "hi" }),
-    });
-    assert.equal(status, 400);
+  it("공용 쓰기도 410이다", async () => {
+    assert.equal((await api("/api/deals/s01/messages", {
+      method: "POST", body: JSON.stringify({ author: "x", role: "tenant", text: "hi" }),
+    })).status, 410);
+    assert.equal((await api("/api/deals/s01/visits", {
+      method: "POST", body: JSON.stringify({ date: "2026-11-20", time: "14:00" }),
+    })).status, 410);
+    assert.equal((await api("/api/deals/s01/visits/x", {
+      method: "PATCH", body: JSON.stringify({ status: "수락됨" }),
+    })).status, 410);
+    assert.equal((await api("/api/deals/s01/agreements", {
+      method: "POST", body: JSON.stringify({ text: "합의" }),
+    })).status, 410);
+    assert.equal((await api("/api/deals/s01/checklist", {
+      method: "PUT", body: JSON.stringify({ checks: { "신분 확인": "done" } }),
+    })).status, 410);
   });
 
-  it("방문 일정 제안·수락이 된다", async () => {
-    const created = await api("/api/deals/s01/visits", {
-      method: "POST",
-      body: JSON.stringify({ date: "2026-11-20", time: "14:00" }),
-    });
-    assert.equal(created.status, 201);
-    const patched = await api(`/api/deals/s01/visits/${created.body.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: "수락됨" }),
-    });
-    assert.equal(patched.status, 200);
-    const { body } = await api("/api/deals/s01/visits");
-    assert.ok(body.some((v) => v.id === created.body.id && v.status === "수락됨"));
-  });
-
-  it("잘못된 상태·형식은 400이다", async () => {
-    const s1 = await api("/api/deals/s01/visits", {
-      method: "POST",
-      body: JSON.stringify({ date: "내일", time: "두시" }),
-    });
-    assert.equal(s1.status, 400);
-  });
-
-  it("합의 로그를 저장·조회한다", async () => {
-    const c = await api("/api/deals/s01/agreements", {
-      method: "POST",
-      body: JSON.stringify({ text: "보증금 1000, 월세 65 합의" }),
-    });
-    assert.equal(c.status, 201);
-    const { body } = await api("/api/deals/s01/agreements");
-    assert.ok(body.some((a) => a.text.includes("보증금 1000")));
-  });
-
-  it("체크리스트를 저장·조회한다", async () => {
-    const put = await api("/api/deals/s01/checklist", {
-      method: "PUT",
-      body: JSON.stringify({ checks: { "신분 확인": "done" } }),
-    });
-    assert.equal(put.status, 200);
-    const { body } = await api("/api/deals/s01/checklist");
-    assert.equal(body["신분 확인"], "done");
-  });
-
-  it("없는 매물은 404다", async () => {
+  it("없는 매물도 410이다", async () => {
     const { status } = await api("/api/deals/nope/messages");
-    assert.equal(status, 404);
+    assert.equal(status, 410);
+  });
+
+  it("방 생성 API는 유지된다(무인증 401)", async () => {
+    const { status } = await api("/api/deals/s01/rooms", { method: "POST", body: JSON.stringify({}) }, false);
+    assert.equal(status, 401);
   });
 });

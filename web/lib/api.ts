@@ -73,6 +73,10 @@ export async function listingExists(id: string): Promise<boolean> {
   return r !== undefined;
 }
 
+export function gone(): Response {
+  return NextResponse.json({ error: "종료된 거래방입니다. 독립 거래방(/rooms)을 이용하세요." }, { status: 410 });
+}
+
 export async function customListing(id: string): Promise<Record<string, unknown> | null> {
   const r = await getDal().get("SELECT * FROM custom_listings WHERE id = ?", [id]);
   return r ? rowToListing(r) : null;

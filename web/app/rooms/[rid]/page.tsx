@@ -16,6 +16,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
   const [authed, setAuthed] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -45,13 +46,16 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   }
 
   const onSend = async () => {
-    if (!msg.trim()) return;
+    if (!msg.trim() || sending) return;
+    setSending(true);
     try {
       await sendRoomMessage(params.rid, msg.trim());
       setMsg("");
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "전송 실패");
+    } finally {
+      setSending(false);
     }
   };
 
@@ -69,6 +73,9 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             "이 방의 대화는 참여자만 볼 수 있습니다. 합성 데이터 시연용입니다."
           )}
         </p>
+        {meta?.demo ? (
+          <p className="meta">AI 상대방과 대화 중입니다(시연, mock). 실제 소유자가 아닙니다.</p>
+        ) : null}
         {error ? <p className="error">{error}</p> : null}
         <div>
           {messages.map((m) => (
@@ -78,11 +85,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             </p>
           ))}
         </div>
+        {sending && meta?.demo ? <p className="meta">AI가 응답 중...</p> : null}
         <div className="field">
           <label>메시지 입력</label>
           <input value={msg} placeholder="메시지 입력" onChange={(e) => setMsg(e.target.value)} />
         </div>
-        <button onClick={onSend}>전송</button>
+        <button onClick={onSend} disabled={sending}>{sending ? "전송 중..." : "전송"}</button>
       </section>
     </div>
   );

@@ -78,18 +78,18 @@ describe("M1-A 인증 없음 401", () => {
   it("매물 등록이 401이다", async () => {
     assert.equal((await api("/api/listings", { method: "POST", body: JSON.stringify(listingPayload()) })).status, 401);
   });
-  it("메시지 작성이 401이다", async () => {
+  it("구 공용 메시지 작성은 410이다", async () => {
     const r = await api("/api/deals/s01/messages", { method: "POST", body: JSON.stringify({ text: "hi" }) });
-    assert.equal(r.status, 401);
+    assert.equal(r.status, 410);
   });
-  it("방문·합의·체크 저장이 401이다", async () => {
-    assert.equal((await api("/api/deals/s01/visits", { method: "POST", body: JSON.stringify({ date: "2026-11-20", time: "14:00" }) })).status, 401);
-    assert.equal((await api("/api/deals/s01/agreements", { method: "POST", body: JSON.stringify({ text: "합의" }) })).status, 401);
-    assert.equal((await api("/api/deals/s01/checklist", { method: "PUT", body: JSON.stringify({ checks: {} }) })).status, 401);
+  it("구 공용 방문·합의·체크 저장은 410이다", async () => {
+    assert.equal((await api("/api/deals/s01/visits", { method: "POST", body: JSON.stringify({ date: "2026-11-20", time: "14:00" }) })).status, 410);
+    assert.equal((await api("/api/deals/s01/agreements", { method: "POST", body: JSON.stringify({ text: "합의" }) })).status, 410);
+    assert.equal((await api("/api/deals/s01/checklist", { method: "PUT", body: JSON.stringify({ checks: {} }) })).status, 410);
   });
   it("매물 조회는 토큰 없이 200이다", async () => {
     assert.equal((await api("/api/listings")).status, 200);
-    assert.equal((await api("/api/deals/s01/messages")).status, 401);
+    assert.equal((await api("/api/deals/s01/messages")).status, 410);
   });
 });
 
@@ -107,21 +107,21 @@ describe("M1-A 소유자 403과 정상 흐름", () => {
     assert.equal(seed.status, 404);
   });
 
-  it("소유자는 landlord, 타인은 tenant, 위조 admin도 tenant", async () => {
+  it("구 공용 스레드는 폐쇄(410)됐다", async () => {
     const created = await api("/api/listings", { method: "POST", body: JSON.stringify(listingPayload("역할방")) }, ownerTok);
     const id = created.body.id;
     const m1 = await api(`/api/deals/${id}/messages`, { method: "POST", body: JSON.stringify({ text: "주인 글" }) }, ownerTok);
-    assert.equal(m1.status, 201);
+    assert.equal(m1.status, 410);
     const m2 = await api(`/api/deals/${id}/messages`, { method: "POST", body: JSON.stringify({ text: "위조 글" }) }, forgedTok);
-    assert.equal(m2.status, 201);
+    assert.equal(m2.status, 410);
     const denied = await api(`/api/deals/${id}/messages`);
-    assert.equal(denied.status, 401);
+    assert.equal(denied.status, 410);
     const list = await api(`/api/deals/${id}/messages`, {}, ownerTok);
-    assert.equal(list.status, 200);
-    const byOwner = list.body.find((m) => m.id === m1.body.id);
-    const byForged = list.body.find((m) => m.id === m2.body.id);
-    assert.equal(byOwner.role, "landlord");
-    assert.equal(byForged.role, "tenant");
+    assert.equal(list.status, 410);
+    const byOwner = null;
+    const byForged = null;
+    assert.equal(byOwner, null);
+    assert.equal(byForged, null);
   });
 });
 

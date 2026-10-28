@@ -158,3 +158,12 @@
 - [x] Google 실로그인 vs 테스트 JWT 구분 기록: 실로그인은 운영 수동 확인済(2026-10-28), 자동 테스트는 self-mint HS256만 사용.
 - [x] CI `verify-fast`에 m1auth·m1brooms·m1agent 포함. 운영 DB 쓰기 E2E 없음(격리 DB).
 - AI 집톡이·시연 에이전트는 mock 유지. 실제 Meta API 미연결(이번 범위 밖).
+
+## VS-2B 구 거래방 제거 + AI 상대방 Mock — DONE
+
+- [x] 구 공용 거래방 UX 제거: `/deal/[id]` 페이지 삭제, 신규 UI 링크 없음. 모든 채팅 `/rooms/[rid]` 통일.
+- [x] 구 공용 API 폐쇄(410): messages·visits·agreements·checklist. 과거 데이터 보존. 방 생성 API 유지.
+- [x] 시드 문의→AI 시연방 자동 연결: 매매=AI 매도자, 전월세=AI 임대인. 첫인사 + 사람 1건당 AI 최대 1건(프로세스 내 뮤텍스+최종발언 가드).
+- [x] 실거래방(소유자 있음)에는 AI 개입 없음. 시연/실거래 뱃지 + (AI) 표시 + 응답 중 표시 + 중복 전송 방지.
+- [x] 검증: `node --test` 10종 110/110 green(빌드 포함) + E2E 20/20(desktop·mobile, 시연방 AI 첫인사·대화·새로고침 포함, 실측).
+- VS-2C(실제 Muse 연결)·VS-3A(집톡이 개입)는 미착수.

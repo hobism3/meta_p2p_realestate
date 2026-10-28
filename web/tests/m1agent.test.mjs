@@ -84,6 +84,7 @@ let server;
 let roomId;
 let vs2aListing = "";
 let vs2aRoom = "";
+let vs2bRoom = "";
 
 async function api(path, init = {}, bearer = null) {
   const r = await fetch(`${BASE}${path}`, {
@@ -268,7 +269,45 @@ describe("VS-2A 매수 흐름", () => {
     assert.equal(m.body.demo, false);
     assert.equal((await api(`/api/rooms/${vs2aRoom}`, {}, STRANGER)).status, 403);
   });
-  it("공용 스레드 조회는 인증이 필요하다", async () => {
-    assert.equal((await api(`/api/deals/${vs2aListing}/messages`)).status, 401);
+  it("공용 스레드는 폐쇄됐다", async () => {
+    assert.equal((await api(`/api/deals/${vs2aListing}/messages`)).status, 410);
+  });
+});
+
+describe("VS-2B AI 시연방", () => {
+  it("시드 문의에 AI 첫인사가 붙는다", async () => {
+    const r = await api(`/api/deals/s21/rooms`, { method: "POST", body: JSON.stringify({}) }, HUMAN);
+    assert.equal(r.status, 201);
+    vs2bRoom = r.body.id;
+    const list = await api(`/api/rooms/${vs2bRoom}/messages`, {}, HUMAN);
+    const ai = list.body.filter((m) => m.author_type === "demo_agent");
+    assert.equal(ai.length, 1);
+    assert.ok(ai[0].author.includes("AI 매도자"));
+    assert.ok(ai[0].text.includes("매매"));
+  });
+  it("사람 1건에 AI 1건만 답한다", async () => {
+    const s = await api(`/api/rooms/${vs2bRoom}/messages`, {
+      method: "POST", body: JSON.stringify({ text: "매매가 얼마인가요?" }),
+    }, HUMAN);
+    assert.equal(s.status, 201);
+    const list = await api(`/api/rooms/${vs2bRoom}/messages`, {}, HUMAN);
+    const humans = list.body.filter((m) => m.author_type === "human");
+    const ais = list.body.filter((m) => m.author_type === "demo_agent");
+    assert.equal(humans.length, 1);
+    assert.equal(ais.length, 2);
+    assert.ok(ais[1].text.includes("가격은"));
+  });
+  it("실거래방에는 AI가 끼지 않는다", async () => {
+    const before = (await api(`/api/rooms/${vs2aRoom}/messages`, {}, HUMAN)).body.length;
+    const s = await api(`/api/rooms/${vs2aRoom}/messages`, {
+      method: "POST", body: JSON.stringify({ text: "매매가 확인합니다" }),
+    }, HUMAN);
+    assert.equal(s.status, 201);
+    const after = (await api(`/api/rooms/${vs2aRoom}/messages`, {}, HUMAN)).body;
+    assert.equal(after.length, before + 1);
+    assert.ok(after.every((m) => m.author_type === "human"));
+  });
+  it("시연방도 제삼자는 403이다", async () => {
+    assert.equal((await api(`/api/rooms/${vs2bRoom}/messages`, {}, STRANGER)).status, 403);
   });
 });

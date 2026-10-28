@@ -141,10 +141,10 @@ describe("M1-B 방 분리", () => {
     assert.equal((await api(`/api/rooms/${roomAB}/checklist`, {}, B)).body["등기 확인"], undefined);
   });
 
-  it("공용 스레드에는 방 메시지가 새지 않는다", async () => {
+  it("공용 스레드는 폐쇄됐다", async () => {
     const pub = await api(`/api/deals/${listingId}/messages`, {}, B);
-    assert.equal(pub.status, 200);
-    assert.ok(pub.body.every((m) => m.room_id == null));
-    assert.ok(pub.body.every((m) => m.text !== "B 문의" && m.text !== "A 답변"));
+    assert.equal(pub.status, 410);
+    assert.equal(pub.body.error, "종료된 거래방입니다. 독립 거래방(/rooms)을 이용하세요.");
+    assert.equal(pub.status, 410);
   });
 });

@@ -3,3 +3,7 @@ node_modules/
 out/
 data/
 .npm-cache/
+.tmp/
+.playwright-browsers/
+test-results/
+playwright-report/

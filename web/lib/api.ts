@@ -39,6 +39,9 @@ export function clientKey(req: Request): string {
 }
 
 export function guardWrite(req: Request): NextResponse | null {
+  if (process.env.READ_ONLY === "true") {
+    return NextResponse.json({ error: "읽기 전용 모드" }, { status: 403 });
+  }
   const len = Number(req.headers.get("content-length") ?? 0);
   if (Number.isFinite(len) && len > BODY_LIMIT) return tooLarge();
   const token = process.env.WRITE_TOKEN;

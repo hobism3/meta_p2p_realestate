@@ -9,11 +9,44 @@
 - [x] Vercel 배포. health `up`, listings 200.
 - [x] Supabase 연결. 테이블 10개, 마이그레이션 자동.
 
-## P2 기존 웹 기능 및 모바일 검증 — TODO
+## P2 기존 웹 기능 및 모바일 검증 — DONE
 
 - [x] 페이지·API 스모크(로컬·운영).
-- [ ] 실브라우저 클릭 흐름(지도핀·등록제출·거래방).
-- [ ] 모바일 뷰포트 확인.
+- [x] Playwright E2E 14개(데스크톱·모바일). 탐색·상세·등록·거래방·넘침.
+- [x] M0: READ_ONLY 차단 브랜치에서 검증. POST 403, GET 200.
+
+## M0 잔여(다음 작업)
+
+- [ ] 방 분리(room_id) — M1 설계 완료. M1에서 구현, 이번에 손대지 않음.
+- [ ] 참여자 권한 검사 — M1 설계 완료. M1에서 구현, 이번에 손대지 않음.
+- [ ] TLS 검증 활성화(supabase 연결 검증 후).
+- [ ] 문서·코드 상태 일치 유지.
+
+## M0.5 운영 반영 검증 — IN PROGRESS
+
+- [x] READ_ONLY=true 회귀: 쓰기 7종 403, 조회 4종 200 (`web/tests/readonly.test.mjs`, 11/11 통과).
+- [x] 단위·API·DAL: `node --test` 총 58건 통과(23+15+20). 테스트 전용 DB 격리(pid별 sqlite), 운영 DB 미사용.
+- [x] 지도 마커 표시·클릭·매물 연동 + 모바일 넘침 3경로 + 서버 자동기동(webServer) 추가(미커밋).
+- [x] 커밋 보존(2026-10-28, m0-write-block, push·병합 미실행).
+  - `5672374` 보안: `web/tests/readonly.test.mjs` (11/11 green 실측).
+  - `73c0df8` E2E 커버리지: `m0.spec.ts` 지도 2건·모바일 넘침 확장 + `MapView.tsx` ready 게이트 (desktop 지도 3/3 green 실측).
+  - `ea2cec5` 환경·CI·문서(미검증 분리): `playwright.config.ts` 브라우저 경로 고정+workers:1,
+    `.github/workflows/verify.yml` 신규, 원칙 문서. exit-0 미확보 상태로 명시.
+- [ ] Playwright 종료코드 0 확보 — BLOCKED(환경). 반복 실행 금지.
+  - 기실행 18건 전패(원인 확정): 실행기 기본 경로에 `chromium_headless_shell-1248` 없음.
+    `test-results/*/error-context.md` 18건 모두 launch 실패. 코드·서버 문제가 아님.
+  - 지도 desktop 3건 PASS 실측(`3 passed (1.5m)`, 실Chromium). 단 당시 종료코드 1은
+    CLI `--global-timeout=90000` teardown 레이스(테스트 실패 아님). 설정에서 globalTimeout 제거済.
+  - 단일 마커 재실행 1건: 7분+ 무출력 후 종료. 서버 미기동(`data/e2e.db` 11:50 이후 미접촉),
+    health 무응답, 고아 node 0건·포트 닫힘 확인 후 정리. 동일 증상 재발이므로 재실행 없이 BLOCKED.
+    장시간 명령 실행기 spawn도 이후 실패(`SpawnReadyDeadlineExpired`, 단문 명령은 정상).
+  - 잔여: 실행 환경 복구 후 mobile 지도·넘침, desktop 나머지를 작은 단위로 실행. 18건 일괄 재실행 금지.
+- [ ] CI 최초 실행: `verify.yml` 구성済(Node 22·build·단위/API·격리 Playwright·실패 trace).
+  운영 DB·비밀키 참조 없음(스캔済). push 승인 후 첫 실행 결과를 Checks에서 확인해야 한다.
+- [x] M1 분리 브랜치 준비: `m1-auth-rooms`를 main에서 생성(빈 브랜치, 구현 없음).
+  보안 운영 반영(READ_ONLY=true·main 병합·배포)은 별도 승인 게이트 유지.
+- [ ] 자격증명 교체: 워크트리·히스토리 키워드 검사 무노출. 운영 대시보드 교체 여부는 사용자 확인 필요.
+- [ ] main 병합 + READ_ONLY=true 운영 적용은 승인 후 (절차 준비됨, 미실행).
 
 ## P3 사용자 인증·DB·다중 사용자 거래방 — DONE(부분)
 

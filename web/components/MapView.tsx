@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Listing } from "../lib/listings";
 
 // OpenStreetMap 타일 사용 조건:
@@ -16,6 +16,7 @@ export default function MapView({
   onSelect: (id: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let map: any = null;
@@ -30,6 +31,7 @@ export default function MapView({
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(map);
       (ref.current as any)._leaflet = { L, map };
+      if (!cancelled) setReady(true);
     })();
     return () => {
       cancelled = true;
@@ -39,6 +41,7 @@ export default function MapView({
   }, []);
 
   useEffect(() => {
+    if (!ready) return;
     const holder = ref.current as any;
     if (!holder || !holder._leaflet) return;
     const { L, map } = holder._leaflet;
@@ -54,7 +57,7 @@ export default function MapView({
     if (listings.length > 0) {
       map.fitBounds(L.latLngBounds(listings.map((l) => [l.lat, l.lng] as [number, number])), { padding: [30, 30] });
     }
-  }, [listings, selectedId, onSelect]);
+  }, [listings, selectedId, onSelect, ready]);
 
   return <div ref={ref} className="mapbox" role="application" aria-label="매물 지도" />;
 }

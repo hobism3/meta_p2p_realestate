@@ -18,3 +18,9 @@
 - DB 변경: 마이그레이션 파일 + 신구 DB 모두에서 테스트.
 - 인증 변경: dev·토큰 모드 둘 다 테스트.
 - 배포 변경: 운영 health의 `db`가 `up`인지 외부 확인.
+- 보안 변경: 별도 브랜치에서 구현·테스트. main 병합은 승인 후.
+- E2E: Playwright 데스크톱·모바일 둘 다 통과. 워커 간 데이터 격리 필수.
+- E2E 실행은 `--workers=1` 직렬 + 테스트 전용 DB(pid별 sqlite·`data/e2e.db`). 운영 DB 대상 등록·메시지 E2E 금지.
+- Playwright 브라우저 경로는 프로젝트 내 벤더링(`web/.playwright-browsers`)으로 고정. 전역 timeout과 webServer 기동·종료 시간을 분리한다(전역 예산 고갈 시 teardown이 잘려 종료코드 1이 된다).
+- CI: PR·브랜치 push 시 `verify` 워크플로(Node 22, build, 단위·API, 격리 Playwright, 실패 trace 보존) 통과. 운영 DB·운영 비밀키 사용 금지. CI 미실행·실패 상태에서 병합·배포 금지.
+- 보안 변경: READ_ONLY 회귀(`tests/readonly.test.mjs` 쓰기 403·조회 200) 통과 없이 main 병합 금지.

@@ -1,0 +1,38 @@
+# E2E 검증: 격리 로컬 sqlite + 직렬 실행. 실패 시 trace를 보존한다.
+# 실행 환경 문제(브라우저 부재 등)는 성공으로 처리하지 않는다.
+# 별도 워크플로이므로 E2E BLOCKED가 빠른 검증 신호를 가리지 않는다.
+name: verify-e2e
+
+on:
+  push:
+    branches: ["m0-write-block", "m1-*", "main"]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    env:
+      DB_PATH: ./data/e2e.db
+      WRITE_TOKEN: test-token
+      RATE_LIMIT_PER_MIN: "1000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: e2e (serial, isolated local sqlite)
+        run: npx playwright test --workers=1 --reporter=line
+      - name: keep failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace
+          path: test-results

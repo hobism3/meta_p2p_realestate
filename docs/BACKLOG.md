@@ -71,6 +71,17 @@
 - [ ] M1-B 착수 가능: Listing·DealRoom 분리 설계 유지. M1-B·집톡이 미구현.
 - main 병합·운영 배포 금지 유지. CI 미실행은 PASS로 표시하지 않음.
 
+## M1-B 독립 거래방 — DONE(코드, `m1-auth-rooms`)
+
+- [x] 구현: `004_rooms.sql`(deal_rooms·room_members·room_checklist·room_id),
+  `lib/rooms.ts`(생성·멤버·조회), 방 API 6건(방 생성·목록·메시지·방문·합의·체크).
+  공용 스레드 GET은 `room_id IS NULL`로 스코핑(방 메시지 유출 차단).
+  기존 공용 메시지 자동 귀속 없음. 역할은 DB만 사용.
+- [x] 검증: A(소유자)·B·C 시나리오 `m1brooms` 6/6 + 전체 74/74 통과, 종료코드 0.
+  A-B 대화 C 조회·수정 403, 무인증 401, 참여자 공유·유지 확인. 격리 sqlite.
+- [ ] 잔여: 방 UI(목록·입장·대화 화면)는 M1-C. 공개 메시지 GET 공개 상태 유지.
+- M1-C 착수 가능. main 병합·운영 배포 금지 유지.
+
 ## P4 집톡이 AI 구현 — TODO
 
 - [x] 스펙(`AI_CHAT_ASSISTANT_SPEC.md`).

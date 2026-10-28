@@ -71,6 +71,31 @@ describe("JWT 검증", () => {
       srv.close();
     }
   });
+  it("user 엔드포인트로 신원을 확인한다(로컬 스텁)", async () => {
+    const srv = createServer((req, res) => {
+      if (req.url === "/auth/v1/user" && req.headers.authorization === "Bearer good") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ id: "u-remote", email: "r@x.y", user_metadata: { full_name: "원격사용자" } }));
+      } else {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "bad" }));
+      }
+    });
+    await new Promise((s) => srv.listen(0, "127.0.0.1", s));
+    const port = srv.address().port;
+    process.env.SUPABASE_URL = `http://127.0.0.1:${port}/`;
+    process.env.SUPABASE_ANON_KEY = "anon";
+    delete process.env.SUPABASE_JWT_SECRET;
+    try {
+      const v = await verifySupabaseJwt("good");
+      assert.deepEqual(v, { sub: "u-remote", name: "원격사용자" });
+      assert.equal(await verifySupabaseJwt("bad"), null);
+    } finally {
+      delete process.env.SUPABASE_URL;
+      delete process.env.SUPABASE_ANON_KEY;
+      srv.close();
+    }
+  });
   it("ES256 토큰은 secret 방식으로 거부한다", async () => {
     const enc = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
     const fake = `${enc({ alg: "ES256", kid: "x", typ: "JWT" })}.${enc({ sub: "u1" })}.e30`;

@@ -8,7 +8,7 @@ export async function POST(req: Request): Promise<Response> {
   const auth = req.headers.get("authorization") ?? "";
   if (!auth.startsWith("Bearer ")) return ok({ error: "인증 필요" }, 401);
   try {
-    await fetch(`${base}/auth/v1/logout`, {
+    await fetch(`${base.replace(/\/+$/, "")}/auth/v1/logout`, {
       method: "POST",
       headers: { apikey: anon, Authorization: auth },
     });

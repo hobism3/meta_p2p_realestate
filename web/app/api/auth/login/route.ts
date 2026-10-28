@@ -13,7 +13,7 @@ export async function POST(req: Request): Promise<Response> {
   if (!email || !password) return bad("이메일·비밀번호 필수");
   let r: Response;
   try {
-    r = await fetch(`${base}/auth/v1/token?grant_type=password`, {
+    r = await fetch(`${base.replace(/\/+$/, "")}/auth/v1/token?grant_type=password`, {
       method: "POST",
       headers: { apikey: anon, "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),

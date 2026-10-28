@@ -70,7 +70,8 @@ const jwksCache = new Map<string, JwksCache>();
 async function getJwks(base: string): Promise<JwksCache["keys"]> {
   const cached = jwksCache.get(base);
   if (cached && Date.now() - cached.at < 10 * 60 * 1000) return cached.keys;
-  const r = await fetch(`${base}/auth/v1/.well-known/jwks.json`);
+  const clean = base.replace(/\/+$/, "");
+  const r = await fetch(`${clean}/auth/v1/.well-known/jwks.json`);
   if (!r.ok) throw new Error("jwks fetch failed");
   const data = (await r.json()) as { keys?: JwksCache["keys"] };
   const keys = Array.isArray(data.keys) ? data.keys : [];
@@ -155,6 +156,37 @@ export function devAuthAllowed(): boolean {
 }
 
 /** 토큰 방식에 맞는 검증을 고른다. HS256 secret 우선, ES256(JWKS)은 SUPABASE_URL 필요. */
+function apiBase(): string {
+  return (process.env.SUPABASE_URL ?? "").replace(/\/+$/, "");
+}
+
+/**
+ * Supabase에 직접 물어본다. 키 형식(HS256·ES256)에 무관하게 동작하는 최종 판정.
+ * URL 끝 슬래시 유무와 무관하게 정규화한다.
+ */
+export async function verifyViaUserEndpoint(token: string): Promise<{ sub: string; name: string } | null> {
+  const base = apiBase();
+  const anon = process.env.SUPABASE_ANON_KEY;
+  if (!base || !anon || !token) return null;
+  let r: Response;
+  try {
+    r = await fetch(`${base}/auth/v1/user`, {
+      headers: { apikey: anon, Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return null;
+  }
+  if (!r.ok) return null;
+  const u = (await r.json().catch(() => null)) as {
+    id?: string;
+    email?: string;
+    user_metadata?: { name?: string; full_name?: string };
+  } | null;
+  if (!u?.id) return null;
+  return { sub: u.id, name: displayName(u) };
+}
+
+/** 토큰 방식에 맞는 검증을 고른다. HS256 secret 우선, 그 외 user 엔드포인트, 최후 JWKS. */
 export async function verifySupabaseJwt(token: string): Promise<{ sub: string; name: string } | null> {
   const alg = (() => {
     try {
@@ -166,6 +198,8 @@ export async function verifySupabaseJwt(token: string): Promise<{ sub: string; n
   if (alg === "HS256" && process.env.SUPABASE_JWT_SECRET) {
     return verifyJwt(token, process.env.SUPABASE_JWT_SECRET);
   }
+  const viaUser = await verifyViaUserEndpoint(token);
+  if (viaUser) return viaUser;
   if (alg === "ES256" && process.env.SUPABASE_URL) {
     return verifyEs256(token, process.env.SUPABASE_URL);
   }

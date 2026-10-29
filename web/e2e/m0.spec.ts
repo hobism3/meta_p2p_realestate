@@ -86,11 +86,14 @@ test("시연방: 집톡이 제안 정리→거래 현황", async ({ page }) => {
   const wishRow = page.locator("li", { hasText: "매수 희망가" }).first();
   await wishRow.getByRole("button", { name: "동의하기" }).click();
   await expect(wishRow).toContainText("양측 동의");
+  await page.getByRole("button", { name: "거래 현황 닫기" }).click();
   await page.getByPlaceholder("메시지 입력").fill("44500만원에 합시다");
   await page.getByRole("button", { name: "전송" }).click();
+  await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await expect(wishRow).toContainText("동의 대기");
   await wishRow.getByRole("button", { name: "동의하기" }).click();
   await expect(wishRow).toContainText("양측 동의");
+  await page.getByRole("button", { name: "거래 현황 닫기" }).click();
   await page.getByPlaceholder("메시지 입력").fill("매매가 얼마인가요?");
   await page.getByRole("button", { name: "전송" }).click();
   await expect(page.getByText("매수 희망가는 44,500만원").first()).toBeVisible();
@@ -114,8 +117,10 @@ test("시연방: 방문 제안→일정 확인→변경", async ({ page }) => {
   await page.getByRole("button", { name: "일정 확인" }).click();
   await expect(page.getByText("수락됨").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "일정 확인" })).toHaveCount(0);
+  await page.getByRole("button", { name: "거래 현황 닫기" }).click();
   await page.getByPlaceholder("메시지 입력").fill("모레 오후 2시로 바꿔서 방문하고 싶어요");
   await page.getByRole("button", { name: "전송" }).click();
+  await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await expect(page.getByRole("button", { name: "일정 확인" })).toHaveCount(1);
 });
 

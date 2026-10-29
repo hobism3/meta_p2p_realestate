@@ -225,7 +225,7 @@
 - [x] 합의 서비스(`lib/agreement-service.ts`): 구체 조건만 카드화(방문일은 시간 필수, 정오·자정 단독은 묻기만), 버전 증가·열린 구버전 superseded·합의된 과거 보존·동일 주체 중복 409·버전 불일치 409. 시연방 AI는 협상 정책으로 즉시 판정(ranged 범위 안 동의·밖 거절, none 정가 미만 거절, AI 자신 제안 동의). 사람 동의는 토큰 신원만.
 - [x] API: `GET /proposals`(멤버만, 제안+승인+양측+me), `POST /proposals/create`(실거래방 수동 생성, 근거 검증), `POST /proposals/[pid]/decide`(agree/refuse+버전). 합의 시 방문 수락됨, 거절 시 거절됨으로 연동(제안됨일 때만).
 - [x] UI: 채팅 집톡이 말풍선 아래 합의 카드(양측 상태·동의하기·거절하기·변경 제안·보류·근거 보기), 거래 현황 합의 행으로 교체(확인하기 제거), 실거래방에도 현황 개방. AI 시연 동의는 실제 계약 아님 문구.
-- [x] 검증: build 성공 + node 253/253 + `tests/agreement.test.mjs`·`tests/m1agree.test.mjs`(시연방 카드·AI 선동의·양측 동의·중복/구버전 409·supersede·범위밖 거절·방문 수락 연동·계약금 3,850만원 합의·타인 차단, 실거래 2인 합의·거절). E2E는 로컬 25/28(집톡이 문구·방문 모바일 타임아웃 잔여) — 전체 통과는 CI `verify-e2e`에 위임. Meta 실호출 BLOCKED(`MODEL_API_KEY` 없음). mock·Meta 구분 유지, 운영 DB 자동 쓰기 없음.
+- [x] 검증: build 성공 + node 256/256 + `tests/agreement.test.mjs`·`tests/m1agree.test.mjs`(시연방 카드·AI 선동의·양측 동의·중복/구버전 409·supersede·범위밖 거절·방문 수락 연동·계약금 3,850만원 합의·타인 차단, 실거래 2인 합의·거절). E2E 로컬 28/28(데스크톱·모바일). 원인 수정: 모바일 서랍이 전송 버튼을 가려 60초 소진 → 후속 전송 전 서랍 닫기로 사용자 흐름과 일치시킴(타임아웃 증가 없음). Meta 실호출 BLOCKED(`MODEL_API_KEY` 없음). mock·Meta 구분 유지, 운영 DB 자동 쓰기 없음.
 - 다음: 메인·매물 상세·등록 화면 UX 개선.
 
 ## VS-4B 거래 정합성 — DONE(mock)

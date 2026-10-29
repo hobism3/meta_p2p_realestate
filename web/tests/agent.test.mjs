@@ -27,7 +27,7 @@ describe("provider 결정", () => {
     assert.equal(resolveModel("meta"), META_DEFAULT_MODEL);
   });
   it("호출 예산이 고정돼 있다", async () => {
-    assert.equal(META_MAX_TOKENS, 300);
+    assert.equal(META_MAX_TOKENS, 1024);
     assert.equal(META_TIMEOUT_MS, 20000);
   });
 });
@@ -42,7 +42,7 @@ describe("입력 계약", () => {
       HISTORY,
     );
     assert.ok(input.system.includes("45,000만원"));
-    assert.ok(input.system.includes("지어내지 마"));
+    assert.ok(input.system.includes("지어내기 금지"));
     assert.ok(input.system.includes("확정"));
     assert.deepEqual(input.messages, [
       { role: "user", content: "매매가 얼마인가요?" },

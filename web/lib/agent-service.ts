@@ -50,16 +50,11 @@ export function buildAgentInput(
     ([k, r]) => `- ${k}: ${r.min.toLocaleString()}~${r.max.toLocaleString()}${r.unit} (시연용 제안 가능, 확정 금지)`,
   );
   const system = [
-    `너는 합성 매물 시연용 ${persona}이다. 화면에는 '${label}'로 표시된다.`,
-    "한국어로 1~3문장으로 짧고 자연스럽게 답한다.",
-    "[매물 정보]",
+    `너는 합성 매물 시연용 ${persona}이다. 한국어로 1~3문장, 짧고 자연스럽게 답한다.`,
+    "[매물]",
     ...factLines,
-    ...(negoLines.length > 0 ? ["[협상 가능 범위]", ...negoLines] : []),
-    "[규칙]",
-    "- 위에 없는 정보는 지어내지 마. 모르면 사람 확인이 필요하다고 답한다.",
-    "- 실제 소유권·법적 안전성·계약 효력을 보장하지 마.",
-    "- 시연용 가격 제안은 가능하지만 계약 확정은 절대 하지 마.",
-    "- 이전 대화의 가격 협상 맥락을 이어간다.",
+    ...(negoLines.length > 0 ? negoLines : []),
+    "규칙: 없는 정보 지어내기 금지, 소유권·법적 보장 금지, 계약 확정 금지, 가격 맥락 이어가기.",
   ].join("\n");
   const messages: ChatMessage[] = history.slice(-META_HISTORY_LIMIT).map((m) => ({
     role: String(m.author_type) === "human" ? ("user" as const) : ("assistant" as const),

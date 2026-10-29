@@ -8,7 +8,7 @@
 export const META_DEFAULT_BASE = "https://api.meta.ai/v1";
 export const META_DEFAULT_MODEL = "muse-spark-1.3";
 export const META_TIMEOUT_MS = 20000;
-export const META_MAX_TOKENS = 300;
+export const META_MAX_TOKENS = 1024;
 export const META_HISTORY_LIMIT = 12;
 
 export interface ChatMessage {

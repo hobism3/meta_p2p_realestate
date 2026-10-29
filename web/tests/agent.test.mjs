@@ -146,4 +146,20 @@ describe("meta 호출", () => {
     assert.equal(r.kind, "http");
     assert.equal(r.detail, "slow down");
   });
+  it("빈 choices는 모양을 남긴다", async () => {
+    const r = await callMeta(
+      { system: "s", messages: [], maxTokens: 10, timeoutMs: 1000 },
+      { key: "k", fetchImpl: (async () => ({ ok: true, status: 200, json: async () => ({ id: "x", choices: [] }) })) },
+    );
+    assert.equal(r.kind, "bad_response");
+    assert.equal(r.detail, "keys:id,choices choices:0");
+  });
+  it("빈 본문은 empty로 남긴다", async () => {
+    const r = await callMeta(
+      { system: "s", messages: [], maxTokens: 10, timeoutMs: 1000 },
+      { key: "k", fetchImpl: (async () => ({ ok: true, status: 200, json: async () => null })) },
+    );
+    assert.equal(r.kind, "bad_response");
+    assert.equal(r.detail, "empty");
+  });
 });

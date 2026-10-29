@@ -65,6 +65,34 @@ export function errorEnvelopeMessage(data: unknown): string {
   return msg.trim().slice(0, 150);
 }
 
+/** 파싱 실패 때 원인 파악용 모양 설명. 값 원문은 담지 않는다. */
+export function describeBodyShape(data: unknown): string {
+  if (data === null || data === undefined) return "empty";
+  if (typeof data !== "object") return `type:${typeof data}`;
+  const d = data as { choices?: unknown };
+  const keys = Object.keys(d).join(",");
+  const ch = Array.isArray(d.choices) ? d.choices.length : -1;
+  return `keys:${keys} choices:${ch}`;
+}
+
+function refusalMessage(data: unknown): string {
+  try {
+    const ch = (data as { choices?: unknown[] }).choices;
+    if (!Array.isArray(ch) || ch.length === 0) return "";
+    const m = (ch[0] as { message?: unknown }).message as { refusal?: unknown } | undefined;
+    const r = m?.refusal;
+    if (typeof r === "string" && r.trim()) return r.trim().slice(0, 150);
+    return "";
+  } catch {
+    return "";
+  }
+}
+
+/** envelope → refusal → 모양 순으로 안전한 단서를 뽑는다. */
+export function responseAnomaly(data: unknown): string {
+  return errorEnvelopeMessage(data) || refusalMessage(data) || describeBodyShape(data);
+}
+
 export interface MetaCallInput {
   system: string;
   messages: ChatMessage[];
@@ -109,7 +137,7 @@ export async function callMeta(input: MetaCallInput, opts: MetaCallOptions = {})
     const raw = (await r.json().catch(() => null)) as unknown;
     const parsed = parseChatResponse(raw);
     if (!parsed) {
-      return { ok: false, kind: "bad_response", status: r.status, detail: errorEnvelopeMessage(raw), latencyMs };
+      return { ok: false, kind: "bad_response", status: r.status, detail: responseAnomaly(raw), latencyMs };
     }
     return { ok: true, text: parsed.text, usage: parsed.usage, latencyMs };
   } catch (e) {

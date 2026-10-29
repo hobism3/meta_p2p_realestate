@@ -50,6 +50,7 @@
 - 역할별 프롬프트·상태·실행 로그 분리(demo_agent vs assistant).
 - 실제 Muse API 호출과 mock 구분. mock 기본, 실제 호출은 환경변수 + 명시 플래그.
 - 중요 조건 자동 확정 금지(확정 API 없음).
+- VS-2C: 실행은 Agent Service로 단일화. 사람 저장과 AI 생성을 분리하고 DB 유일키로 중복을 막는다. mock 기본, meta는 키 + 명시 설정 때만. 실패는 mock으로 속이지 않는다.
 
 ## 8. 검증 시나리오 (구현 후)
 

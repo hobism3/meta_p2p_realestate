@@ -68,7 +68,7 @@ describe("002 백필", () => {
       ).run("m10", "없음", "A", "landlord", "hi", "2026-10-27T00:00:00.000Z");
     });
     const vers = db.prepare("SELECT version FROM schema_migrations ORDER BY version").all();
-    assert.deepEqual(vers.map((v) => v.version), ["001_initial", "002_fk_backfill", "003_authn", "004_rooms", "005_agents", "006_sale_price"]);
+    assert.deepEqual(vers.map((v) => v.version), ["001_initial", "002_fk_backfill", "003_authn", "004_rooms", "005_agents", "006_sale_price", "007_agent_runs"]);
     shut();
     rmSync(dbB, { force: true });
   });

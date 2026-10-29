@@ -290,6 +290,11 @@ describe("VS-2B AI 시연방", () => {
       method: "POST", body: JSON.stringify({ text: "매매가 얼마인가요?" }),
     }, HUMAN);
     assert.equal(s.status, 201);
+    const inv = await api(`/api/rooms/${vs2bRoom}/agent/invoke`, {
+      method: "POST", body: JSON.stringify({ trigger_message_id: s.body.id }),
+    }, HUMAN);
+    assert.equal(inv.status, 201);
+    assert.equal(inv.body.provider, "mock");
     const list = await api(`/api/rooms/${vs2bRoom}/messages`, {}, HUMAN);
     const humans = list.body.filter((m) => m.author_type === "human");
     const ais = list.body.filter((m) => m.author_type === "demo_agent");
@@ -309,5 +314,74 @@ describe("VS-2B AI 시연방", () => {
   });
   it("시연방도 제삼자는 403이다", async () => {
     assert.equal((await api(`/api/rooms/${vs2bRoom}/messages`, {}, STRANGER)).status, 403);
+  });
+});
+
+describe("VS-2C Agent Service", () => {
+  it("invoke는 provider·model을 mock으로 구분한다", async () => {
+    const s = await api(`/api/rooms/${vs2bRoom}/messages`, {
+      method: "POST", body: JSON.stringify({ text: "면적 어떻게 되나요?" }),
+    }, HUMAN);
+    assert.equal(s.status, 201);
+    const inv = await api(`/api/rooms/${vs2bRoom}/agent/invoke`, {
+      method: "POST", body: JSON.stringify({ trigger_message_id: s.body.id }),
+    }, HUMAN);
+    assert.equal(inv.status, 201);
+    assert.equal(inv.body.provider, "mock");
+    assert.equal(inv.body.model, "mock-v1");
+  });
+  it("같은 트리거 재호출은 기존 결과를 돌려준다", async () => {
+    const s = await api(`/api/rooms/${vs2bRoom}/messages`, {
+      method: "POST", body: JSON.stringify({ text: "옵션 뭐가 있나요?" }),
+    }, HUMAN);
+    const first = await api(`/api/rooms/${vs2bRoom}/agent/invoke`, {
+      method: "POST", body: JSON.stringify({ trigger_message_id: s.body.id }),
+    }, HUMAN);
+    assert.equal(first.status, 201);
+    const before = (await api(`/api/rooms/${vs2bRoom}/messages`, {}, HUMAN)).body.length;
+    const second = await api(`/api/rooms/${vs2bRoom}/agent/invoke`, {
+      method: "POST", body: JSON.stringify({ trigger_message_id: s.body.id }),
+    }, HUMAN);
+    assert.equal(second.status, 200);
+    assert.equal(second.body.id, first.body.id);
+    const after = (await api(`/api/rooms/${vs2bRoom}/messages`, {}, HUMAN)).body.length;
+    assert.equal(after, before);
+  });
+  it("동시 호출에도 응답은 1건이다", async () => {
+    const s = await api(`/api/rooms/${vs2bRoom}/messages`, {
+      method: "POST", body: JSON.stringify({ text: "수리 됐나요?" }),
+    }, HUMAN);
+    const aisBefore = (await api(`/api/rooms/${vs2bRoom}/messages`, {}, HUMAN)).body.filter(
+      (m) => m.author_type === "demo_agent",
+    ).length;
+    const results = await Promise.all([0, 1, 2].map(() => api(`/api/rooms/${vs2bRoom}/agent/invoke`, {
+      method: "POST", body: JSON.stringify({ trigger_message_id: s.body.id }),
+    }, HUMAN)));
+    assert.equal(results.filter((r) => r.status === 201).length, 1);
+    assert.ok(results.every((r) => r.status === 200 || r.status === 201 || r.status === 409));
+    const aisAfter = (await api(`/api/rooms/${vs2bRoom}/messages`, {}, HUMAN)).body.filter(
+      (m) => m.author_type === "demo_agent",
+    ).length;
+    assert.equal(aisAfter, aisBefore + 1);
+  });
+  it("협상 맥락이 이어진다", async () => {
+    const s = await api(`/api/rooms/${vs2bRoom}/messages`, {
+      method: "POST", body: JSON.stringify({ text: "42000에 합시다" }),
+    }, HUMAN);
+    const inv = await api(`/api/rooms/${vs2bRoom}/agent/invoke`, {
+      method: "POST", body: JSON.stringify({ trigger_message_id: s.body.id }),
+    }, HUMAN);
+    assert.equal(inv.status, 201);
+    assert.ok(inv.body.text.includes("가능합니다"));
+  });
+  it("실거래방 invoke는 404다", async () => {
+    const s = await api(`/api/rooms/${vs2aRoom}/messages`, {
+      method: "POST", body: JSON.stringify({ text: "다시 확인합니다" }),
+    }, HUMAN);
+    assert.equal(s.status, 201);
+    const inv = await api(`/api/rooms/${vs2aRoom}/agent/invoke`, {
+      method: "POST", body: JSON.stringify({ trigger_message_id: s.body.id }),
+    }, HUMAN);
+    assert.equal(inv.status, 404);
   });
 });

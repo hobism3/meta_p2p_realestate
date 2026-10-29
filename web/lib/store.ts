@@ -115,8 +115,9 @@ export async function loadRoomMessages(rid: string): Promise<DealMessage[]> {
   return (await req(`/api/rooms/${rid}/messages`)) as DealMessage[];
 }
 
-export async function sendRoomMessage(rid: string, text: string): Promise<void> {
-  await req(`/api/rooms/${rid}/messages`, { method: "POST", body: JSON.stringify({ text }) });
+export async function sendRoomMessage(rid: string, text: string): Promise<string> {
+  const body = (await req(`/api/rooms/${rid}/messages`, { method: "POST", body: JSON.stringify({ text }) })) as { id: string };
+  return body.id;
 }
 
 export interface MyRoom {
@@ -139,6 +140,20 @@ export interface RoomMeta {
 
 export async function loadRoomMeta(rid: string): Promise<RoomMeta> {
   return (await req(`/api/rooms/${rid}`)) as RoomMeta;
+}
+
+export interface AgentInvokeResult {
+  id: string;
+  text: string;
+  provider: string;
+  model: string;
+}
+
+export async function invokeAgent(rid: string, triggerMessageId: string): Promise<AgentInvokeResult> {
+  return (await req(`/api/rooms/${rid}/agent/invoke`, {
+    method: "POST",
+    body: JSON.stringify({ trigger_message_id: triggerMessageId }),
+  })) as AgentInvokeResult;
 }
 
 export function seedCount(): number {

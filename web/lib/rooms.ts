@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { getDal } from "./dal";
-import { now } from "./db";
-import { SEED_LISTINGS } from "./listings";
-import { isListingOwner, participantRole } from "./authz";
+import { getDal } from "./dal.ts";
+import { now } from "./db.ts";
+import { SEED_LISTINGS } from "./listings.ts";
+import { isListingOwner, participantRole } from "./authz.ts";
 
 /**
  * M1-B 독립 거래방. 같은 매물에도 방마다 멤버가 다르다(A-B와 A-C 분리).

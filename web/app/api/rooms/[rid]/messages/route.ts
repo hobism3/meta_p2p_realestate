@@ -5,7 +5,6 @@ import { getDal } from "@/lib/dal";
 import { now } from "@/lib/db";
 import { getRoom, isRoomMember, type Room } from "@/lib/rooms";
 import type { Identity } from "@/lib/auth";
-import { maybeDemoReply } from "@/lib/demo";
 
 async function guard(
   req: Request,
@@ -49,11 +48,6 @@ export async function POST(req: Request, { params }: { params: { rid: string } }
     "INSERT INTO messages (id,listing_id,author,role,user_id,author_type,room_id,text,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
     [id, r.room.listing_id, r.identity.name, "", r.identity.userId, "human", params.rid, text, now()],
   );
-  try {
-    // 시연방이면 AI 상대방이 최대 1건 답한다. 실패해도 사람 메시지 전송은 유지된다.
-    await maybeDemoReply(params.rid, r.room.listing_id, text);
-  } catch {
-    // 시연 응답 실패를 조용히 넘긴다. 모델 실패를 성공처럼 표시하지 않는다.
-  }
+  // 사람 메시지를 먼저 저장하고 끝낸다. AI 생성은 POST agent/invoke가 별도 단계로 처리한다.
   return ok({ id }, 201);
 }

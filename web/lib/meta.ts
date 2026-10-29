@@ -1,0 +1,107 @@
+/**
+ * Meta Muse Spark Model API 전송 계층. 서버 전용 모듈이다.
+ * 클라이언트 컴포넌트에서 import하지 마. 키는 환경변수에서만 읽는다.
+ * 근거: Meta Model API (base https://api.meta.ai/v1, Authorization: Bearer 키,
+ * OpenAI 호환 chat completions). base·model은 환경변수로 바꿀 수 있다.
+ */
+
+export const META_DEFAULT_BASE = "https://api.meta.ai/v1";
+export const META_DEFAULT_MODEL = "muse-spark-1.3";
+export const META_TIMEOUT_MS = 20000;
+export const META_MAX_TOKENS = 300;
+export const META_HISTORY_LIMIT = 12;
+
+export interface ChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+export interface MetaUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export type MetaResult =
+  | { ok: true; text: string; usage: MetaUsage; latencyMs: number }
+  | { ok: false; kind: "no_key" | "timeout" | "http" | "network" | "bad_response"; status?: number; latencyMs: number };
+
+type FetchImpl = (
+  url: string,
+  init: { method: string; headers: Record<string, string>; body: string; signal: AbortSignal },
+) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>;
+
+function num(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0;
+}
+
+/** chat completions 응답에서 본문·사용량을 뽑는다. 키·대화 원문은 다루지 않는다. */
+export function parseChatResponse(data: unknown): { text: string; usage: MetaUsage } | null {
+  if (!data || typeof data !== "object") return null;
+  const d = data as { choices?: unknown; usage?: unknown };
+  if (!Array.isArray(d.choices) || d.choices.length === 0) return null;
+  const msg = (d.choices[0] as { message?: unknown }).message as
+    | { content?: unknown }
+    | undefined;
+  const c = msg?.content;
+  let text = "";
+  if (typeof c === "string") text = c;
+  else if (Array.isArray(c)) {
+    text = c
+      .map((p) => (p && typeof p === "object" && "text" in p ? String((p as { text: unknown }).text) : ""))
+      .join("");
+  }
+  text = text.trim();
+  if (!text) return null;
+  const u = (d.usage ?? {}) as { prompt_tokens?: unknown; completion_tokens?: unknown };
+  return { text, usage: { inputTokens: num(u.prompt_tokens), outputTokens: num(u.completion_tokens) } };
+}
+
+export interface MetaCallInput {
+  system: string;
+  messages: ChatMessage[];
+  maxTokens: number;
+  timeoutMs: number;
+}
+
+export interface MetaCallOptions {
+  key?: string;
+  base?: string;
+  model?: string;
+  fetchImpl?: FetchImpl;
+}
+
+/** 실제 모델 호출 1회. 키가 없으면 네트워크에 닿기 전에 no_key로 끝난다. */
+export async function callMeta(input: MetaCallInput, opts: MetaCallOptions = {}): Promise<MetaResult> {
+  const started = Date.now();
+  const key = opts.key ?? process.env.MODEL_API_KEY ?? "";
+  if (!key) return { ok: false, kind: "no_key", latencyMs: 0 };
+  const base = (opts.base ?? process.env.MODEL_API_BASE ?? META_DEFAULT_BASE).replace(/\/+$/, "");
+  const model = opts.model ?? process.env.MODEL_MODEL ?? META_DEFAULT_MODEL;
+  const fetchImpl = opts.fetchImpl ?? (fetch as unknown as FetchImpl);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), input.timeoutMs);
+  try {
+    const r = await fetchImpl(`${base}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "system", content: input.system }, ...input.messages],
+        max_tokens: input.maxTokens,
+        temperature: 0.7,
+      }),
+      signal: ctrl.signal,
+    });
+    const latencyMs = Date.now() - started;
+    if (!r.ok) return { ok: false, kind: "http", status: r.status, latencyMs };
+    const parsed = parseChatResponse(await r.json().catch(() => null));
+    if (!parsed) return { ok: false, kind: "bad_response", status: r.status, latencyMs };
+    return { ok: true, text: parsed.text, usage: parsed.usage, latencyMs };
+  } catch (e) {
+    const latencyMs = Date.now() - started;
+    if (e instanceof Error && e.name === "AbortError") return { ok: false, kind: "timeout", latencyMs };
+    return { ok: false, kind: "network", latencyMs };
+  } finally {
+    clearTimeout(timer);
+  }
+}

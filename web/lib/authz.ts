@@ -1,4 +1,4 @@
-import { getDal } from "./dal";
+import { getDal } from "./dal.ts";
 
 /**
  * M1-A 권한. 토큰의 user_metadata.role은 절대 사용하지 않는다.

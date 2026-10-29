@@ -167,3 +167,14 @@
 - [x] 실거래방(소유자 있음)에는 AI 개입 없음. 시연/실거래 뱃지 + (AI) 표시 + 응답 중 표시 + 중복 전송 방지.
 - [x] 검증: `node --test` 10종 110/110 green(빌드 포함) + E2E 20/20(desktop·mobile, 시연방 AI 첫인사·대화·새로고침 포함, 실측).
 - VS-2C(실제 Muse 연결)·VS-3A(집톡이 개입)는 미착수.
+
+## VS-2C Agent Service + Meta 연동 기반 — DONE(mock)
+
+- [x] 키 확인: 로컬 MODEL_API_KEY 없음 확인(값 미출력). Vercel 서버 환경은 여기서 확인 불가, 별도 설정 필요. 실제 호출 검증 BLOCKED.
+- [x] 응답 경로 통합: 메시지 POST 훅 제거 → 공통 Agent Service(`lib/agent-service.ts`) + `POST /api/rooms/[rid]/agent/invoke` 단일 실행점.
+- [x] 사람 저장→AI 생성 분리: POST는 사람 메시지만 저장, 클라이언트가 invoke 호출. 입력 중 표시·실패 안내·다시 시도.
+- [x] DB 중복 방지: agent_runs 유일키(room_id, trigger_msg_id, agent_type) + 상태(running/done/failed). Map 잠금 제거. 재호출은 기존 결과 반환.
+- [x] Meta 전송(`lib/meta.ts`): chat completions, Bearer 키(서버 전용), 20초 타임아웃, 300 토큰, 최근 12건. 키 없으면 no_key 종료(조용한 mock 전환 없음).
+- [x] 실행 기록: room/trigger/agent/provider/model/상태/지연/실패유형/사용량. 키·대화원문 미기록.
+- [x] 검증 A-J: node 128/128 + E2E 20/20. A(매매 AI)·B(전월세 AI)·C(협상 이어짐)·D(방 격리)·E(실거래 제외)·F(재호출 1건)·G(동시 3건→1건)·H(실패 안내)·I(키 없음 명시)·J(provider·model 구분). 실제 모델 호출 없음.
+- VS-3A(집톡이 개입) 미착수.

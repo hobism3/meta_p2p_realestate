@@ -3,12 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { getAccessToken } from "../../../lib/client-auth";
 import {
+  invokeAgent,
   loadRoomMessages,
   loadRoomMeta,
   sendRoomMessage,
   type DealMessage,
   type RoomMeta,
 } from "../../../lib/store";
+
+const AI_FAILURE_NOTICE = "AI 응답을 가져오지 못했습니다. 다시 시도해 주세요.";
+
+function aiName(tradeType: string | undefined): string {
+  return tradeType === "매매" ? "AI 매도자" : "AI 임대인";
+}
 
 export default function RoomPage({ params }: { params: { rid: string } }) {
   const [messages, setMessages] = useState<DealMessage[]>([]);
@@ -17,6 +24,10 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const [error, setError] = useState("");
   const [authed, setAuthed] = useState(false);
   const [sending, setSending] = useState(false);
+  const [aiPending, setAiPending] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [lastTriggerId, setLastTriggerId] = useState<string | null>(null);
+  const [lastProvider, setLastProvider] = useState("");
 
   const refresh = useCallback(async () => {
     try {
@@ -45,18 +56,41 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     );
   }
 
+  const callAi = async (triggerId: string) => {
+    setAiPending(true);
+    setAiError("");
+    try {
+      const r = await invokeAgent(params.rid, triggerId);
+      setLastProvider(r.provider);
+      await refresh();
+    } catch {
+      // 모델 실패를 성공처럼 표시하지 않는다. 사람 메시지는 이미 저장돼 있다.
+      setAiError(AI_FAILURE_NOTICE);
+    } finally {
+      setAiPending(false);
+    }
+  };
+
   const onSend = async () => {
     if (!msg.trim() || sending) return;
     setSending(true);
     try {
-      await sendRoomMessage(params.rid, msg.trim());
+      // 사람 메시지를 먼저 저장하고 즉시 보여준다. AI 생성은 별도 단계다.
+      const id = await sendRoomMessage(params.rid, msg.trim());
       setMsg("");
+      setLastTriggerId(id);
       await refresh();
+      await callAi(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "전송 실패");
     } finally {
       setSending(false);
     }
+  };
+
+  const onRetry = async () => {
+    if (!lastTriggerId || aiPending) return;
+    await callAi(lastTriggerId);
   };
 
   return (
@@ -74,7 +108,9 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           )}
         </p>
         {meta?.demo ? (
-          <p className="meta">AI 상대방과 대화 중입니다(시연, mock). 실제 소유자가 아닙니다.</p>
+          <p className="meta">
+            AI 상대방과 대화 중입니다(시연{lastProvider ? `, ${lastProvider}` : ", mock"}). 실제 소유자가 아닙니다.
+          </p>
         ) : null}
         {error ? <p className="error">{error}</p> : null}
         <div>
@@ -85,7 +121,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             </p>
           ))}
         </div>
-        {sending && meta?.demo ? <p className="meta">AI가 응답 중...</p> : null}
+        {aiPending && meta?.demo ? <p className="meta">{aiName(meta?.listing?.tradeType)}가 입력 중...</p> : null}
+        {aiError ? (
+          <p className="error">
+            {aiError} <button className="btn ghost" onClick={onRetry} disabled={aiPending}>다시 시도</button>
+          </p>
+        ) : null}
         <div className="field">
           <label>메시지 입력</label>
           <input value={msg} placeholder="메시지 입력" onChange={(e) => setMsg(e.target.value)} />
@@ -95,3 +136,5 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     </div>
   );
 }
+
+

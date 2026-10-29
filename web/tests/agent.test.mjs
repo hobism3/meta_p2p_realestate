@@ -11,6 +11,7 @@ import {
   parseChatResponse,
 } from "../lib/meta.ts";
 import { getPersona, PERSONAS, policyToNegotiable } from "../lib/personas.ts";
+import { SEED_LISTINGS } from "../lib/listings.ts";
 
 const HISTORY = [
   { author_type: "human", author: "사람", text: "매매가 얼마인가요?" },
@@ -176,6 +177,26 @@ describe("페르소나", () => {
     }
     assert.ok(["s21", "s22", "s23", "s24"].every((id) => PERSONAS[id].role === "seller"));
     assert.ok(Object.keys(PERSONAS).filter((id) => !["s21", "s22", "s23", "s24"].includes(id)).every((id) => PERSONAS[id].role === "landlord"));
+  });
+  it("모든 시드와 양방향으로 연결된다", async () => {
+    assert.equal(Object.keys(PERSONAS).length, SEED_LISTINGS.length);
+    for (const l of SEED_LISTINGS) {
+      const per = getPersona(l.id);
+      assert.ok(per, l.id);
+      assert.equal(per.name, l.tradeType === "매매" ? "AI 매도자" : "AI 임대인");
+      for (const [k, v] of Object.entries({
+        personality: per.personality,
+        tone: per.tone,
+        style: per.style,
+        negotiation: per.negotiation,
+        unknownResponse: per.unknownResponse,
+      })) {
+        assert.ok(v.trim().length > 0, `${l.id}.${k}`);
+      }
+      if (per.policy.kind === "ranged") {
+        assert.ok(per.policy.min > 0 && per.policy.min <= per.policy.max, l.id);
+      }
+    }
   });
   it("매매 4개의 말투가 다르다", async () => {
     const tones = ["s21", "s22", "s23", "s24"].map((id) => PERSONAS[id].tone);

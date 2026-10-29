@@ -146,13 +146,13 @@ async function executeRun(
   model: string,
 ): Promise<RunOk | RunErr> {
   const started = Date.now();
-  const fail = async (error: string, status: number): Promise<RunErr> => {
+  const fail = async (error: string, status: number, logExtra = ""): Promise<RunErr> => {
     await getDal().run("UPDATE agent_runs SET status = 'failed', error = ?, latency_ms = ? WHERE id = ?", [
       error,
       Date.now() - started,
       runId,
     ]);
-    console.error(`[agent] run failed room=${roomId} provider=${provider} error=${error}`);
+    console.error(`[agent] run failed room=${roomId} provider=${provider} error=${error}${logExtra ? ` detail=${logExtra}` : ""}`);
     return { ok: false, status, error, provider, model };
   };
   try {
@@ -168,10 +168,13 @@ async function executeRun(
         { system: input.system, messages: input.messages, maxTokens: META_MAX_TOKENS, timeoutMs: META_TIMEOUT_MS },
       );
       if (!r.ok) {
-        if (r.kind === "no_key") return fail("모델 키 없음. 서버에 MODEL_API_KEY를 설정하세요.", 503);
-        if (r.kind === "timeout") return fail("모델 응답 시간 초과.", 502);
-        if (r.kind === "http") return fail(`모델 오류(상태 ${r.status ?? "?"}).`, 502);
-        return fail("모델 호출 실패.", 502);
+        if (r.kind === "no_key") return fail("모델 키 없음. 서버에 MODEL_API_KEY를 설정하세요.", 503, r.kind);
+        if (r.kind === "timeout") return fail("모델 응답 시간 초과.", 502, r.kind);
+        if (r.kind === "http") {
+          return fail(`모델 오류(상태 ${r.status ?? "?"}${r.detail ? `: ${r.detail}` : ""}).`, 502, `${r.kind}:${r.status ?? "?"}`);
+        }
+        if (r.kind === "network") return fail("모델 연결 실패.", 502, r.kind);
+        return fail(r.detail ? `모델 응답 오류: ${r.detail}.` : "모델 호출 실패.", 502, r.kind);
       }
       text = r.text;
       usageJson = JSON.stringify({ inputTokens: r.usage.inputTokens, outputTokens: r.usage.outputTokens });

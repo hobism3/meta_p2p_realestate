@@ -130,4 +130,20 @@ describe("meta 호출", () => {
     );
     assert.equal(r.kind, "timeout");
   });
+  it("오류 envelope 메시지를 살린다", async () => {
+    const r = await callMeta(
+      { system: "s", messages: [], maxTokens: 10, timeoutMs: 1000 },
+      { key: "k", fetchImpl: (async () => ({ ok: true, status: 200, json: async () => ({ error: { message: "quota exceeded" } }) })) },
+    );
+    assert.equal(r.kind, "bad_response");
+    assert.equal(r.detail, "quota exceeded");
+  });
+  it("http 오류 envelope 메시지를 살린다", async () => {
+    const r = await callMeta(
+      { system: "s", messages: [], maxTokens: 10, timeoutMs: 1000 },
+      { key: "k", fetchImpl: (async () => ({ ok: false, status: 429, json: async () => ({ error: { message: "slow down" } }) })) },
+    );
+    assert.equal(r.kind, "http");
+    assert.equal(r.detail, "slow down");
+  });
 });

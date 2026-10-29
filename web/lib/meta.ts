@@ -23,7 +23,7 @@ export interface MetaUsage {
 
 export type MetaResult =
   | { ok: true; text: string; usage: MetaUsage; latencyMs: number }
-  | { ok: false; kind: "no_key" | "timeout" | "http" | "network" | "bad_response"; status?: number; latencyMs: number };
+  | { ok: false; kind: "no_key" | "timeout" | "http" | "network" | "bad_response"; status?: number; detail?: string; latencyMs: number };
 
 type FetchImpl = (
   url: string,
@@ -54,6 +54,15 @@ export function parseChatResponse(data: unknown): { text: string; usage: MetaUsa
   if (!text) return null;
   const u = (d.usage ?? {}) as { prompt_tokens?: unknown; completion_tokens?: unknown };
   return { text, usage: { inputTokens: num(u.prompt_tokens), outputTokens: num(u.completion_tokens) } };
+}
+
+/** 오류 envelope에서 안전한 한 줄 메시지만 뽑는다. 키·대화 원문은 여기에 없다. */
+export function errorEnvelopeMessage(data: unknown): string {
+  if (!data || typeof data !== "object") return "";
+  const err = (data as { error?: unknown }).error;
+  const msg = typeof err === "string" ? err : (err as { message?: unknown } | null)?.message;
+  if (typeof msg !== "string") return "";
+  return msg.trim().slice(0, 150);
 }
 
 export interface MetaCallInput {
@@ -93,9 +102,15 @@ export async function callMeta(input: MetaCallInput, opts: MetaCallOptions = {})
       signal: ctrl.signal,
     });
     const latencyMs = Date.now() - started;
-    if (!r.ok) return { ok: false, kind: "http", status: r.status, latencyMs };
-    const parsed = parseChatResponse(await r.json().catch(() => null));
-    if (!parsed) return { ok: false, kind: "bad_response", status: r.status, latencyMs };
+    if (!r.ok) {
+      const detail = errorEnvelopeMessage(await r.json().catch(() => null));
+      return { ok: false, kind: "http", status: r.status, detail, latencyMs };
+    }
+    const raw = (await r.json().catch(() => null)) as unknown;
+    const parsed = parseChatResponse(raw);
+    if (!parsed) {
+      return { ok: false, kind: "bad_response", status: r.status, detail: errorEnvelopeMessage(raw), latencyMs };
+    }
     return { ok: true, text: parsed.text, usage: parsed.usage, latencyMs };
   } catch (e) {
     const latencyMs = Date.now() - started;

@@ -152,6 +152,7 @@ async function executeRun(
       Date.now() - started,
       runId,
     ]);
+    console.error(`[agent] run failed room=${roomId} provider=${provider} error=${error}`);
     return { ok: false, status, error, provider, model };
   };
   try {

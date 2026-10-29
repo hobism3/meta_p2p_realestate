@@ -11,8 +11,6 @@ import {
   type RoomMeta,
 } from "../../../lib/store";
 
-const AI_FAILURE_NOTICE = "AI 응답을 가져오지 못했습니다. 다시 시도해 주세요.";
-
 function aiName(tradeType: string | undefined): string {
   return tradeType === "매매" ? "AI 매도자" : "AI 임대인";
 }
@@ -63,9 +61,10 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
       const r = await invokeAgent(params.rid, triggerId);
       setLastProvider(r.provider);
       await refresh();
-    } catch {
+    } catch (e) {
       // 모델 실패를 성공처럼 표시하지 않는다. 사람 메시지는 이미 저장돼 있다.
-      setAiError(AI_FAILURE_NOTICE);
+      // 사유(키·원문 없음)까지 보여줘서 개발자도구 없이 원인을 알 수 있게 한다.
+      setAiError(`AI 응답을 가져오지 못했습니다(${e instanceof Error ? e.message : "오류"}). 다시 시도해 주세요.`);
     } finally {
       setAiPending(false);
     }
@@ -109,7 +108,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
         </p>
         {meta?.demo ? (
           <p className="meta">
-            AI 상대방과 대화 중입니다(시연{lastProvider ? `, ${lastProvider}` : ", mock"}). 실제 소유자가 아닙니다.
+            AI 상대방과 대화 중입니다(시연{lastProvider ? `, ${lastProvider}` : ""}). 실제 소유자가 아닙니다.
           </p>
         ) : null}
         {error ? <p className="error">{error}</p> : null}

@@ -6,18 +6,18 @@ import { bubbleFor, evaluateDemoDecision, isAgreed } from "../lib/agreement-serv
 
 describe("시연 AI 판정", () => {
   it("범위 안 가격은 동의한다", async () => {
-    const r = evaluateDemoDecision("매수 희망가", "38,500만원", 39000, { kind: "ranged", min: 37000, max: 39000 }, "human");
+    const r = evaluateDemoDecision("최종 매매가", "38,500만원", 39000, { kind: "ranged", min: 37000, max: 39000 }, "human");
     assert.equal(r.decision, "agree");
   });
   it("범위 밖 가격은 거절하고 범위를 밝힌다", async () => {
-    const r = evaluateDemoDecision("매수 희망가", "36,000만원", 39000, { kind: "ranged", min: 37000, max: 39000 }, "human");
+    const r = evaluateDemoDecision("최종 매매가", "36,000만원", 39000, { kind: "ranged", min: 37000, max: 39000 }, "human");
     assert.equal(r.decision, "refuse");
     assert.ok(r.reason.includes("37,000"));
   });
   it("협의 불가 매물은 정가 미만 거절한다", async () => {
-    const r = evaluateDemoDecision("매수 희망가", "900만원", 1000, { kind: "none" }, "human");
+    const r = evaluateDemoDecision("최종 매매가", "900만원", 1000, { kind: "none" }, "human");
     assert.equal(r.decision, "refuse");
-    const ok = evaluateDemoDecision("매수 희망가", "1,000만원", 1000, { kind: "none" }, "human");
+    const ok = evaluateDemoDecision("최종 매매가", "1,000만원", 1000, { kind: "none" }, "human");
     assert.equal(ok.decision, "agree");
   });
   it("AI 자신의 제안은 동의한다", async () => {
@@ -26,11 +26,11 @@ describe("시연 AI 판정", () => {
   });
   it("미정 정책은 수락 발언이 있을 때만 동의한다", async () => {
     const at = "2026-10-29T00:00:00+09:00";
-    const wait = evaluateDemoDecision("매수 희망가", "70,000만원", 72000, { kind: "undecided" }, "human", {
+    const wait = evaluateDemoDecision("최종 매매가", "70,000만원", 72000, { kind: "undecided" }, "human", {
       aiTexts: ["7억은 어렵습니다"], aiDated: [{ text: "7억은 어렵습니다", at }], visitDate: "", visitTime: "",
     });
     assert.equal(wait.decision, null);
-    const ok = evaluateDemoDecision("매수 희망가", "71,000만원", 72000, { kind: "undecided" }, "human", {
+    const ok = evaluateDemoDecision("최종 매매가", "71,000만원", 72000, { kind: "undecided" }, "human", {
       aiTexts: ["7억1천에 가능합니다"],
       aiDated: [{ text: "7억1천에 가능합니다", at }],
       visitDate: "", visitTime: "",

@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { getDal } from "./dal.ts";
 import { now } from "./db.ts";
-import { disclosureLabel, draftReply, MOCK_PROMPT_VERSION, type AgentSide } from "./agent.ts";
+import { disclosureLabel, draftReply, MOCK_PROMPT_VERSION, type AgentSide, type Scenario } from "./agent.ts";
+import { FINAL_PRICE_NAME, offerHistoryName, wantHistoryName, parseJeonseValue, parseRentBundleValue, parseRentFields } from "./rent.ts";
+import type { TradeType } from "./listings.ts";
 import { demoName, isDemoListing, listingForDemo, scenarioFor, type DemoListing } from "./demo.ts";
 import { getPersona, type ListingPersona, type NegotiationPolicy } from "./personas.ts";
 import {
@@ -74,19 +76,38 @@ function fmtVisitDate(isoDate: string): string {
  * 방의 최신 조건·일정을 모델용 한 줄 요약으로 만든다. 매수 희망·매도 제안·확인 여부를
  * 구분하고, 계약금 10% 기준액은 현재 협상가에서 서버가 직접 계산한다.
  */
-export function formatDealState(conditions: DealStateCondition[], visits: DealStateVisit[]): string {
+function depositBase(value: string, tradeType: TradeType): number | null {
+  if (tradeType === "매매") return parseManwonInt(value);
+  const f = parseRentFields(value);
+  if (f.deposit !== null) return f.deposit;
+  return parseManwonInt(value);
+}
+
+export function formatDealState(
+  conditions: DealStateCondition[],
+  visits: DealStateVisit[],
+  tradeType: TradeType = "매매",
+): string {
   const lines: string[] = [];
   const byName = new Map(conditions.map((c) => [c.name, c]));
-  for (const n of ["최초가", "매수 희망가", "매도 제안가"]) {
+  const priceNames =
+    tradeType === "매매"
+      ? ["최초가", "매수 희망가", "매도 제안가"]
+      : ["최초가", wantHistoryName(tradeType), offerHistoryName(tradeType), FINAL_PRICE_NAME[tradeType]];
+  for (const n of priceNames) {
     const c = byName.get(n);
     if (c && c.value) lines.push(`- ${n}: ${c.value}${c.confirmedBy ? "(사용자 확인됨)" : "(미확정)"}`);
   }
   const dep = byName.get("계약금");
   if (dep && dep.value) lines.push(`- 계약금: ${dep.value}${dep.confirmedBy ? "(사용자 확인됨)" : "(제안)"}`);
-  for (const n of ["매도 제안가", "매수 희망가", "최초가"]) {
+  const baseNames =
+    tradeType === "매매"
+      ? ["매도 제안가", "매수 희망가", "최초가"]
+      : [FINAL_PRICE_NAME[tradeType], offerHistoryName(tradeType), wantHistoryName(tradeType), "최초가"];
+  for (const n of baseNames) {
     const c = byName.get(n);
     const cv = c?.value ?? "";
-    const base = cv ? parseManwonInt(cv) : null;
+    const base = cv ? depositBase(cv, tradeType) : null;
     if (base) {
       lines.push(`- 계약금 10% 기준액: ${Math.round(base / 10).toLocaleString()}만원(${n} ${cv} 기준)`);
       break;
@@ -170,6 +191,7 @@ async function scenarioForRoom(
   side: AgentSide;
   facts: Record<string, string>;
   negotiable: Record<string, { min: number; max: number; unit: string }>;
+  lease: Scenario["lease"];
 } | null> {
   const agentRow = await getDal().get("SELECT * FROM room_agents WHERE room_id = ?", [roomId]);
   if (agentRow) {
@@ -193,11 +215,12 @@ async function scenarioForRoom(
       side,
       facts,
       negotiable,
+      lease: undefined,
     };
   }
   if (!isDemoListing(listing)) return null;
   const s = scenarioFor(listing);
-  return { persona: s.persona, label: demoName(listing.tradeType), side: s.side, facts: s.facts, negotiable: s.negotiable };
+  return { persona: s.persona, label: demoName(listing.tradeType), side: s.side, facts: s.facts, negotiable: s.negotiable, lease: s.lease };
 }
 
 async function executeRun(
@@ -214,6 +237,9 @@ async function executeRun(
   model: string,
   voice: ListingPersona | undefined,
   title: string,
+  lease: Scenario["lease"],
+  triggerAt: string,
+  tradeType: TradeType,
 ): Promise<RunOk | RunErr> {
   const started = Date.now();
   const fail = async (error: string, status: number, logExtra = ""): Promise<RunErr> => {
@@ -254,6 +280,7 @@ async function executeRun(
           visit_time: String(r.visit_time ?? ""),
           status: String(r.status ?? ""),
         })),
+        tradeType,
       );
       const input = buildAgentInput(persona, label, facts, negotiable, history, voice ?? undefined, title, dealState || undefined);
       const r = await callMeta(
@@ -271,7 +298,27 @@ async function executeRun(
       text = r.text;
       usageJson = JSON.stringify({ inputTokens: r.usage.inputTokens, outputTokens: r.usage.outputTokens });
     } else {
-      text = draftReply({ persona, side, facts, negotiable }, triggerText).text;
+      let leaseBaseline: { deposit: number | null; monthlyRent: number | null } | undefined;
+      if (lease) {
+        const baseRows = (await getDal().all(
+          "SELECT name, value FROM room_conditions WHERE room_id = ? AND name IN (?, ?)",
+          [roomId, wantHistoryName(lease.tradeType), offerHistoryName(lease.tradeType)],
+        )) as { name: string; value: string }[];
+        const pick = (side: "human" | "demo"): { deposit: number | null; monthlyRent: number | null } => {
+          const nm = side === "human" ? wantHistoryName(lease.tradeType) : offerHistoryName(lease.tradeType);
+          const row = baseRows.find((r) => String(r.name) === nm);
+          const v = row ? String(row.value ?? "") : "";
+          const b = parseRentBundleValue(v);
+          if (b) return b;
+          const j = parseJeonseValue(v);
+          if (j !== null) return { deposit: j, monthlyRent: null };
+          return parseRentFields(v);
+        };
+        const h = pick("human");
+        const o = pick("demo");
+        leaseBaseline = { deposit: h.deposit ?? o.deposit, monthlyRent: h.monthlyRent ?? o.monthlyRent };
+      }
+      text = draftReply({ persona, side, facts, negotiable, lease }, triggerText, { refISO: triggerAt, leaseBaseline }).text;
     }
     const messageId = randomUUID();
     const dal = getDal();
@@ -307,8 +354,9 @@ export async function runDemoAgent(opts: {
   const dal = getDal();
   let triggerId: string;
   let triggerText: string;
+  let triggerAt: string;
   if (opts.triggerMessageId) {
-    const t = await dal.get("SELECT id, text, author_type FROM messages WHERE id = ? AND room_id = ?", [
+    const t = await dal.get("SELECT id, text, author_type, created_at FROM messages WHERE id = ? AND room_id = ?", [
       opts.triggerMessageId,
       opts.roomId,
     ]);
@@ -316,8 +364,9 @@ export async function runDemoAgent(opts: {
     if (String(t.author_type ?? "human") !== "human") return { ok: false, status: 409, error: "트리거 없음", provider, model };
     triggerId = String(t.id);
     triggerText = String(t.text ?? "");
+    triggerAt = String(t.created_at ?? "");
   } else {
-    const last = await dal.get("SELECT id, text, author_type FROM messages WHERE room_id = ? ORDER BY created_at DESC LIMIT 1", [
+    const last = await dal.get("SELECT id, text, author_type, created_at FROM messages WHERE room_id = ? ORDER BY created_at DESC LIMIT 1", [
       opts.roomId,
     ]);
     if (!last || String(last.author_type ?? "human") !== "human") {
@@ -325,9 +374,12 @@ export async function runDemoAgent(opts: {
     }
     triggerId = String(last.id);
     triggerText = String(last.text ?? "");
+    triggerAt = String(last.created_at ?? "");
   }
   const listing = await listingForDemo(room.listing_id);
   if (!listing) return { ok: false, status: 404, error: "매물 없음", provider, model };
+  const dealTradeType: TradeType =
+    listing.tradeType === "전세" || listing.tradeType === "월세" ? listing.tradeType : "매매";
   const resolved = await scenarioForRoom(opts.roomId, listing);
   if (!resolved) return { ok: false, status: 404, error: "시연 없음", provider, model };
   const voice = getPersona(room.listing_id);
@@ -362,7 +414,7 @@ export async function runDemoAgent(opts: {
       return executeRun(
         String(existing.id), opts.roomId, room.listing_id, triggerText,
         resolved.label, resolved.side, resolved.persona, resolved.facts, resolved.negotiable, provider, model,
-        voice, title,
+        voice, title, resolved.lease, triggerAt, dealTradeType,
       );
     }
     return { ok: false, status: 409, error: "처리 중", provider, model };
@@ -370,6 +422,6 @@ export async function runDemoAgent(opts: {
   return executeRun(
     runId, opts.roomId, room.listing_id, triggerText,
     resolved.label, resolved.side, resolved.persona, resolved.facts, resolved.negotiable, provider, model,
-    voice, title,
+    voice, title, resolved.lease, triggerAt, dealTradeType,
   );
 }

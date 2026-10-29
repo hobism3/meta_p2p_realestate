@@ -25,8 +25,8 @@ describe("mock 분석", () => {
     assert.equal(r.upserts[0].name, "매도 제안가");
     assert.equal(r.upserts[0].proposer, "demo");
   });
-  it("AI 수락 뒤 사람 질문은 상태를 다시 답한다", async () => {
-    // AI 답(단서 없음) 뒤 사람 메시지를 트리거로 넘기면 이전 제안을 되묻지 않는다.
+  it("AI 수락 뒤 사람 질문은 상태를 답하고 최종 후보를 올린다", async () => {
+    // 양측이 맞춘 값은 질문 트리거에서도 최종 후보 1건이 된다. 희망 재안내는 하지 않는다.
     const r = analyzeMock(T("매매가 얼마인가요?"), cur({
       "매수 희망가": wish("44,500만원"),
       "매도 제안가": { name: "매도 제안가", value: "44,500만원", proposer: "demo", status: "proposed" },
@@ -34,8 +34,12 @@ describe("mock 분석", () => {
       { id: "h1", text: "44500만원에 합시다", author_type: "human" },
       { id: "a1", text: "시연용으로 가격 44500만원에 가능합니다. (미확정, 사람 확인 필요)", author_type: "demo_agent" },
     ]);
-    assert.equal(r.upserts.length, 0);
+    const finals = r.upserts.filter((u) => u.name === "최종 매매가");
+    assert.equal(finals.length, 1);
+    assert.equal(finals[0].value, "44,500만원");
+    assert.ok(!r.upserts.some((u) => u.name === "매수 희망가" || u.name === "매도 제안가"));
     assert.ok(r.bubble && r.bubble.includes("매수 희망가는 44,500만원"));
+    assert.ok(r.bubble && !r.bubble.includes("새로 제안됐어요"));
   });
   it("같은 값은 조용하다", async () => {
     const r = analyzeMock(T("44000만원에 합시다"), cur({ "매수 희망가": wish("44,000만원") }));

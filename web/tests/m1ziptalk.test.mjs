@@ -191,19 +191,34 @@ describe("VS-3A 조건 기록", () => {
   });
 });
 
-describe("VS-3B 사용자 확인", () => {
-  it("현재 버전을 확인한다", async () => {
+describe("VS-3B 구형 확인 경로 제거", () => {
+  it("가격 단독 확인은 410이다", async () => {
     const r = await api(`/api/rooms/${roomA}/conditions/confirm`, {
       method: "POST", body: JSON.stringify({ name: "매수 희망가" }),
     }, HUMAN);
-    assert.equal(r.status, 200);
-    assert.equal(r.body.version, 2);
-    const c = await api(`/api/rooms/${roomA}/conditions`, {}, HUMAN);
-    const w = c.body.conditions.find((x) => x.name === "매수 희망가");
-    assert.ok(w.confirmed_by);
-    assert.equal(w.confirmed_version, 2);
+    assert.equal(r.status, 410);
   });
-  it("값이 바뀌면 확인이 무효가 된다", async () => {
+  it("일정 단독 확인도 410이다", async () => {
+    const r = await api(`/api/rooms/${roomA}/conditions/confirm`, {
+      method: "POST", body: JSON.stringify({ name: "방문일" }),
+    }, HUMAN);
+    assert.equal(r.status, 410);
+  });
+  it("버전 지정도 우회가 아니라 410이다", async () => {
+    const r = await api(`/api/rooms/${roomA}/conditions/confirm`, {
+      method: "POST", body: JSON.stringify({ name: "매수 희망가", version: 1 }),
+    }, HUMAN);
+    assert.equal(r.status, 410);
+  });
+  it("비멤버는 403이다", async () => {
+    assert.equal((await api(`/api/rooms/${roomA}/conditions/confirm`, {
+      method: "POST", body: JSON.stringify({ name: "매수 희망가" }),
+    }, STRANGER)).status, 403);
+    assert.equal((await api(`/api/rooms/${roomA}/conditions/confirm`, {
+      method: "POST", body: JSON.stringify({ name: "매수 희망가" }),
+    }, OWNER)).status, 403);
+  });
+  it("값이 바뀌면 이력이 남는다", async () => {
     const t = await say(roomA, "43000만원에 합시다");
     const z = await zip(roomA, t);
     assert.equal(z.status, 201);
@@ -211,19 +226,6 @@ describe("VS-3B 사용자 확인", () => {
     const w = c.body.conditions.find((x) => x.name === "매수 희망가");
     assert.equal(w.value, "43,000만원");
     assert.equal(w.version, 3);
-    assert.ok(w.confirmed_by);
-    assert.ok(w.confirmed_version < w.version);
-  });
-  it("없는 조건은 404, 비멤버 확인은 403이다", async () => {
-    assert.equal((await api(`/api/rooms/${roomA}/conditions/confirm`, {
-      method: "POST", body: JSON.stringify({ name: "없는 조건" }),
-    }, HUMAN)).status, 404);
-    assert.equal((await api(`/api/rooms/${roomA}/conditions/confirm`, {
-      method: "POST", body: JSON.stringify({ name: "매수 희망가" }),
-    }, STRANGER)).status, 403);
-    assert.equal((await api(`/api/rooms/${roomA}/conditions/confirm`, {
-      method: "POST", body: JSON.stringify({ name: "매수 희망가" }),
-    }, OWNER)).status, 403);
   });
 });
 
@@ -267,25 +269,21 @@ describe("VS-3C 방문 일정", () => {
     const v = await api(`/api/rooms/${roomA}/visits`, {}, HUMAN);
     assert.equal(v.body.length, 1);
   });
-  it("일정을 확인하면 수락되고 조건도 확인된다", async () => {
+  it("일정을 확인하면 수락된다", async () => {
     const v = await api(`/api/rooms/${roomA}/visits`, {}, HUMAN);
     const id = v.body[0].id;
     const p = await api(`/api/rooms/${roomA}/visits/${id}`, {
       method: "PATCH", body: JSON.stringify({ status: "수락됨" }),
     }, HUMAN);
     assert.equal(p.status, 200);
-    const c = await api(`/api/rooms/${roomA}/conditions/confirm`, {
-      method: "POST", body: JSON.stringify({ name: "방문일" }),
-    }, HUMAN);
-    assert.equal(c.status, 200);
     const g = await api(`/api/rooms/${roomA}/visits`, {}, HUMAN);
     assert.equal(g.body.find((x) => x.id === id).status, "수락됨");
   });
-  it("구버전 확인은 409다", async () => {
+  it("구버전 확인도 410이다", async () => {
     const r = await api(`/api/rooms/${roomA}/conditions/confirm`, {
       method: "POST", body: JSON.stringify({ name: "매수 희망가", version: 1 }),
     }, HUMAN);
-    assert.equal(r.status, 409);
+    assert.equal(r.status, 410);
   });
   it("모호한 날짜는 행을 만들지 않는다", async () => {
     const t = await say(roomB, "다음 주에 방문하고 싶어요");

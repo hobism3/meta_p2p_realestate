@@ -86,7 +86,8 @@ export function getPersona(listingId: string): ListingPersona | undefined {
 export function policyToNegotiable(
   policy: NegotiationPolicy,
   unit: string,
+  field = "가격",
 ): Record<string, { min: number; max: number; unit: string }> {
   if (policy.kind !== "ranged") return {};
-  return { 가격: { min: policy.min, max: policy.max, unit } };
+  return { [field]: { min: policy.min, max: policy.max, unit } };
 }

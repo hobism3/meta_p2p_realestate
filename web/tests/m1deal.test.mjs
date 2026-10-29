@@ -195,10 +195,10 @@ describe("VS-4B 실대화 회귀", () => {
     const last = bubbles[bubbles.length - 1];
     assert.ok(last.text.includes("인도일"), "잔금일과 입주 월이 다르면 인도일 확인을 안내해야 한다");
   });
-  it("사용자가 매수 희망가를 확인한다", async () => {
+  it("구형 단독 확인은 410이다(합의 카드로만 확정한다)", async () => {
     const r = await api(`/api/rooms/${room}/conditions/confirm`, {
       method: "POST", body: JSON.stringify({ name: "매수 희망가" }),
     }, HUMAN);
-    assert.equal(r.status, 200);
+    assert.equal(r.status, 410);
   });
 });

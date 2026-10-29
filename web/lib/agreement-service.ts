@@ -5,6 +5,14 @@ import { isDemoListing, listingForDemo } from "./demo.ts";
 import { getPersona, type NegotiationPolicy } from "./personas.ts";
 import { parseManwonInt, parseVisitProposal } from "./visit-dates.ts";
 import { extractPriceManwon } from "./ziptalk.ts";
+import {
+  aiAcceptsRentBundle,
+  aiRefusesRentBundle,
+  parseJeonseValue,
+  parseRentBundleValue,
+  sideLabels,
+} from "./rent.ts";
+import type { TradeType } from "./listings.ts";
 
 /**
  * VS-4C 양측 합의. room_conditions·history는 그대로 두고 제안/승인을 별도로 둔다.
@@ -14,9 +22,14 @@ import { extractPriceManwon } from "./ziptalk.ts";
  * - 사람 동의는 인증 토큰 신원으로만 기록한다(위조 금지).
  */
 
+/**
+ * 카드 생성 가능 이름. 희망가·역제안(매수 희망가·매도 제안가·임차 희망 조건·임대 제안 조건)과
+ * 최초가는 이력 전용이며 카드가 되지 않는다. 최종 후보 1건에만 동의 버튼이 있다.
+ */
 export const PROPOSABLE = [
-  "매수 희망가",
-  "매도 제안가",
+  "최종 매매가",
+  "최종 전세보증금",
+  "월세 조건",
   "계약금",
   "계약일",
   "잔금일",
@@ -25,6 +38,7 @@ export const PROPOSABLE = [
   "방문일",
   "옵션",
   "수리 요청",
+  "관리비",
 ];
 
 export type ProposalStatus = "proposed" | "agreed" | "refused" | "superseded";
@@ -90,9 +104,12 @@ export function evaluateDemoDecision(
   policy: NegotiationPolicy | undefined,
   createdBy: string,
   ctx: DemoContext = { aiTexts: [], aiDated: [], visitDate: "", visitTime: "" },
+  tradeType: TradeType = "매매",
 ): { decision: "agree" | "refuse" | null; reason: string } {
-  if (createdBy === "demo" && name !== "매수 희망가") return { decision: "agree", reason: "AI 시연 제안" };
-  if (name === "매수 희망가") {
+  if (createdBy === "demo" && name !== "최종 매매가" && name !== "최종 전세보증금" && name !== "월세 조건") {
+    return { decision: "agree", reason: "AI 시연 제안" };
+  }
+  if (name === "최종 매매가") {
     const n = parseManwonInt(value);
     if (n === null) return { decision: "refuse", reason: "AI 시연: 금액을 알 수 없습니다." };
     if (policy?.kind === "ranged") {
@@ -107,8 +124,26 @@ export function evaluateDemoDecision(
     if (aiAcceptsPrice(ctx.aiDated, n)) return { decision: "agree", reason: "AI 시연 동의" };
     return { decision: null, reason: "" };
   }
-  if (name === "매도 제안가") return { decision: "agree", reason: "AI 시연 동의" };
   if (name === "계약금") return { decision: "agree", reason: "AI 시연 동의" };
+  if (name === "최종 전세보증금" || name === "월세 조건") {
+    const bundle = name === "월세 조건" ? parseRentBundleValue(value) : null;
+    const deposit = bundle ? bundle.deposit : parseJeonseValue(value);
+    const rent = bundle ? bundle.monthlyRent : null;
+    // 묶음이 아니면 보류한다. 파싱 실패·모호함은 거절이 아니다.
+    if (deposit === null || (name === "월세 조건" && rent === null)) return { decision: null, reason: "" };
+    if (policy?.kind === "ranged" && (deposit < policy.min || deposit > policy.max)) {
+      return { decision: "refuse", reason: `AI 시연 거절: 협의 범위(${fmtRange(policy.min, policy.max)})를 벗어났습니다.` };
+    }
+    if (policy?.kind === "none" && deposit < listPriceManwon) {
+      return { decision: "refuse", reason: "AI 시연 거절: 협의 불가 매물입니다." };
+    }
+    // 동일 조건의 모든 값을 명확하게 수락한 근거가 있을 때만 시연 동의한다.
+    if (aiAcceptsRentBundle(ctx.aiDated, deposit, rent)) return { decision: "agree", reason: "AI 시연 동의" };
+    if (aiRefusesRentBundle(ctx.aiDated, deposit, rent)) {
+      return { decision: "refuse", reason: "AI 시연 거절: 같은 조건을 받아들이지 않았습니다." };
+    }
+    return { decision: null, reason: "" };
+  }
   const joined = ctx.aiTexts.join("\n");
   // 증거가 없으면 대기(null)한다. 섣불리 동의하지도 거절하지도 않는다.
   // AI가 다른 값을 말했을 때만 거절한다.
@@ -167,11 +202,16 @@ export function conflictingVisit(aiJoined: string, month: number, day: number): 
   return false;
 }
 
-async function roomSides(roomId: string, demo: boolean): Promise<Array<{ key: string; label: string }>> {
+async function roomSides(
+  roomId: string,
+  demo: boolean,
+  tradeType: TradeType = "매매",
+): Promise<Array<{ key: string; label: string }>> {
+  const L = sideLabels(tradeType);
   if (demo) {
     return [
-      { key: "human", label: "매수자" },
-      { key: "demo", label: "AI 매도자(시연)" },
+      { key: "human", label: L.human },
+      { key: "demo", label: L.demo },
     ];
   }
   const members = (await getDal().all("SELECT user_id, role FROM room_members WHERE room_id = ?", [roomId])) as {
@@ -180,7 +220,7 @@ async function roomSides(roomId: string, demo: boolean): Promise<Array<{ key: st
   }[];
   return members.slice(0, 8).map((m) => ({
     key: `human:${String(m.user_id)}`,
-    label: String(m.role) === "landlord" ? "매도자" : String(m.role) === "seller" ? "매도자" : "매수자",
+    label: tradeType === "매매" ? (String(m.role) === "tenant" ? "매수자" : "매도자") : String(m.role) === "landlord" ? "임대인" : "임차인",
   }));
 }
 
@@ -219,6 +259,8 @@ export async function getProposals(
     | undefined;
   const listing = room ? await listingForDemo(String(room.listing_id ?? "")) : null;
   const demo = !!listing && isDemoListing(listing);
+  const tradeType: TradeType =
+    listing?.tradeType === "전세" ? "전세" : listing?.tradeType === "월세" ? "월세" : "매매";
   const rows = (await dal.all("SELECT * FROM room_proposals WHERE room_id = ? ORDER BY created_at ASC", [roomId])) as Record<
     string,
     string | number
@@ -250,7 +292,7 @@ export async function getProposals(
     ])) as { actor_id: string; actor_type: string; decision: string }[];
     approvals[p.id] = ars.map((a) => ({ actor_id: String(a.actor_id), actor_type: String(a.actor_type), decision: String(a.decision) }));
   }
-  return { proposals, approvals, sides: await roomSides(roomId, demo), demo };
+  return { proposals, approvals, sides: await roomSides(roomId, demo, tradeType), demo };
 }
 
 export interface CreatedProposal extends Proposal {
@@ -303,6 +345,8 @@ export async function createProposals(
   if (!room) return [];
   const listing = await listingForDemo(String(room.listing_id ?? ""));
   const demo = !!listing && isDemoListing(listing);
+  const tradeType: TradeType =
+    listing?.tradeType === "전세" ? "전세" : listing?.tradeType === "월세" ? "월세" : "매매";
   const persona = listing ? getPersona(listing.id) : undefined;
   const listPrice = listing ? (listing.tradeType === "매매" ? listing.salePrice : listing.deposit) : 0;
   const aiDated = demo
@@ -317,6 +361,16 @@ export async function createProposals(
   const out: CreatedProposal[] = [];
   for (const it of items) {
     if (!PROPOSABLE.includes(it.name) || !it.value) continue;
+    // 희망·역제안은 카드가 되지 않는다. 최종 후보는 해당 거래유형에만 만든다.
+    if (it.name === "최종 매매가" && tradeType !== "매매") continue;
+    if (it.name === "최종 전세보증금") {
+      if (tradeType !== "전세" || parseJeonseValue(it.value) === null) continue;
+    }
+    if (it.name === "월세 조건") {
+      if (tradeType !== "월세") continue;
+      const b = parseRentBundleValue(it.value);
+      if (!b || b.deposit === null || b.monthlyRent === null) continue;
+    }
     // 방문일은 시간이 확정될 때만 카드가 된다. 정오·자정 단독 등 모호하면 묻기만 한다.
     if (it.name === "방문일" && !parseVisitProposal(it.value, it.refISO || now())?.time) continue;
     const dup = (await tx.get(
@@ -392,7 +446,7 @@ export async function createProposals(
         aiDated,
         visitDate,
         visitTime,
-      });
+      }, tradeType);
       demoDecision = ev.decision;
       if (ev.decision === "agree") {
         await tx.run(
@@ -514,12 +568,18 @@ export async function decideProposal(
   }
 }
 
-export function bubbleFor(created: CreatedProposal[]): string | null {
+export function bubbleFor(created: CreatedProposal[], tradeType: TradeType = "매매"): string | null {
   if (created.length === 0) return null;
   const c = created[0];
-  const short = c.name.replace(/일$/, "");
-  let s = `${c.name}: ${c.value} — ${short} 확인 카드를 만들었어요. 양측이 모두 동의해야 확정됩니다.`;
-  if (c.demoDecision === "refuse" && c.reason) s += ` AI 매도자(시연)가 거절했어요(${c.reason}).`;
+  const L = sideLabels(tradeType);
+  let s: string;
+  if (c.name === "최종 매매가" || c.name === "최종 전세보증금" || c.name === "월세 조건") {
+    s = `${c.value} 조건에 동의할까요? 양측이 모두 동의해야 확정됩니다(AI 시연 동의는 실제 계약이 아닙니다).`;
+  } else {
+    const short = c.name.replace(/일$/, "");
+    s = `${c.name}: ${c.value} — ${short} 확인 카드를 만들었어요. 양측이 모두 동의해야 확정됩니다.`;
+  }
+  if (c.demoDecision === "refuse" && c.reason) s += ` ${L.demo}가 거절했어요(${c.reason}).`;
   if (created.length > 1) s += ` 외 ${created.length - 1}건은 거래 현황에서 확인해 주세요.`;
   return s;
 }

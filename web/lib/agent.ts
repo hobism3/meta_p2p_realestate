@@ -4,6 +4,9 @@
  * 실제 Muse 호출과 구분되도록 provider는 항상 "mock"이다.
  */
 
+import { parseVisitProposal } from "./visit-dates.ts";
+import { parseRentFields } from "./rent.ts";
+
 export type AgentSide = "seller" | "buyer";
 
 /**
@@ -19,6 +22,7 @@ export interface Scenario {
   side: AgentSide;
   facts: Record<string, string>;
   negotiable: Record<string, { min: number; max: number; unit: string }>;
+  lease?: { tradeType: "전세" | "월세"; policy: "none" | "undecided" | "ranged"; min: number; max: number; deposit: number; rent: number };
 }
 
 export interface AgentReply {
@@ -46,7 +50,11 @@ function mentions(text: string, ...keys: string[]): boolean {
  * 사람 메시지 1건에 대한 AI 응답 초안 1건. 결정적 규칙 기반이라 테스트 가능하다.
  * 중요 조건은 자동 확정하지 않는다(confirmed는 항상 false, 범위 밖은 needsHuman).
  */
-export function draftReply(scenario: Scenario, humanText: string): AgentReply {
+export function draftReply(
+  scenario: Scenario,
+  humanText: string,
+  opts?: { refISO?: string; leaseBaseline?: { deposit: number | null; monthlyRent: number | null } },
+): AgentReply {
   const t = humanText.trim();
   if (mentions(t, "등급", "판결", "소송", "법률", "특약")) {
     return {
@@ -54,6 +62,42 @@ export function draftReply(scenario: Scenario, humanText: string): AgentReply {
       proposal: null,
       needsHuman: true,
     };
+  }
+  if (scenario.lease) {
+    let f = parseRentFields(t);
+    if (f.deposit === null && f.monthlyRent === null && scenario.lease.tradeType === "전세" && /(제안|깎|네고|합시다|어때|협의)/.test(t)) {
+      const bare = findNumber(t);
+      if (bare !== null) f = { deposit: bare, monthlyRent: null };
+    }
+    if (f.deposit !== null || f.monthlyRent !== null) {
+      const L = scenario.lease;
+      // 매물 정가가 아니라 현재 협의 중인 값을 기준으로 받는다(협상 기억).
+      const dep = f.deposit ?? opts?.leaseBaseline?.deposit ?? L.deposit;
+      const rent = L.tradeType === "월세" ? (f.monthlyRent ?? opts?.leaseBaseline?.monthlyRent ?? L.rent) : 0;
+      let ok = L.policy === "undecided";
+      if (L.policy === "ranged") ok = dep >= L.min && dep <= L.max;
+      if (L.policy === "none") ok = dep >= L.deposit && rent >= L.rent;
+      if (ok) {
+        return {
+          text: L.tradeType === "월세"
+            ? `시연용으로 보증금 ${dep.toLocaleString()}만원에 월세 ${rent.toLocaleString()}만원에 가능합니다. (미확정, 사람 확인 필요)`
+            : `시연용으로 전세보증금 ${dep.toLocaleString()}만원에 가능합니다. (미확정, 사람 확인 필요)`,
+          proposal: null,
+          needsHuman: false,
+        };
+      }
+      return { text: "그 금액은 어렵습니다.", proposal: null, needsHuman: true };
+    }
+  }
+  if (/(방문|보러|구경)/.test(t)) {
+    const v = opts?.refISO ? parseVisitProposal(t, opts.refISO) : null;
+    if (v && v.time) {
+      return {
+        text: `시연용으로 ${v.display}에 가능합니다. (미확정, 사람 확인 필요)`,
+        proposal: null,
+        needsHuman: false,
+      };
+    }
   }
   if (mentions(t, "얼마", "가격", "보증금", "월세", "매매가")) {
     const field = mentions(t, "월세") ? "월세" : mentions(t, "보증금") ? "보증금" : "가격";

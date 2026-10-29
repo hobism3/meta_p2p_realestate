@@ -83,14 +83,33 @@ export function scenarioFor(l: DemoListing): Scenario {
     면적: `${l.area}㎡`,
     옵션: l.options.length > 0 ? l.options.join(", ") : "없음",
   };
+  if (l.tradeType === "월세") {
+    facts["보증금"] = `${l.deposit.toLocaleString()}만원`;
+    facts["월세"] = `${l.rent.toLocaleString()}만원`;
+  }
+  if (l.tradeType === "전세") facts["전세보증금"] = `${l.deposit.toLocaleString()}만원`;
   if (l.description.trim()) facts["설명"] = l.description.trim();
   // 명시 정책만 쓴다. blanket 90~100% 방식은 폐지. persona 없는 매물은 기존 방식 유지.
+  // 임대차 범위 정책은 보증금 기준이다(월세 단독 언급과 섞지 않는다).
+  const leaseKey = l.tradeType === "매매" ? "가격" : "보증금";
   const negotiable: Scenario["negotiable"] = persona
-    ? policyToNegotiable(persona.policy, "만원")
+    ? policyToNegotiable(persona.policy, "만원", leaseKey)
     : price > 0
-      ? { 가격: { min: Math.round(price * 0.9), max: price, unit: "만원" } }
+      ? { [leaseKey]: { min: Math.round(price * 0.9), max: price, unit: "만원" } }
       : {};
-  return { persona: persona ? persona.name : demoName(l.tradeType), side: "seller", facts, negotiable };
+  const leaseTrade = l.tradeType === "전세" || l.tradeType === "월세" ? l.tradeType : null;
+  const lease: Scenario["lease"] =
+    leaseTrade === null
+      ? undefined
+      : {
+          tradeType: leaseTrade,
+          policy: persona ? persona.policy.kind : "undecided",
+          min: persona && persona.policy.kind === "ranged" ? persona.policy.min : 0,
+          max: persona && persona.policy.kind === "ranged" ? persona.policy.max : 0,
+          deposit: l.deposit,
+          rent: l.rent,
+        };
+  return { persona: persona ? persona.name : demoName(l.tradeType), side: "seller", facts, negotiable, lease };
 }
 
 export function moveInText(moveIn: string): string {

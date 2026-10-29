@@ -14,6 +14,22 @@ import {
 import { isDemoListing, listingForDemo } from "./demo.ts";
 import { getRoom } from "./rooms.ts";
 import { bubbleFor, createProposals } from "./agreement-service.ts";
+import {
+  FINAL_PRICE_NAME,
+  FINALIZABLE,
+  extractAllManwon,
+  formatJeonseDeposit,
+  formatRentBundle,
+  formatRentPartial,
+  offerHistoryName,
+  parseJeonseValue,
+  parseRentBundleValue,
+  parseRentFields,
+  rentValueSupported,
+  wantHistoryName,
+  type RentFields,
+} from "./rent.ts";
+import type { TradeType } from "./listings.ts";
 import { resolveProvider, type DemoProvider } from "./agent-service.ts";
 
 /**
@@ -101,6 +117,7 @@ function isGreeting(text: string): boolean {
 export function depositAmount(
   text: string,
   current: Map<string, StoredCondition>,
+  tradeType: TradeType = "매매",
 ): { value: string; note: string } | null {
   if (!PRICE_MARKERS.test(text)) return null;
   const flat = text.match(/계약금?\s*([\d,]+)\s*만\s*원/);
@@ -113,9 +130,13 @@ export function depositAmount(
   if (pct) {
     const p = parseFloat(pct[1]);
     if (!Number.isFinite(p) || p <= 0 || p >= 100) return null;
-    for (const n of ["매도 제안가", "매수 희망가", "최초가"]) {
+    const baseOrder =
+      tradeType === "매매"
+        ? ["매도 제안가", "매수 희망가", "최초가"]
+        : [FINAL_PRICE_NAME[tradeType], offerHistoryName(tradeType), wantHistoryName(tradeType), "최초가"];
+    for (const n of baseOrder) {
       const cv = current.get(n)?.value ?? "";
-      const base = cv ? parseManwonInt(cv) : null;
+      const base = cv ? (tradeType === "매매" ? parseManwonInt(cv) : (parseRentFields(cv).deposit ?? parseManwonInt(cv))) : null;
       if (base) {
         return { value: priceText(Math.round((base * p) / 100)), note: `${cv}의 ${pct[1]}%` };
       }
@@ -127,11 +148,68 @@ export function depositAmount(
 
 const VISIT_WORDS = ["방문", "보러", "구경", "보실 수 있"];
 
+interface CandMsg {
+  id: string;
+  text: string;
+  author_type: string;
+}
+
+/** 이력 값(묶음·전세·부분 표기)을 필드로 되돌린다. */
+function parseHistoryRent(value: string): RentFields {
+  const b = parseRentBundleValue(value);
+  if (b) return b;
+  const j = parseJeonseValue(value);
+  if (j !== null) return { deposit: j, monthlyRent: null };
+  return parseRentFields(value);
+}
+
+function sideRentFields(
+  side: "human" | "demo",
+  tradeType: TradeType,
+  current: Map<string, StoredCondition>,
+  upserts: ConditionUpsert[],
+): RentFields {
+  const name = side === "human" ? wantHistoryName(tradeType) : offerHistoryName(tradeType);
+  const u = upserts.find((x) => x.name === name);
+  if (u) return parseHistoryRent(u.value);
+  const c = current.get(name);
+  if (c && c.value) return parseHistoryRent(c.value);
+  return { deposit: null, monthlyRent: null };
+}
+
+function sideSalePrice(
+  side: "human" | "demo",
+  wantName: string,
+  offerName: string,
+  current: Map<string, StoredCondition>,
+  upserts: ConditionUpsert[],
+): number | null {
+  const name = side === "human" ? wantName : offerName;
+  const u = upserts.find((x) => x.name === name);
+  if (u) return parseManwonInt(u.value);
+  const c = current.get(name);
+  if (c && c.value) return parseManwonInt(c.value);
+  return null;
+}
+
+/** 수렴 근거 ID: 트리거 + 같은 값을 말한 상대 측 최신 1건. */
+function evidenceForValue(cands: CandMsg[], triggerId: string, match: (text: string) => boolean): string[] {
+  const ids = [triggerId];
+  for (const c of cands) {
+    if (c.id !== triggerId && match(c.text)) {
+      ids.push(c.id);
+      break;
+    }
+  }
+  return ids;
+}
+
 export function analyzeMock(
   trigger: TriggerMsg,
   current: Map<string, StoredCondition>,
   refISO = "",
   history: HistoryMsg[] = [],
+  tradeType: TradeType = "매매",
 ): AnalysisOutcome {
   const t = trigger.text.trim();
   const proposer = trigger.author_type === "human" ? "human" : "demo";
@@ -140,7 +218,10 @@ export function analyzeMock(
   const cls = classify(t);
   // 매수자 희망가와 매도자 제안가는 별도 조건으로 유지한다. 서로 다른 가격을 자동 충돌·합의로 보지 않는다.
   // 트리거뿐 아니라 최근 대화까지 새 순서대로 훑어서 AI 답 속 제안을 놓치지 않는다.
-  const pname = proposer === "human" ? "매수 희망가" : "매도 제안가";
+  const wantName = wantHistoryName(tradeType);
+  const offerName = offerHistoryName(tradeType);
+  const finalName = FINAL_PRICE_NAME[tradeType];
+  const pname = proposer === "human" ? wantName : offerName;
   // 사람 트리거는 사람 발화만 훑고, AI 트리거는 AI 자신의 발화를 포함한다.
   // 입장 인사말은 어느 경우에도 제안 근거가 되지 않는다. 같은 방 대화를 섞지 않는다.
   const cands: Array<{ id: string; text: string; author_type: string }> = [
@@ -152,35 +233,137 @@ export function analyzeMock(
     ),
   ].filter((c) => !isGreeting(c.text));
   // 한 턴에 나온 복수 조건을 모두 모은다. 이름별로 최신(가장 새 Cand) 1건만 둔다.
+  // 희망가·역제안은 협상 이력에만 남긴다. 동의 카드는 최종 협의 후보에만 만든다.
   const upserts: ConditionUpsert[] = [];
   const bubbles: string[] = [];
-  const priceSeen = new Set<string>();
-  for (const c of cands) {
-    const pp = asPriceProposal(c.text);
-    if (pp === null) continue;
-    const cp = c.author_type === "human" ? "human" : "demo";
-    const pn = cp === "human" ? "매수 희망가" : "매도 제안가";
-    if (priceSeen.has(pn)) continue;
-    priceSeen.add(pn);
-    const v = priceText(pp);
-    const cur = current.get(pn);
-    if (cur && cur.value && cur.value === v) continue;
-    const isNew = !cur || !cur.value;
-    upserts.push({ name: pn, value: v, proposer: cp, status: "proposed", evidence: [c.id] });
-    if (pn === "매도 제안가") {
-      bubbles.push(
-        isNew
-          ? `매도 제안이 ${v}으로 새로 나왔어요. 아직 확정되지는 않았습니다.`
-          : `매도 제안이 ${cur.value}에서 ${v}로 변경됐어요. 아직 확정되지는 않았습니다.`,
-      );
-    } else {
-      bubbles.push(
-        isNew
-          ? `가격이 ${v}으로 새로 제안됐어요. 아직 확정되지는 않았습니다.`
-          : `가격이 ${cur.value}에서 ${v}로 변경됐어요. 아직 확정되지는 않았습니다.`,
-      );
+  if (tradeType === "매매") {
+    const priceSeen = new Set<string>();
+    for (const c of cands) {
+      const pp = asPriceProposal(c.text);
+      if (pp === null) continue;
+      const cp = c.author_type === "human" ? "human" : "demo";
+      const pn = cp === "human" ? wantName : offerName;
+      if (priceSeen.has(pn)) continue;
+      priceSeen.add(pn);
+      const v = priceText(pp);
+      const cur = current.get(pn);
+      if (cur && cur.value && cur.value === v) continue;
+      const isNew = !cur || !cur.value;
+      upserts.push({ name: pn, value: v, proposer: cp, status: "proposed", evidence: [c.id] });
+      if (pn === offerName) {
+        bubbles.push(
+          isNew
+            ? `매도 제안이 ${v}으로 새로 나왔어요. 아직 확정되지는 않았습니다.`
+            : `매도 제안이 ${cur.value}에서 ${v}로 변경됐어요. 아직 확정되지는 않았습니다.`,
+        );
+      } else {
+        bubbles.push(
+          isNew
+            ? `가격이 ${v}으로 새로 제안됐어요. 아직 확정되지는 않았습니다.`
+            : `가격이 ${cur.value}에서 ${v}로 변경됐어요. 아직 확정되지는 않았습니다.`,
+        );
+      }
+      if (!isNew && cur.confirmedBy) bubbles.push(`이전에 확인한 ${cur.value}와 다릅니다. 다시 협의할까요?`);
     }
-    if (!isNew && cur.confirmedBy) bubbles.push(`이전에 확인한 ${cur.value}와 다릅니다. 다시 협의할까요?`);
+  } else {
+    const rentSeen = new Set<string>();
+    for (const c of cands) {
+      let f = parseRentFields(c.text);
+      if (tradeType === "전세") {
+        if (f.deposit === null) {
+          const pp = asPriceProposal(c.text);
+          if (pp === null) continue;
+          f = { deposit: pp, monthlyRent: null };
+        } else {
+          f = { deposit: f.deposit, monthlyRent: null };
+        }
+      } else if (f.deposit === null && f.monthlyRent === null) {
+        continue;
+      }
+      const cp = c.author_type === "human" ? "human" : "demo";
+      const pn = cp === "human" ? wantName : offerName;
+      if (rentSeen.has(pn)) continue;
+      rentSeen.add(pn);
+      // 한 값만 바뀌면 같은 측의 기존 묶음에 합친다(원자적 현재 제안 유지).
+      const cur = current.get(pn);
+      const curF = cur && cur.value ? parseHistoryRent(cur.value) : { deposit: null, monthlyRent: null };
+      const merged: RentFields =
+        tradeType === "월세"
+          ? { deposit: f.deposit ?? curF.deposit, monthlyRent: f.monthlyRent ?? curF.monthlyRent }
+          : { deposit: f.deposit ?? curF.deposit, monthlyRent: null };
+      const v = tradeType === "월세" ? formatRentPartial(merged) : merged.deposit !== null ? formatJeonseDeposit(merged.deposit) : "";
+      if (!v) continue;
+      if (cur && cur.value && cur.value === v) continue;
+      const isNew = !cur || !cur.value;
+      upserts.push({ name: pn, value: v, proposer: cp, status: "proposed", evidence: [c.id] });
+      const label = tradeType === "월세" ? `${v} 조건` : v;
+      bubbles.push(
+        isNew
+          ? `${label}이 새로 제안됐어요. 아직 확정되지는 않았습니다.`
+          : `${label}으로 변경됐어요. 이전 ${cur.value}와 다릅니다. 아직 확정되지는 않았습니다.`,
+      );
+      if (!isNew && cur.confirmedBy) bubbles.push(`이전에 확인한 ${cur.value}와 다릅니다. 다시 협의할까요?`);
+    }
+  }
+  // 양측 최신값이 수렴하면 최종 협의 후보 1건만 올린다. 희망·역제안에는 카드를 만들지 않는다.
+  if (cls !== "withdraw") {
+    if (tradeType === "매매") {
+      const h = sideSalePrice("human", wantName, offerName, current, upserts);
+      const o = sideSalePrice("demo", wantName, offerName, current, upserts);
+      if (h !== null && o !== null && h === o) {
+        const v = priceText(h);
+        const cur = current.get(finalName);
+        if (!cur || cur.value !== v) {
+          upserts.push({
+            name: finalName,
+            value: v,
+            proposer,
+            status: "proposed",
+            evidence: evidenceForValue(cands, trigger.id, (text) => extractPriceManwon(text) === h),
+          });
+          bubbles.push(`최종 매매가 ${v}으로 양측이 맞췄어요. 합의 카드에서 동의해 주세요.`);
+        }
+      }
+    } else {
+      const h = sideRentFields("human", tradeType, current, upserts);
+      const o = sideRentFields("demo", tradeType, current, upserts);
+      if (tradeType === "월세") {
+        if (h.deposit !== null && h.monthlyRent !== null && h.deposit === o.deposit && h.monthlyRent === o.monthlyRent) {
+          const v = formatRentBundle(h.deposit, h.monthlyRent);
+          const cur = current.get(finalName);
+          if (!cur || cur.value !== v) {
+            upserts.push({
+              name: finalName,
+              value: v,
+              proposer,
+              status: "proposed",
+              evidence: evidenceForValue(cands, trigger.id, (text) => {
+                const f = parseRentFields(text);
+                return f.deposit === h.deposit && f.monthlyRent === h.monthlyRent;
+              }),
+            });
+            bubbles.push(`${v} 조건으로 양측이 맞췄어요. 합의 카드에서 동의해 주세요.`);
+          }
+        }
+      } else if (h.deposit !== null && h.deposit === o.deposit) {
+        const v = formatJeonseDeposit(h.deposit);
+        const cur = current.get(finalName);
+        if (!cur || cur.value !== v) {
+          upserts.push({
+            name: finalName,
+            value: v,
+            proposer,
+            status: "proposed",
+            evidence: evidenceForValue(cands, trigger.id, (text) => {
+              const f = parseRentFields(text);
+              if (f.deposit === h.deposit) return true;
+              return asPriceProposal(text) === h.deposit;
+            }),
+          });
+          bubbles.push(`${v}으로 양측이 맞췄어요. 합의 카드에서 동의해 주세요.`);
+        }
+      }
+    }
   }
   if (cls === "withdraw") {
     const wcur = current.get(pname);
@@ -276,7 +459,8 @@ export function analyzeMock(
       if (!isNew && cur.confirmedBy) bubbles.push(`이전에 확인한 ${cur.value}와 다릅니다. 다시 협의할까요?`);
     }
   }
-  if (upserts.length === 0 && cls === "question") {
+  const qfin = upserts.filter((u) => u.name === finalName);
+  if (upserts.length === qfin.length && cls === "question") {
     if (t.includes("입주")) {
       const ic = current.get("입주일");
       if (!ic || !ic.value) {
@@ -316,23 +500,34 @@ export function analyzeMock(
         return silent;
       }
     }
-    if (t.includes("가격") || t.includes("얼마") || t.includes("보증금") || t.includes("월세") || t.includes("매매가")) {
-      const w = current.get("매수 희망가");
-      const o = current.get("매도 제안가");
-      if ((!w || !w.value) && (!o || !o.value)) {
+    const priceCue =
+      tradeType === "매매"
+        ? t.includes("가격") || t.includes("얼마") || t.includes("매매가")
+        : t.includes("가격") || t.includes("얼마") || t.includes("보증금") || t.includes("월세") || t.includes("전세");
+    if (priceCue) {
+      const w = current.get(wantName);
+      const o = current.get(offerName);
+      const fin = current.get(finalName);
+      if ((!w || !w.value) && (!o || !o.value) && (!fin || !fin.value)) {
         const f0 = current.get("최초가");
         if (f0 && f0.value) {
           return { upserts: [], intervene: true, bubble: `최초가는 ${f0.value}입니다.` };
         }
         // 가격 질문은 조건을 만들지 않고 안내만 한다. 제안이 나와야 기록된다.
-        return { upserts: [], intervene: true, bubble: "가격은 아직 확인되지 않았어요. 희망가를 말씀해 보세요." };
+        return { upserts: [], intervene: true, bubble: "가격은 아직 확인되지 않았어요. 희망 조건을 말씀해 보세요." };
       }
       const bits: string[] = [];
       const f = current.get("최초가");
       if (f && f.value) bits.push(`최초가는 ${f.value}`);
-      if (w && w.value) bits.push(`매수 희망가는 ${w.value}`);
-      if (o && o.value) bits.push(`매도 제안은 ${o.value}`);
-      return { upserts: [], intervene: true, bubble: `${bits.join(", ")}입니다.` };
+      if (tradeType === "매매") {
+        if (w && w.value) bits.push(`매수 희망가는 ${w.value}`);
+        if (o && o.value) bits.push(`매도 제안은 ${o.value}`);
+      } else {
+        if (fin && fin.value) bits.push(`${finalName}은 ${fin.value}`);
+        if (w && w.value) bits.push(`${wantName}은 ${w.value}`);
+        if (o && o.value) bits.push(`${offerName}은 ${o.value}`);
+      }
+      return { upserts: qfin, intervene: true, bubble: `${bits.join(", ")}입니다.` };
     }
   }
   // 잔금일과 입주일이 어긋나면 오류가 아니라 인도일 확인이 필요한 상태로 안내한다.
@@ -412,15 +607,40 @@ export interface EvidenceMsg {
  * 모델 출력 검증. 같은 방 근거·발화자 일치·원문 뒷받침이 맞을 때만 살린다.
  * confirmed는 모델이 줄 수 없다. 근거 부족분은 버린다(확정값 저장 금지).
  */
-export function validateZiptalkOutput(data: unknown, evidence: Map<string, EvidenceMsg>): ValidatedAnalysis | null {
+const SHARED_NAMES = ["최초가", "계약금", "입주일", "방문일", "계약일", "잔금일", "인도일", "옵션", "수리 요청", "관리비"];
+
+function allowedNames(tradeType: TradeType): Set<string> {
+  const extra =
+    tradeType === "매매"
+      ? ["매수 희망가", "매도 제안가", "최종 매매가"]
+      : tradeType === "전세"
+        ? ["임차 희망 조건", "임대 제안 조건", "최종 전세보증금"]
+        : ["임차 희망 조건", "임대 제안 조건", "월세 조건"];
+  return new Set([...SHARED_NAMES, ...extra]);
+}
+
+/** 최종 가격 근거에 서로 다른 두 금액이 섞여 있으면 true. 그런 조건은 버린다. */
+function hasTwoPrices(text: string): boolean {
+  const uniq = Array.from(new Set(extractAllManwon(text).filter((n) => n >= 1000)));
+  return uniq.length >= 2;
+}
+
+export function validateZiptalkOutput(
+  data: unknown,
+  evidence: Map<string, EvidenceMsg>,
+  tradeType: TradeType = "매매",
+): ValidatedAnalysis | null {
   if (!data || typeof data !== "object") return null;
   const d = data as { conditions?: unknown; intervene?: unknown; bubble?: unknown };
   if (!Array.isArray(d.conditions)) return null;
+  const allowed = allowedNames(tradeType);
   const conditions: ValidatedCondition[] = [];
   for (const c of d.conditions.slice(0, 10)) {
     if (!c || typeof c !== "object") continue;
     const r = c as { name?: unknown; value?: unknown; proposer?: unknown; status?: unknown; evidence_ids?: unknown };
     if (typeof r.name !== "string" || !r.name.trim() || r.name.trim().length > 50) continue;
+    // 임대차에서 매수 희망가·매도 제안가는 서버에서 거부한다. 원문 복원 불가분도 거부한다.
+    if (!allowed.has(r.name.trim())) continue;
     if (typeof r.value !== "string" || !r.value.trim() || r.value.length > 500) continue;
     if (r.proposer !== "human" && r.proposer !== "demo") continue;
     if (r.status !== "proposed" && r.status !== "unconfirmed") continue;
@@ -435,9 +655,21 @@ export function validateZiptalkOutput(data: unknown, evidence: Map<string, Evide
     const need = r.proposer === "human" ? "human" : "demo_agent";
     if (!msgs.some((m) => m.author_type === need)) continue;
     const joined = msgs.map((m) => m.text).join("\n");
-    const normalized = normalizeValue(r.value);
-    // 확정형 값(금액·날짜)은 원문 뒷받침 필수. 미확인 슬롯(값 비어 있음)은 질문 근거만으로 둔다.
-    if (normalized && !valueSupported(normalized, joined) && !valueSupported(r.value.trim(), joined)) continue;
+    const cname = r.name.trim();
+    let normalized: string;
+    if (cname === "월세 조건") {
+      // 묶음은 원문으로 정확하게 복원될 때만 정규화한다. 하나만 있으면 버린다.
+      const b = parseRentBundleValue(normalizeValue(r.value)) ?? parseRentBundleValue(r.value.trim());
+      if (!b || b.deposit === null || b.monthlyRent === null) continue;
+      normalized = formatRentBundle(b.deposit, b.monthlyRent);
+      if (!rentValueSupported(normalized, joined)) continue;
+    } else {
+      normalized = normalizeValue(r.value);
+      // 확정형 값(금액·날짜)은 원문 뒷받침 필수. 미확인 슬롯(값 비어 있음)은 질문 근거만으로 둔다.
+      if (normalized && !valueSupported(normalized, joined) && !valueSupported(r.value.trim(), joined)) continue;
+      // 최종 가격은 근거 한 메시지에 서로 다른 두 금액이 있으면 해석하지 않는다.
+      if ((cname === "최종 매매가" || cname === "최종 전세보증금") && msgs.some((m) => hasTwoPrices(m.text))) continue;
+    }
     if (!saneDate(normalized)) continue;
     conditions.push({ name: r.name.trim(), value: normalized, proposer: r.proposer, status: r.status, evidence: r.evidence_ids.filter((id): id is string => typeof id === "string" && evidence.has(id)) });
   }
@@ -458,6 +690,7 @@ export function buildZiptalkInput(
   facts: Record<string, string>,
   prev: StoredCondition[],
   history: { id: string; author_type: string; author: string; text: string }[],
+  tradeType: TradeType = "매매",
 ): ZiptalkInput {
   const factLines = Object.entries(facts).map(([k, v]) => `- ${k}: ${v}`);
   const prevLines = prev.map((c) => `- ${c.name}=${c.value || "(미확인)"}(상태:${c.status},제안자:${c.proposer})`);
@@ -468,7 +701,11 @@ export function buildZiptalkInput(
     `[지금까지 조건]${prevLines.length > 0 ? "" : " 없음"}`,
     ...prevLines,
     "[규칙]",
-    "- 조건 이름은 최초가·매수 희망가·매도 제안가·계약금·입주일·방문일·계약일·잔금일·인도일·옵션·수리 요청만 쓴다. 매물 정가는 최초가, 사람의 희망은 매수 희망가, AI의 제안은 매도 제안가로 나눈다.",
+    tradeType === "매매"
+      ? "- 조건 이름은 최초가·매수 희망가·매도 제안가·최종 매매가·계약금·입주일·방문일·계약일·잔금일·인도일·옵션·수리 요청·관리비만 쓴다. 매물 정가는 최초가, 사람의 희망은 매수 희망가, AI의 제안은 매도 제안가로 나눈다. 양측이 같은 값으로 맞췄을 때만 최종 매매가를 낸다. 희망·제안에는 동의 버튼이 없으며 최종 매매가에만 있다."
+      : tradeType === "전세"
+        ? "- 조건 이름은 최초가·임차 희망 조건·임대 제안 조건·최종 전세보증금·계약금·입주일·방문일·계약일·잔금일·인도일·옵션·수리 요청·관리비만 쓴다. 매수 희망가·매도 제안가·AI 매도자 표현은 절대 쓰지 마. 양측이 같은 보증금으로 맞췄을 때만 최종 전세보증금을 낸다. 희망·제안에는 동의 버튼이 없으며 최종 전세보증금에만 있다."
+        : "- 조건 이름은 최초가·임차 희망 조건·임대 제안 조건·월세 조건·계약금·입주일·방문일·계약일·잔금일·인도일·옵션·수리 요청·관리비만 쓴다. 매수 희망가·매도 제안가·AI 매도자 표현은 절대 쓰지 마. 월세 조건은 보증금과 월세 두 값이 모두 '보증금 X만원/월세 Y만원' 묶음으로 있을 때만 낸다. 하나만 있으면 조건을 만들지 마. 양측이 두 값 모두 맞췄을 때만 월세 조건을 낸다. 희망·제안에는 동의 버튼이 없으며 월세 조건에만 있다.",
     "- 계약금은 비율 계산을 하지 말고 원문 그대로(예: 10%) 쓰거나, 금액이 분명할 때만 만원 단위로 쓴다.",
     "- 입주·잔금 월만 나왔으면 'YYYY년 M월' 형태로 쓰고 일을 만들지 마.",
     "- 잔금일과 입주일이 다르면 오류가 아니라 인도일 확인이 필요하다고 안내한다.",
@@ -499,13 +736,19 @@ export function buildZiptalkInput(
  */
 async function seedListPrice(
   roomId: string,
-  listing: { tradeType: string; salePrice: number; deposit: number },
+  listing: { tradeType: string; salePrice: number; deposit: number; rent: number },
   current: Map<string, StoredCondition>,
 ): Promise<void> {
   if (current.has("최초가")) return;
   const price = listing.tradeType === "매매" ? listing.salePrice : listing.deposit;
   if (!price || price <= 0) return;
   const digits = String(price);
+  const seedValue =
+    listing.tradeType === "월세" && listing.rent > 0
+      ? formatRentBundle(listing.deposit, listing.rent)
+      : listing.tradeType === "전세"
+        ? formatJeonseDeposit(listing.deposit)
+        : priceText(price);
   const rows = (await getDal().all("SELECT id, text FROM messages WHERE room_id = ? AND author_type = 'demo_agent' ORDER BY created_at ASC", [
     roomId,
   ])) as { id: string; text: string }[];
@@ -513,7 +756,7 @@ async function seedListPrice(
   if (!hit) return;
   await getDal().run(
     "INSERT INTO room_conditions (room_id,name,value,proposer,status,source_msg_ids,version,updated_at,confirmed_by,confirmed_at,confirmed_version) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(room_id,name) DO NOTHING",
-    [roomId, "최초가", priceText(price), "demo", "proposed", JSON.stringify([String(hit.id)]), 1, now(), "", "", 0],
+    [roomId, "최초가", seedValue, "demo", "proposed", JSON.stringify([String(hit.id)]), 1, now(), "", "", 0],
   );
 }
 
@@ -784,6 +1027,7 @@ async function executeZiptalk(
   try {
     let outcome: AnalysisOutcome;
     let usageJson = "{}";
+    const tradeType: TradeType = listing.tradeType === "전세" || listing.tradeType === "월세" ? listing.tradeType : "매매";
     if (provider === "meta") {
       const history = (await getDal().all(
         "SELECT id, author_type, author, text FROM messages WHERE room_id = ? ORDER BY created_at ASC",
@@ -791,12 +1035,17 @@ async function executeZiptalk(
       )) as { id: string; author_type: string; author: string; text: string }[];
       const facts: Record<string, string> = {
         매물명: listing.title,
-        가격: listing.tradeType === "매매" ? `${listing.salePrice.toLocaleString()}만원` : `${listing.deposit.toLocaleString()}만원`,
         입주일: listing.moveIn || "협의 가능",
         면적: `${listing.area}㎡`,
       };
+      if (tradeType === "매매") facts["가격"] = `${listing.salePrice.toLocaleString()}만원`;
+      else if (tradeType === "전세") facts["전세보증금"] = `${listing.deposit.toLocaleString()}만원`;
+      else {
+        facts["보증금"] = `${listing.deposit.toLocaleString()}만원`;
+        facts["월세"] = `${listing.rent.toLocaleString()}만원`;
+      }
       const prev = Array.from(current.values());
-      const input = buildZiptalkInput(listing.title, facts, prev, history.slice(-15));
+      const input = buildZiptalkInput(listing.title, facts, prev, history.slice(-15), tradeType);
       const r = await callMeta(
         { system: input.system, messages: input.messages, maxTokens: META_MAX_TOKENS, timeoutMs: META_TIMEOUT_MS },
       );
@@ -816,7 +1065,7 @@ async function executeZiptalk(
         parsed = null;
       }
       const ev = new Map(history.map((m) => [String(m.id), { author_type: String(m.author_type ?? ""), text: String(m.text ?? "") }]));
-      const validated = validateZiptalkOutput(parsed, ev);
+      const validated = validateZiptalkOutput(parsed, ev, tradeType);
       if (!validated) return fail("분석 결과 형식 오류.", 502, "bad_shape");
       outcome = { upserts: validated.conditions, intervene: validated.intervene, bubble: validated.bubble };
       usageJson = JSON.stringify({ inputTokens: r.usage.inputTokens, outputTokens: r.usage.outputTokens });
@@ -830,28 +1079,33 @@ async function executeZiptalk(
         current,
         trigger.created_at,
         recent.map((r) => ({ id: String(r.id), text: String(r.text ?? ""), author_type: String(r.author_type ?? "") })),
+        tradeType,
       );
     }
     const applied = await applyOutcome(roomId, outcome);
     // 방문 행을 먼저 맞춰야 제안 카드에 visit_id가 연결된다.
-    const visitDone = await syncVisitProposal(roomId, trigger, trigger.author_type === "human" ? "human" : "demo");
-    // AI가 사람 제안을 받아 말했을 때는 AI 답에 날짜가 없어도 사람 발화로 행을 만든다.
-    // 질문·날짜 없음은 syncVisitProposal이 거부하므로 질문만으로 생기지 않는다.
-    if (!visitDone && trigger.author_type !== "human") {
+    // 사람 발화를 먼저 동기화한다. AI가 받아 말한 일정도 사람이 제안한 것으로 둔다.
+    // 같은 일시는 중복 생성되지 않으므로 AI 되풀이가 제안자를 덮지 않는다.
+    let visitDone: string | null = null;
+    if (trigger.author_type === "human") {
+      visitDone = await syncVisitProposal(roomId, trigger, "human");
+    } else {
       const hm = (await getDal().get(
         "SELECT id, text, created_at FROM messages WHERE room_id = ? AND author_type = 'human' ORDER BY created_at DESC LIMIT 1",
         [roomId],
       )) as { id: string; text: string; created_at: string } | undefined;
       if (hm) {
-        await syncVisitProposal(
-          roomId,
-          { id: String(hm.id), author_type: "human", author: "", text: String(hm.text ?? ""), created_at: String(hm.created_at ?? "") },
-          "human",
-        );
+        visitDone =
+          (await syncVisitProposal(
+            roomId,
+            { id: String(hm.id), author_type: "human", author: "", text: String(hm.text ?? ""), created_at: String(hm.created_at ?? "") },
+            "human",
+          )) ?? null;
       }
+      visitDone = (await syncVisitProposal(roomId, trigger, "demo")) ?? visitDone;
     }
-    // 구체 조건이 새로 잡혔으면 양측 합의 카드를 만든다. 말풍선과 카드를 연결한다.
-    const concrete = outcome.upserts.filter((u) => u.value && u.status === "proposed");
+    // 최종 협의 후보만 양측 합의 카드를 만든다. 희망·역제안 이력은 카드가 없다.
+    const concrete = outcome.upserts.filter((u) => u.value && u.status === "proposed" && FINALIZABLE.includes(u.name));
     if (concrete.length > 0) {
       const created = await createProposals(
         roomId,
@@ -866,7 +1120,7 @@ async function executeZiptalk(
       );
       // 새로 생긴 카드만 안내한다. 기존 제안을 되풀이하지 않고 카드 ID도 덮어쓰지 않는다.
       const fresh = created.filter((c) => c.isNew);
-      const cardText = bubbleFor(fresh);
+      const cardText = bubbleFor(fresh, tradeType);
       if (cardText && fresh.length > 0) {
         let cardMsgId = applied.bubbleMessageId;
         if (!cardMsgId) {

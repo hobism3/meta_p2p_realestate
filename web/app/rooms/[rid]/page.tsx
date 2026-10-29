@@ -110,6 +110,22 @@ function approvalOf(approvals: Record<string, { actor_id: string; actor_type: st
   return hit.decision === "agree" ? "동의함" : "거절함";
 }
 
+function HistoryRow({ name, cond, onEvidence }: {
+  name: string;
+  cond: RoomCondition | undefined;
+  onEvidence: (id: string) => void;
+}) {
+  if (!cond || !cond.value) return null;
+  const ev = evidenceIds(cond);
+  return (
+    <li>
+      <strong>{name}</strong>: {cond.value}{" "}
+      <span className="badge no">협상 이력</span>{" "}
+      {ev[0] ? <button className="btn ghost" onClick={() => onEvidence(ev[0])}>근거 보기</button> : null}
+    </li>
+  );
+}
+
 function AgreementRow({ name, cond, propData, me, onDecide, onEvidence }: {
   name: string;
   cond: RoomCondition | undefined;
@@ -126,9 +142,10 @@ function AgreementRow({ name, cond, propData, me, onDecide, onEvidence }: {
   const mine = p ? (approvals[p.id] ?? []).some((a) => a.actor_id === me) : false;
   const badge = !p ? "합의 없음" : p.status === "agreed" ? "양측 동의" : p.status === "refused" ? "거절됨" : "동의 대기";
   const ev = p?.source_msg_ids[0] ?? (cond ? evidenceIds(cond)[0] : undefined);
+  const shown = p ? p.value : cond && cond.value ? cond.value : "미정";
   return (
     <li>
-      <strong>{name}</strong>: {cond && cond.value ? cond.value : "미정"}{" "}
+      <strong>{name}</strong>: {shown}{" "}
       <span className={badge === "양측 동의" ? "badge ok" : "badge no"}>{badge}</span>
       {p ? (
         <span className="meta"> v{p.version} {sides.map((s) => `${s.label} ${approvalOf(approvals, p.id, s.key, demo)}`).join(" · ")}</span>
@@ -159,10 +176,11 @@ function ProposalCard({ p, approvals, sides, demo, me, onDecide, onSuggest, onHo
   const mine = (approvals[p.id] ?? []).some((a) => a.actor_id === me);
   const open = p.status === "proposed";
   const badge = p.status === "agreed" ? "양측 동의" : p.status === "refused" ? "거절됨" : "동의 대기";
+  const isFinal = p.name === "최종 매매가" || p.name === "최종 전세보증금" || p.name === "월세 조건";
   return (
     <div className="card">
       <div>
-        <strong>{p.name}</strong>: {p.value}{" "}
+        {isFinal ? <strong>{p.value} 조건에 동의할까요?</strong> : <><strong>{p.name}</strong>: {p.value}</>}{" "}
         <span className={p.status === "agreed" ? "badge ok" : "badge no"}>{badge}</span>
       </div>
       <ul>
@@ -180,11 +198,14 @@ function ProposalCard({ p, approvals, sides, demo, me, onDecide, onSuggest, onHo
         <div>
           <button className="btn ghost" onClick={() => onDecide(p.id, "agree", p.version)}>동의하기</button>{" "}
           <button className="btn ghost" onClick={() => onDecide(p.id, "refuse", p.version)}>거절하기</button>{" "}
-          <button className="btn ghost" onClick={() => onSuggest(p.name, p.value)}>변경 제안</button>{" "}
-          <button className="btn ghost" onClick={() => onHold(p.id)}>보류</button>
+          <button className="btn ghost" onClick={() => onSuggest(p.name, p.value)}>변경 제안</button>
+          {isFinal ? null : (
+            <>{" "}<button className="btn ghost" onClick={() => onHold(p.id)}>보류</button></>
+          )}
         </div>
       ) : null}
       {open && mine ? <p className="meta">상대방의 동의를 기다립니다.</p> : null}
+      {demo && isFinal ? <p className="meta">AI 시연 동의는 실제 계약이 아닙니다.</p> : null}
     </div>
   );
 }
@@ -409,6 +430,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           <span className={meta?.demo ? "badge no" : "badge ok"}>{meta?.demo ? "시연 거래방" : "실거래방"}</span>{" "}
           {meta?.listing ? `${meta.listing.tradeType}` : ""}
           {meta?.listing && meta.listing.tradeType === "매매" ? ` · 매매 ${meta.listing.salePrice.toLocaleString()}만원` : null}
+          {meta?.listing && meta.listing.tradeType === "전세" ? ` · 전세보증금 ${meta.listing.deposit.toLocaleString()}만원` : null}
+          {meta?.listing && meta.listing.tradeType === "월세" ? ` · 보증금 ${meta.listing.deposit.toLocaleString()}만원/월세 ${meta.listing.rent.toLocaleString()}만원` : null}
         </p>
         {meta?.demo ? (
           <p className="meta">
@@ -419,7 +442,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
         )}
         {meta?.demo && messages.length < 3 ? (
           <div>
-            <p className="meta">AI 매도자와 자유롭게 대화하세요. 집톡이가 가격·일정을 정리합니다.</p>
+            <p className="meta">{aiName(meta?.listing?.tradeType)}와 자유롭게 대화하세요. 집톡이가 가격·일정을 정리합니다.</p>
             <div className="quickrow">
               <button className="btn ghost" onClick={() => quickAsk("가격 협의 가능할까요?")}>가격 협의</button>
               <button className="btn ghost" onClick={() => quickAsk("방문 가능일이 언제인가요?")}>방문 가능일</button>
@@ -516,9 +539,27 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             <p className="meta">제안은 양측이 모두 동의해야 확정됩니다. AI 시연 동의는 실제 계약이 아닙니다.</p>
             <h4>가격</h4>
             <ul>
-              {["최초가", "매수 희망가", "매도 제안가", "계약금"].map((n) => (
-                <AgreementRow key={n} name={n} cond={findC(n)} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
-              ))}
+              <HistoryRow name="최초가" cond={findC("최초가")} onEvidence={scrollToEvidence} />
+              {(meta?.listing?.tradeType ?? "매매") === "매매" ? (
+                <>
+                  <HistoryRow name="매수 희망가" cond={findC("매수 희망가")} onEvidence={scrollToEvidence} />
+                  <HistoryRow name="매도 제안가" cond={findC("매도 제안가")} onEvidence={scrollToEvidence} />
+                  <AgreementRow name="최종 매매가" cond={findC("최종 매매가")} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
+                </>
+              ) : (meta?.listing?.tradeType ?? "매매") === "전세" ? (
+                <>
+                  <HistoryRow name="임차 희망 조건" cond={findC("임차 희망 조건")} onEvidence={scrollToEvidence} />
+                  <HistoryRow name="임대 제안 조건" cond={findC("임대 제안 조건")} onEvidence={scrollToEvidence} />
+                  <AgreementRow name="최종 전세보증금" cond={findC("최종 전세보증금")} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
+                </>
+              ) : (
+                <>
+                  <HistoryRow name="임차 희망 조건" cond={findC("임차 희망 조건")} onEvidence={scrollToEvidence} />
+                  <HistoryRow name="임대 제안 조건" cond={findC("임대 제안 조건")} onEvidence={scrollToEvidence} />
+                  <AgreementRow name="월세 조건" cond={findC("월세 조건")} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
+                </>
+              )}
+              <AgreementRow name="계약금" cond={findC("계약금")} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
             </ul>
             {(() => {
               const bal = findC("잔금일");

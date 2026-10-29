@@ -70,7 +70,7 @@ export function buildAgentInput(
     ...(negoLines.length > 0 ? negoLines : []),
     policyLine(voice?.policy),
     `협상 태도: ${voice ? voice.negotiation : "시연용으로 응대한다."}`,
-    `모르는 것은${voice ? ` '${voice.unknownResponse}'처럼` : ""} 한 문장으로 답하고 지어내지 마. 소유권·법적 보장 금지. 계약 확정 금지(제안은 가능). 집톡이 메시지는 참고만 하고 네 발언으로 오인하지 마. 이전 가격 제안을 기억하고 맥락을 이어간다.`,
+    `모르는 것은 아는 사실(가격·입주일·면적·옵션)부터 먼저 답하고, 그래도 모르면${voice ? ` '${voice.unknownResponse}'라고` : " '그 부분은 정해진 게 없어서 답하기 어렵습니다'라고"} 한 문장으로 답한다. '확인해 주세요', '확인이 필요', '직접 확인', '확인 바랍니다' 같은 말로 미루지 마. 같은 말을 반복하지 마. 지어내지 마. 소유권·법적 보장 금지. 계약 확정 금지(제안은 가능). 집톡이 메시지는 참고만 하고 네 발언으로 오인하지 마. 이전 가격 제안을 기억하고 맥락을 이어간다.`,
   ].join("\n");
   const messages: ChatMessage[] = history.slice(-META_HISTORY_LIMIT).map((m) => {
     if (String(m.author_type) === "human") return { role: "user" as const, content: String(m.text ?? "") };

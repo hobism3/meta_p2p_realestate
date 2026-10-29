@@ -411,7 +411,7 @@ describe("VS-2D 페르소나·협상", () => {
     assert.equal(await ask("s23", "70000에 합시다"), "그 금액은 어렵습니다.");
   });
   it("모르는 사항은 추측하지 않는다", async () => {
-    assert.equal(await ask("s21", "주차장 있나요?"), "시나리오에 없어 확인이 필요합니다.");
+    assert.equal(await ask("s21", "주차장 있나요?"), "시나리오에 없어 답하기 어렵습니다.");
   });
   it("같은 질문에는 같은 답을 한다", async () => {
     const a = await ask("s21", "매매가 얼마인가요?");

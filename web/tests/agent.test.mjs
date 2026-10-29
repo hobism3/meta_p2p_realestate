@@ -226,6 +226,12 @@ describe("페르소나 프롬프트", () => {
     assert.ok(input.system.includes("정가"));
     assert.ok(input.system.includes("미루는 표현은 쓰지 마"));
   });
+  it("확인 미루기를 금지한다", async () => {
+    const input = buildAgentInput("AI 매도자", "AI 매도자", { 가격: "28,000만원" }, {}, [], PERSONAS.s22, "남향 매매");
+    assert.ok(input.system.includes("아는 사실"));
+    assert.ok(input.system.includes("같은 말을 반복하지 마"));
+    assert.ok(!input.system.includes("직접 확인해 주세요"));
+  });
   it("집톡이 메시지를 구분한다", async () => {
     const input = buildAgentInput("AI 매도자", "AI 매도자", {}, {}, [
       { author_type: "human", author: "h", text: "hi" },

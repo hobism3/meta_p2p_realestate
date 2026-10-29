@@ -81,7 +81,7 @@ export function draftReply(scenario: Scenario, humanText: string): AgentReply {
   const factHit = Object.entries(scenario.facts).find(([k]) => t.includes(k));
   if (factHit) return { text: `${factHit[0]}은 ${factHit[1]}입니다.`, proposal: null, needsHuman: false };
   return {
-    text: "시나리오에 없어 확인이 필요합니다.",
+    text: "시나리오에 없어 답하기 어렵습니다.",
     proposal: null,
     needsHuman: true,
   };

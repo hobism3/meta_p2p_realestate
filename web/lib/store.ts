@@ -181,6 +181,9 @@ export interface RoomCondition {
   status: string;
   source_msg_ids: string;
   version: number;
+  confirmed_by: string;
+  confirmed_at: string;
+  confirmed_version: number;
   updated_at: string;
 }
 
@@ -194,4 +197,11 @@ export interface ConditionHistoryRow {
 
 export async function loadConditions(rid: string): Promise<{ conditions: RoomCondition[]; history: ConditionHistoryRow[] }> {
   return (await req(`/api/rooms/${rid}/conditions`)) as { conditions: RoomCondition[]; history: ConditionHistoryRow[] };
+}
+
+export async function confirmCondition(rid: string, name: string): Promise<{ name: string; version: number }> {
+  return (await req(`/api/rooms/${rid}/conditions/confirm`, {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  })) as { name: string; version: number };
 }

@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: { rid: string } })
   if (!(await isRoomMember(params.rid, a.identity.userId))) return ok({ error: "조회 권한 없음" }, 403);
   const dal = getDal();
   const conditions = await dal.all(
-    "SELECT name, value, proposer, status, source_msg_ids, version, updated_at FROM room_conditions WHERE room_id = ? ORDER BY name",
+    "SELECT name, value, proposer, status, source_msg_ids, version, updated_at, confirmed_by, confirmed_at, confirmed_version FROM room_conditions WHERE room_id = ? ORDER BY name",
     [params.rid],
   );
   const history = await dal.all(

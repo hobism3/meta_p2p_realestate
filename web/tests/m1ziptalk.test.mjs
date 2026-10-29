@@ -122,11 +122,15 @@ describe("VS-3A 조건 기록", () => {
     assistantCount = bubbles.length;
     const c = await api(`/api/rooms/${roomA}/conditions`, {}, HUMAN);
     assert.equal(c.status, 200);
-    const price = c.body.conditions.find((x) => x.name === "가격");
+    const price = c.body.conditions.find((x) => x.name === "매수 희망가");
     assert.equal(price.value, "44,000만원");
     assert.equal(price.status, "proposed");
     assert.ok(JSON.parse(price.source_msg_ids).includes(firstTrigger));
     assert.equal(c.body.history.length, 0);
+    const first = c.body.conditions.find((x) => x.name === "최초가");
+    assert.equal(first.value, "45,000만원");
+    assert.equal(first.status, "proposed");
+    assert.equal(first.proposer, "demo");
   });
   it("변경은 이력을 남긴다", async () => {
     const t = await say(roomA, "44500만원에 합시다");
@@ -137,7 +141,7 @@ describe("VS-3A 조건 기록", () => {
     assert.ok(bubbles[bubbles.length - 1].text.includes("변경"));
     assistantCount = bubbles.length;
     const c = await api(`/api/rooms/${roomA}/conditions`, {}, HUMAN);
-    assert.equal(c.body.conditions.find((x) => x.name === "가격").value, "44,500만원");
+    assert.equal(c.body.conditions.find((x) => x.name === "매수 희망가").value, "44,500만원");
     assert.equal(c.body.history.length, 1);
     assert.equal(c.body.history[0].old_value, "44,000만원");
     assert.equal(c.body.history[0].new_value, "44,500만원");
@@ -165,9 +169,9 @@ describe("VS-3A 조건 기록", () => {
   });
   it("방 격리를 지킨다", async () => {
     const a = await api(`/api/rooms/${roomA}/conditions`, {}, HUMAN);
-    assert.equal(a.body.conditions.find((x) => x.name === "가격").value, "44,500만원");
+    assert.equal(a.body.conditions.find((x) => x.name === "매수 희망가").value, "44,500만원");
     const b = await api(`/api/rooms/${roomB}/conditions`, {}, HUMAN);
-    assert.ok(b.body.conditions.every((x) => x.name !== "가격"));
+    assert.ok(b.body.conditions.every((x) => x.name !== "매수 희망가" && x.name !== "매도 제안가"));
   });
   it("집톡이에는 반응하지 않는다", async () => {
     const bubbles = await assistantBubbles(roomA);
@@ -184,5 +188,41 @@ describe("VS-3A 조건 기록", () => {
     assert.equal((await api(`/api/rooms/${userRoom}/ziptalk/invoke`, {
       method: "POST", body: JSON.stringify({ trigger_message_id: u }),
     }, HUMAN)).status, 403);
+  });
+});
+
+describe("VS-3B 사용자 확인", () => {
+  it("현재 버전을 확인한다", async () => {
+    const r = await api(`/api/rooms/${roomA}/conditions/confirm`, {
+      method: "POST", body: JSON.stringify({ name: "매수 희망가" }),
+    }, HUMAN);
+    assert.equal(r.status, 200);
+    assert.equal(r.body.version, 2);
+    const c = await api(`/api/rooms/${roomA}/conditions`, {}, HUMAN);
+    const w = c.body.conditions.find((x) => x.name === "매수 희망가");
+    assert.ok(w.confirmed_by);
+    assert.equal(w.confirmed_version, 2);
+  });
+  it("값이 바뀌면 확인이 무효가 된다", async () => {
+    const t = await say(roomA, "43000만원에 합시다");
+    const z = await zip(roomA, t);
+    assert.equal(z.status, 201);
+    const c = await api(`/api/rooms/${roomA}/conditions`, {}, HUMAN);
+    const w = c.body.conditions.find((x) => x.name === "매수 희망가");
+    assert.equal(w.value, "43,000만원");
+    assert.equal(w.version, 3);
+    assert.ok(w.confirmed_by);
+    assert.ok(w.confirmed_version < w.version);
+  });
+  it("없는 조건은 404, 비멤버 확인은 403이다", async () => {
+    assert.equal((await api(`/api/rooms/${roomA}/conditions/confirm`, {
+      method: "POST", body: JSON.stringify({ name: "없는 조건" }),
+    }, HUMAN)).status, 404);
+    assert.equal((await api(`/api/rooms/${roomA}/conditions/confirm`, {
+      method: "POST", body: JSON.stringify({ name: "매수 희망가" }),
+    }, STRANGER)).status, 403);
+    assert.equal((await api(`/api/rooms/${roomA}/conditions/confirm`, {
+      method: "POST", body: JSON.stringify({ name: "매수 희망가" }),
+    }, OWNER)).status, 403);
   });
 });

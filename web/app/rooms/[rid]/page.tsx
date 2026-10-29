@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getAccessToken } from "../../../lib/client-auth";
 import {
+  confirmCondition,
   invokeAgent,
   invokeZiptalk,
   loadConditions,
@@ -32,6 +33,35 @@ function evidenceIds(c: RoomCondition): string[] {
   } catch {
     return [];
   }
+}
+
+function statusOf(c: RoomCondition): string {
+  if (c.confirmed_by && Number(c.confirmed_version) === Number(c.version)) return "확인됨";
+  if (c.confirmed_by) return "확인 지남";
+  if (c.status === "unconfirmed" || !c.value) return "미확인";
+  return "제안됨";
+}
+
+function ConditionRow({ name, cond, onEvidence, onConfirm }: {
+  name: string;
+  cond: RoomCondition | undefined;
+  onEvidence: (id: string) => void;
+  onConfirm: (name: string) => void;
+}) {
+  const ev = cond ? evidenceIds(cond) : [];
+  const st = cond ? statusOf(cond) : "미정";
+  return (
+    <li>
+      <strong>{name}</strong>: {cond && cond.value ? cond.value : "미정"}{" "}
+      <span className={st === "확인됨" ? "badge ok" : "badge no"}>{st}</span>{" "}
+      {ev.length > 0 ? (
+        <button className="btn ghost" onClick={() => onEvidence(ev[0])}>근거 보기</button>
+      ) : null}{" "}
+      {cond && cond.value && st !== "확인됨" ? (
+        <button className="btn ghost" onClick={() => onConfirm(name)}>확인하기</button>
+      ) : null}
+    </li>
+  );
 }
 
 export default function RoomPage({ params }: { params: { rid: string } }) {
@@ -153,7 +183,17 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     document.getElementById(`msg-${id}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
   };
 
-  const unconfirmed = conditions.filter((c) => c.status === "unconfirmed" || !c.value);
+  const findC = (name: string): RoomCondition | undefined => conditions.find((c) => c.name === name);
+  const unconfirmed = conditions.filter((c) => statusOf(c) === "미확인");
+
+  const onConfirm = async (name: string) => {
+    try {
+      await confirmCondition(params.rid, name);
+      await refreshConditions();
+    } catch (e) {
+      setZipError(`확인 실패(${e instanceof Error ? e.message : "오류"})`);
+    }
+  };
 
   return (
     <div className="grid">
@@ -186,19 +226,23 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
         {panelOpen && meta?.demo ? (
           <div className="card">
             <h3>거래 현황</h3>
-            <p className="meta">초안이며 자동 합의가 아닙니다.</p>
-            {conditions.length === 0 ? <p className="meta">정리된 조건이 아직 없습니다.</p> : null}
+            <p className="meta">초안이며 자동 합의가 아닙니다. 확인은 사람이 직접 누른 것만 기록됩니다.</p>
+            <h4>가격</h4>
             <ul>
-              {conditions.map((c) => (
-                <li key={c.name}>
-                  <strong>{c.name}</strong>: {c.value || "(미확인)"}{" "}
-                  <span className={c.status === "confirmed" ? "badge ok" : "badge no"}>
-                    {c.status === "confirmed" ? "확정" : c.status === "unconfirmed" ? "미확인" : "제안됨"}
-                  </span>{" "}
-                  {evidenceIds(c).length > 0 ? (
-                    <button className="btn ghost" onClick={() => scrollToEvidence(evidenceIds(c)[0])}>근거 보기</button>
-                  ) : null}
-                </li>
+              {["최초가", "매수 희망가", "매도 제안가"].map((n) => (
+                <ConditionRow key={n} name={n} cond={findC(n)} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
+              ))}
+            </ul>
+            <h4>일정</h4>
+            <ul>
+              {["방문일", "계약일", "잔금일", "입주일"].map((n) => (
+                <ConditionRow key={n} name={n} cond={findC(n)} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
+              ))}
+            </ul>
+            <h4>조건</h4>
+            <ul>
+              {["옵션", "수리 요청"].map((n) => (
+                <ConditionRow key={n} name={n} cond={findC(n)} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
               ))}
             </ul>
             {unconfirmed.length > 0 ? (

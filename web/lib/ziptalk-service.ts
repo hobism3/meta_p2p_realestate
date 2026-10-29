@@ -39,6 +39,8 @@ export interface StoredCondition {
   value: string;
   proposer: string;
   status: string;
+  confirmedBy: string;
+  confirmedVersion: number;
 }
 
 export interface ConditionUpsert {
@@ -73,34 +75,37 @@ export function analyzeMock(
   if (hasJudgment(t)) return silent;
   const cls = classify(t);
   const price = extractPriceManwon(t);
-  const cur = current.get("가격");
+  // 매수자 희망가와 매도자 제안가는 별도 조건으로 유지한다. 서로 다른 가격을 자동 충돌·합의로 보지 않는다.
+  const pname = proposer === "human" ? "매수 희망가" : "매도 제안가";
   if (cls === "proposal" && price !== null) {
     const v = priceText(price);
+    const cur = current.get(pname);
     if (!cur || !cur.value) {
       return {
-        upserts: [{ name: "가격", value: v, proposer, status: "proposed", evidence: [trigger.id] }],
+        upserts: [{ name: pname, value: v, proposer, status: "proposed", evidence: [trigger.id] }],
         intervene: true,
         bubble: `가격이 ${v}으로 새로 제안됐어요. 아직 확정되지는 않았습니다.`,
       };
     }
     if (cur.value !== v) {
-      const conflict = !!cur.proposer && cur.proposer !== proposer;
       return {
-        upserts: [{ name: "가격", value: v, proposer, status: "proposed", evidence: [trigger.id] }],
+        upserts: [{ name: pname, value: v, proposer, status: "proposed", evidence: [trigger.id] }],
         intervene: true,
-        bubble: conflict
-          ? `가격 제안이 ${v}으로 바뀌었어요. 서로 의견이 다릅니다. 확정하지 않았습니다.`
-          : `가격이 ${cur.value}에서 ${v}로 변경됐어요. 아직 확정되지는 않았습니다.`,
+        bubble: `가격이 ${cur.value}에서 ${v}로 변경됐어요. 아직 확정되지는 않았습니다.`,
       };
     }
     return silent;
   }
-  if (cls === "withdraw" && cur && cur.status === "proposed") {
-    return {
-      upserts: [{ name: "가격", value: cur.value, proposer: cur.proposer === "demo" ? "demo" : "human", status: "unconfirmed", evidence: [trigger.id] }],
-      intervene: true,
-      bubble: "가격 제안을 거둬들였습니다.",
-    };
+  if (cls === "withdraw") {
+    const wcur = current.get(pname);
+    if (wcur && wcur.status === "proposed") {
+      return {
+        upserts: [{ name: pname, value: wcur.value, proposer: wcur.proposer === "demo" ? "demo" : "human", status: "unconfirmed", evidence: [trigger.id] }],
+        intervene: true,
+        bubble: "가격 제안을 거둬들였습니다.",
+      };
+    }
+    return silent;
   }
   if (cls === "question") {
     if (t.includes("입주")) {
@@ -114,13 +119,32 @@ export function analyzeMock(
       }
       return silent;
     }
+    const slots: Array<[string, string]> = [
+      ["방문", "방문일"],
+      ["계약", "계약일"],
+      ["잔금", "잔금일"],
+      ["옵션", "옵션"],
+      ["수리", "수리 요청"],
+    ];
+    for (let i = 0; i < slots.length; i++) {
+      if (t.includes(slots[i][0])) {
+        const sc = current.get(slots[i][1]);
+        if (!sc || !sc.value) {
+          return {
+            upserts: [{ name: slots[i][1], value: "", proposer, status: "unconfirmed", evidence: [trigger.id] }],
+            intervene: true,
+            bubble: `${slots[i][1]}은 아직 확인되지 않았어요.`,
+          };
+        }
+        return silent;
+      }
+    }
     if (t.includes("가격") || t.includes("얼마") || t.includes("보증금") || t.includes("월세") || t.includes("매매가")) {
-      if (!cur || !cur.value) {
-        return {
-          upserts: [{ name: "가격", value: "", proposer, status: "unconfirmed", evidence: [trigger.id] }],
-          intervene: true,
-          bubble: "가격은 아직 확인되지 않았어요.",
-        };
+      const w = current.get("매수 희망가");
+      const o = current.get("매도 제안가");
+      if ((!w || !w.value) && (!o || !o.value)) {
+        // 가격 질문은 조건을 만들지 않고 안내만 한다. 제안이 나와야 기록된다.
+        return { upserts: [], intervene: true, bubble: "가격은 아직 확인되지 않았어요. 희망가를 말씀해 보세요." };
       }
       return silent;
     }
@@ -142,8 +166,80 @@ export interface ValidatedAnalysis {
   bubble: string | null;
 }
 
-/** 모델 출력 검증. 근거 ID·형식이 맞을 때만 살린다. confirmed는 모델이 줄 수 없다. */
-export function validateZiptalkOutput(data: unknown, validIds: Set<string>): ValidatedAnalysis | null {
+/** 금액 표기를 만원 정수로 정규화한다. 파싱 불가면 원문을 둔다(지어내지 않음). */
+export function normalizeValue(raw: string): string {
+  const v = raw.trim();
+  if (!/\d/.test(v) || !/[만억원]/.test(v)) return v;
+  const s = v.replace(/원/g, "");
+  let total = 0;
+  let seen = false;
+  const parts = s.split("억");
+  const parseMan = (t: string): number => {
+    const m = t.match(/([\d,]+(?:\.\d+)?)\s*만?/);
+    if (!m) return 0;
+    return parseFloat(m[1].replace(/,/g, ""));
+  };
+  if (parts.length === 2) {
+    const eok = parseFloat((parts[0].match(/[\d,]+(?:\.\d+)?/) ?? [""])[0].replace(/,/g, ""));
+    if (!Number.isFinite(eok)) return v;
+    total += eok * 10000;
+    total += parseMan(parts[1]);
+    seen = true;
+  } else {
+    const m = s.match(/([\d,]+(?:\.\d+)?)\s*만/);
+    if (m) {
+      total += parseFloat(m[1].replace(/,/g, ""));
+      seen = true;
+    } else {
+      const t = s.match(/([\d,]+)\s*천/);
+      if (t && !/만/.test(s)) {
+        total += parseInt(t[1].replace(/,/g, ""), 10) / 10;
+        seen = total > 0;
+      }
+    }
+  }
+  if (!seen || !Number.isInteger(total) || total <= 0) return v;
+  return `${total.toLocaleString()}만원`;
+}
+
+/** 값에 나온 숫자·문구가 근거 문구에 실제로 있는지 확인한다. */
+function valueSupported(value: string, evidenceText: string): boolean {
+  const ev = evidenceText.replace(/\s/g, "");
+  if (/\d/.test(value)) {
+    const groups = value.replace(/,/g, "").match(/\d{2,}/g) ?? [];
+    if (groups.length > 0) {
+      const evDigits = ev.replace(/[^\d]/g, "");
+      return groups.every((g) => evDigits.includes(g));
+    }
+  }
+  const v = value.replace(/\s/g, "");
+  return v.length >= 2 && ev.includes(v);
+}
+
+function saneDate(value: string): boolean {
+  const full = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (full) {
+    const mo = parseInt(full[2], 10);
+    const da = parseInt(full[3], 10);
+    return mo >= 1 && mo <= 12 && da >= 1 && da <= 31;
+  }
+  const md = value.match(/(\d{1,2})월\s*(\d{1,2})일/);
+  if (md) {
+    return parseInt(md[1], 10) >= 1 && parseInt(md[1], 10) <= 12 && parseInt(md[2], 10) >= 1 && parseInt(md[2], 10) <= 31;
+  }
+  return true;
+}
+
+export interface EvidenceMsg {
+  author_type: string;
+  text: string;
+}
+
+/**
+ * 모델 출력 검증. 같은 방 근거·발화자 일치·원문 뒷받침이 맞을 때만 살린다.
+ * confirmed는 모델이 줄 수 없다. 근거 부족분은 버린다(확정값 저장 금지).
+ */
+export function validateZiptalkOutput(data: unknown, evidence: Map<string, EvidenceMsg>): ValidatedAnalysis | null {
   if (!data || typeof data !== "object") return null;
   const d = data as { conditions?: unknown; intervene?: unknown; bubble?: unknown };
   if (!Array.isArray(d.conditions)) return null;
@@ -152,13 +248,25 @@ export function validateZiptalkOutput(data: unknown, validIds: Set<string>): Val
     if (!c || typeof c !== "object") continue;
     const r = c as { name?: unknown; value?: unknown; proposer?: unknown; status?: unknown; evidence_ids?: unknown };
     if (typeof r.name !== "string" || !r.name.trim() || r.name.trim().length > 50) continue;
-    if (typeof r.value !== "string" || r.value.length > 500) continue;
+    if (typeof r.value !== "string" || !r.value.trim() || r.value.length > 500) continue;
     if (r.proposer !== "human" && r.proposer !== "demo") continue;
     if (r.status !== "proposed" && r.status !== "unconfirmed") continue;
     if (!Array.isArray(r.evidence_ids) || r.evidence_ids.length === 0) continue;
-    const ev = r.evidence_ids.filter((id): id is string => typeof id === "string" && validIds.has(id));
-    if (ev.length === 0) continue;
-    conditions.push({ name: r.name.trim(), value: r.value, proposer: r.proposer, status: r.status, evidence: ev });
+    const msgs: EvidenceMsg[] = [];
+    for (const id of r.evidence_ids) {
+      if (typeof id !== "string") continue;
+      const m = evidence.get(id);
+      if (m) msgs.push(m);
+    }
+    if (msgs.length === 0) continue;
+    const need = r.proposer === "human" ? "human" : "demo_agent";
+    if (!msgs.some((m) => m.author_type === need)) continue;
+    const joined = msgs.map((m) => m.text).join("\n");
+    const normalized = normalizeValue(r.value);
+    // 확정형 값(금액·날짜)은 원문 뒷받침 필수. 미확인 슬롯(값 비어 있음)은 질문 근거만으로 둔다.
+    if (normalized && !valueSupported(normalized, joined) && !valueSupported(r.value.trim(), joined)) continue;
+    if (!saneDate(normalized)) continue;
+    conditions.push({ name: r.name.trim(), value: normalized, proposer: r.proposer, status: r.status, evidence: r.evidence_ids.filter((id): id is string => typeof id === "string" && evidence.has(id)) });
   }
   const bubble = typeof d.bubble === "string" && d.bubble.trim() && d.bubble.trim().length <= ZIPTALK_BUBBLE_LIMIT
     ? d.bubble.trim()
@@ -187,8 +295,9 @@ export function buildZiptalkInput(
     `[지금까지 조건]${prevLines.length > 0 ? "" : " 없음"}`,
     ...prevLines,
     "[규칙]",
-    "- 조건은 가격·입주일·방문·계약·잔금 일정·옵션·수리 요청만 다룬다.",
+    "- 조건 이름은 최초가·매수 희망가·매도 제안가·입주일·방문일·계약일·잔금일·옵션·수리 요청만 쓴다. 매물 정가는 최초가, 사람의 희망은 매수 희망가, AI의 제안은 매도 제안가로 나눈다.",
     "- 값·제안자(human|demo)·근거 메시지 ID가 분명할 때만 조건으로 낸다. 근거 IDs는 아래 대화의 [id]만 쓴다.",
+    "- 값은 근거 문구에 실제로 나온 형태만 쓴다. 연도는 근거에 있을 때만 쓰고, 없으면 월·일만 쓴다. 금액은 만원·억원 단위 그대로 쓴다.",
     "- 근거가 부족하거나 모호하면 조건을 만들지 마.",
     "- 상태는 proposed(제안됨) 또는 unconfirmed(미확인)만 쓴다. confirmed는 절대 쓰지 마.",
     "- 등급·판단·특약·법률 해석은 다루지 않는다.",
@@ -202,6 +311,49 @@ export function buildZiptalkInput(
     return { role, content: `[${String(m.id)}] ${who}: ${String(m.text ?? "")}` };
   });
   return { system, messages };
+}
+
+/**
+ * 매물 최초가를 조건으로 심는다. 근거는 AI 첫인사 등 매도자 메시지에 실제 나온 정가다.
+ * 근거가 없으면 심지 않는다. 이미 있으면 손대지 않는다.
+ */
+async function seedListPrice(
+  roomId: string,
+  listing: { tradeType: string; salePrice: number; deposit: number },
+  current: Map<string, StoredCondition>,
+): Promise<void> {
+  if (current.has("최초가")) return;
+  const price = listing.tradeType === "매매" ? listing.salePrice : listing.deposit;
+  if (!price || price <= 0) return;
+  const digits = String(price);
+  const rows = (await getDal().all("SELECT id, text FROM messages WHERE room_id = ? AND author_type = 'demo_agent' ORDER BY created_at ASC", [
+    roomId,
+  ])) as { id: string; text: string }[];
+  const hit = rows.find((r) => String(r.text ?? "").replace(/[^\d]/g, "").includes(digits));
+  if (!hit) return;
+  await getDal().run(
+    "INSERT INTO room_conditions (room_id,name,value,proposer,status,source_msg_ids,version,updated_at,confirmed_by,confirmed_at,confirmed_version) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(room_id,name) DO NOTHING",
+    [roomId, "최초가", priceText(price), "demo", "proposed", JSON.stringify([String(hit.id)]), 1, now(), "", "", 0],
+  );
+}
+
+/**
+ * 사용자가 특정 조건의 현재 버전을 직접 확인한다.
+ * 인증된 사용자 ID로만 기록한다. AI·집톡이는 이 경로로 확인할 수 없다.
+ * 값이 바뀌면 version이 올라가 이전 확인은 자동으로 무효가 된다.
+ */
+export async function confirmCondition(
+  roomId: string,
+  name: string,
+  userId: string,
+): Promise<{ ok: true; version: number } | { ok: false; status: number; error: string }> {
+  const cur = await getDal().get("SELECT version FROM room_conditions WHERE room_id = ? AND name = ?", [roomId, name]);
+  if (!cur) return { ok: false, status: 404, error: "조건 없음" };
+  await getDal().run(
+    "UPDATE room_conditions SET confirmed_by = ?, confirmed_at = ?, confirmed_version = version WHERE room_id = ? AND name = ?",
+    [userId, now(), roomId, name],
+  );
+  return { ok: true, version: Number(cur.version ?? 0) };
 }
 
 export interface ZiptalkOk {
@@ -222,10 +374,13 @@ export interface ZiptalkErr {
 }
 
 async function currentConditions(roomId: string): Promise<Map<string, StoredCondition>> {
-  const rows = await getDal().all("SELECT name, value, proposer, status FROM room_conditions WHERE room_id = ?", [roomId]);
+  const rows = await getDal().all("SELECT name, value, proposer, status, confirmed_by, confirmed_version FROM room_conditions WHERE room_id = ?", [roomId]);
   const map = new Map<string, StoredCondition>();
   for (const r of rows) {
-    map.set(String(r.name), { name: String(r.name), value: String(r.value ?? ""), proposer: String(r.proposer ?? ""), status: String(r.status ?? "") });
+    map.set(String(r.name), {
+      name: String(r.name), value: String(r.value ?? ""), proposer: String(r.proposer ?? ""), status: String(r.status ?? ""),
+      confirmedBy: String(r.confirmed_by ?? ""), confirmedVersion: Number(r.confirmed_version ?? 0),
+    });
   }
   return map;
 }
@@ -305,7 +460,9 @@ export async function runZiptalk(opts: {
   const listing = await listingForDemo(room.listing_id);
   if (!listing) return { ok: false, status: 404, error: "매물 없음", provider, model };
   if (!isDemoListing(listing)) return { ok: false, status: 403, error: "시연방 전용", provider, model };
-  const current = await currentConditions(opts.roomId);
+  let current = await currentConditions(opts.roomId);
+  await seedListPrice(opts.roomId, listing, current);
+  current = await currentConditions(opts.roomId);
   const runId = randomUUID();
   try {
     await dal.run(
@@ -390,8 +547,8 @@ async function executeZiptalk(
       } catch {
         parsed = null;
       }
-      const validIds = new Set(history.map((m) => String(m.id)));
-      const validated = validateZiptalkOutput(parsed, validIds);
+      const ev = new Map(history.map((m) => [String(m.id), { author_type: String(m.author_type ?? ""), text: String(m.text ?? "") }]));
+      const validated = validateZiptalkOutput(parsed, ev);
       if (!validated) return fail("분석 결과 형식 오류.", 502, "bad_shape");
       outcome = { upserts: validated.conditions, intervene: validated.intervene, bubble: validated.bubble };
       usageJson = JSON.stringify({ inputTokens: r.usage.inputTokens, outputTokens: r.usage.outputTokens });

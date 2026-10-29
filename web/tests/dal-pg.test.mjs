@@ -25,6 +25,28 @@ describe("PG 마이그레이션", () => {
   });
 });
 
+describe("PG 조건 마이그레이션", () => {
+  it("008·009가 PG에서도 적용된다", async () => {
+    await dal.run("CREATE TABLE deal_rooms (id TEXT PRIMARY KEY, listing_id TEXT)");
+    await dal.migrateOnly(["008_ziptalk", "009_confirm"]);
+    await dal.run("INSERT INTO deal_rooms (id,listing_id) VALUES (?,?)", ["r1", "s01"]);
+    await dal.run(
+      "INSERT INTO room_conditions (room_id,name,value,proposer,status,source_msg_ids,version,updated_at,confirmed_by,confirmed_at,confirmed_version) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(room_id,name) DO NOTHING",
+      ["r1", "매수 희망가", "44,000만원", "human", "proposed", '["m1"]', 1, "2026-10-29T00:00:00.000Z", "", "", 0],
+    );
+    await dal.run(
+      "UPDATE room_conditions SET confirmed_by = ?, confirmed_at = ?, confirmed_version = version WHERE room_id = ? AND name = ?",
+      ["u1", "2026-10-29T00:00:00.000Z", "r1", "매수 희망가"],
+    );
+    const r = await dal.get("SELECT value, confirmed_by, confirmed_version FROM room_conditions WHERE room_id = ? AND name = ?", [
+      "r1", "매수 희망가",
+    ]);
+    assert.equal(r.value, "44,000만원");
+    assert.equal(r.confirmed_by, "u1");
+    assert.equal(r.confirmed_version, 1);
+  });
+});
+
 describe("PG CRUD", () => {
   it("매물을 넣고 읽는다", async () => {
     await dal.run(

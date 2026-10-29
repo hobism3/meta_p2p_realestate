@@ -77,6 +77,13 @@ test("시연방: 집톡이 제안 정리→거래 현황", async ({ page }) => {
   await page.getByRole("button", { name: "거래 현황" }).click();
   await expect(page.getByText("44,000만원").first()).toBeVisible();
   await expect(page.getByText("초안이며 자동 합의가 아닙니다.")).toBeVisible();
+  await expect(page.getByText("45,000만원").first()).toBeVisible();
+  const wishRow = page.locator("li", { hasText: "매수 희망가" }).first();
+  await wishRow.getByRole("button", { name: "확인하기" }).click();
+  await expect(wishRow).toContainText("확인됨");
+  await page.getByPlaceholder("메시지 입력").fill("44500만원에 합시다");
+  await page.getByRole("button", { name: "전송" }).click();
+  await expect(wishRow).toContainText("확인 지남");
   await page.reload();
   await page.getByRole("button", { name: "거래 현황" }).click();
   await expect(page.getByText("44,000만원").first()).toBeVisible();

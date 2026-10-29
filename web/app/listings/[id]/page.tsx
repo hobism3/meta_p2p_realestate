@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { formatPrice, type Listing } from "../../../lib/listings";
 import { getAccessToken } from "../../../lib/client-auth";
-import { createRoom, findListing } from "../../../lib/store";
+import { createRoom, findListing, loadMyRooms } from "../../../lib/store";
 
 export default function DetailPage({ params }: { params: { id: string } }) {
   const [listing, setListing] = useState<Listing | null>(null);
   const [missing, setMissing] = useState(false);
   const [reported, setReported] = useState(false);
   const [asking, setAsking] = useState(false);
+  const [existingRid, setExistingRid] = useState<string | null>(null);
   const [askError, setAskError] = useState("");
   const [isCustom, setIsCustom] = useState(false);
 
@@ -23,6 +24,16 @@ export default function DetailPage({ params }: { params: { id: string } }) {
         }
       })
       .catch(() => setMissing(true));
+  }, [params.id]);
+
+  useEffect(() => {
+    if (!getAccessToken()) return;
+    loadMyRooms()
+      .then((rs) => {
+        const f = rs.find((r) => r.listing_id === params.id);
+        if (f) setExistingRid(f.id);
+      })
+      .catch(() => {});
   }, [params.id]);
 
   if (missing) return <div className="card">매물을 찾을 수 없습니다. <a href="/">돌아가기</a></div>;
@@ -88,9 +99,13 @@ export default function DetailPage({ params }: { params: { id: string } }) {
         </p>
         <p className="meta">게시자: {listing.publisher}. 사실만 표시합니다. 안전·보증을 의미하지 않습니다.</p>
         <p>
-          <button className="btn ghost" onClick={onAsk} disabled={asking}>
-            {asking ? "생성 중..." : "문의하기"}
-          </button>{" "}
+          {existingRid ? (
+            <a className="btn ghost" href={`/rooms/${existingRid}`}>대화 이어하기</a>
+          ) : (
+            <button className="btn ghost" onClick={onAsk} disabled={asking}>
+              {asking ? "생성 중..." : "문의하기"}
+            </button>
+          )}{" "}
           {askError ? <span className="error">{askError}</span> : null}
           {isCustom && <a className="btn ghost" href={`/register?edit=${listing.id}`}>수정하기</a>}{" "}
           {!reported ? (

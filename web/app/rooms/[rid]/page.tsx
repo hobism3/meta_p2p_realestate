@@ -1,22 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../../../lib/client-auth";
 import {
   confirmCondition,
   invokeAgent,
-  loadRoomVisits,
-  setRoomVisitStatus,
   invokeZiptalk,
   loadConditions,
   loadRoomMessages,
-  type RoomVisit,
   loadRoomMeta,
+  loadRoomVisits,
   sendRoomMessage,
+  setRoomVisitStatus,
+  type AgentInvokeResult,
   type ConditionHistoryRow,
   type DealMessage,
   type RoomCondition,
   type RoomMeta,
+  type RoomVisit,
 } from "../../../lib/store";
 
 function aiName(tradeType: string | undefined): string {
@@ -45,18 +46,46 @@ function statusOf(c: RoomCondition): string {
   return "제안됨";
 }
 
-function ConditionRow({ name, cond, onEvidence, onConfirm }: {
+function formatVisit(v: RoomVisit): string {
+  const m = parseInt(v.visit_date.slice(5, 7), 10);
+  const d = parseInt(v.visit_date.slice(8, 10), 10);
+  const h = parseInt(v.visit_time.slice(0, 2), 10);
+  const min = v.visit_time.slice(3, 5);
+  const ap = h < 12 ? "오전" : "오후";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${m}월 ${d}일 ${ap} ${h12}시${min === "30" ? " 반" : ""}`;
+}
+
+function visitLabel(v: RoomVisit): string {
+  if (v.status === "수락됨" && v.proposed_by === "demo") return "시연 수락";
+  return v.status;
+}
+
+function myId(): string {
+  try {
+    const t = getAccessToken();
+    if (!t) return "";
+    const p = JSON.parse(atob(t.split(".")[1])) as { sub?: string };
+    return String(p.sub ?? "");
+  } catch {
+    return "";
+  }
+}
+
+function ConditionRow({ name, cond, me, onEvidence, onConfirm }: {
   name: string;
   cond: RoomCondition | undefined;
+  me: string;
   onEvidence: (id: string) => void;
   onConfirm: (name: string) => void;
 }) {
   const ev = cond ? evidenceIds(cond) : [];
   const st = cond ? statusOf(cond) : "미정";
+  const label = cond && st === "확인됨" && cond.confirmed_by && cond.confirmed_by === me ? "내가 확인함" : st;
   return (
     <li>
       <strong>{name}</strong>: {cond && cond.value ? cond.value : "미정"}{" "}
-      <span className={st === "확인됨" ? "badge ok" : "badge no"}>{st}</span>
+      <span className={st === "확인됨" ? "badge ok" : "badge no"}>{label}</span>
       {cond && st === "확인됨" ? <span className="meta"> 확인: {cond.confirmed_name || cond.confirmed_by}</span> : null}{" "}
       {ev.length > 0 ? (
         <button className="btn ghost" onClick={() => onEvidence(ev[0])}>근거 보기</button>
@@ -66,16 +95,6 @@ function ConditionRow({ name, cond, onEvidence, onConfirm }: {
       ) : null}
     </li>
   );
-}
-
-function formatVisit(v: RoomVisit): string {
-  const m = parseInt(v.visit_date.slice(5, 7), 10);
-  const d = parseInt(v.visit_date.slice(8, 10), 10);
-  const h = parseInt(v.visit_time.slice(0, 2), 10);
-  const min = v.visit_time.slice(3, 5);
-  const ap = h < 12 ? "오전" : "오후";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${m}월 ${d}일 ${ap} ${h12}시${min === "30" ? " 반" : ""}`;
 }
 
 export default function RoomPage({ params }: { params: { rid: string } }) {
@@ -95,6 +114,9 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const [visits, setVisits] = useState<RoomVisit[]>([]);
   const [zipPending, setZipPending] = useState(false);
   const [zipError, setZipError] = useState("");
+  const [me] = useState(() => myId());
+  const msgsRef = useRef<HTMLDivElement | null>(null);
+  const zipBusy = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -126,6 +148,11 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     return () => clearInterval(t);
   }, [params.rid, refresh]);
 
+  useEffect(() => {
+    const el = msgsRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, aiPending]);
+
   if (!authed) {
     return (
       <div className="card">
@@ -134,17 +161,18 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     );
   }
 
-  const callAi = async (triggerId: string) => {
+  const callAi = async (triggerId: string): Promise<AgentInvokeResult | null> => {
     setAiPending(true);
     setAiError("");
     try {
       const r = await invokeAgent(params.rid, triggerId);
       setLastProvider(r.provider);
       await refresh();
+      return r;
     } catch (e) {
       // 모델 실패를 성공처럼 표시하지 않는다. 사람 메시지는 이미 저장돼 있다.
-      // 사유(키·원문 없음)까지 보여줘서 개발자도구 없이 원인을 알 수 있게 한다.
       setAiError(`AI 응답을 가져오지 못했습니다(${e instanceof Error ? e.message : "오류"}). 다시 시도해 주세요.`);
+      return null;
     } finally {
       setAiPending(false);
     }
@@ -152,7 +180,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
 
   // 집톡이 분석은 매도자 응답과 분리 실행한다. 조용하면 말풍선을 남기지 않는다.
   const callZiptalk = async (triggerId?: string) => {
-    if (zipPending) return;
+    if (zipBusy.current) return;
+    zipBusy.current = true;
     setZipPending(true);
     setZipError("");
     try {
@@ -163,24 +192,36 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
       setZipError(`집톡이 분석 실패(${e instanceof Error ? e.message : "오류"})`);
     } finally {
       setZipPending(false);
+      zipBusy.current = false;
     }
   };
 
   const onSend = async () => {
     if (!msg.trim() || sending) return;
+    // 실거래방은 사람 채팅만 한다. AI 호출은 시연방 전용이다.
+    const demo = meta?.demo === true;
+    const text = msg.trim();
     setSending(true);
+    let id: string;
     try {
-      // 사람 메시지를 먼저 저장하고 즉시 보여준다. AI 생성은 별도 단계다.
-      const id = await sendRoomMessage(params.rid, msg.trim());
+      // 사람 메시지를 먼저 저장하고 입력창을 즉시 되돌린다. AI 처리는 뒤에서 돈다.
+      id = await sendRoomMessage(params.rid, text);
       setMsg("");
       setLastTriggerId(id);
       await refresh();
-      await callAi(id);
-      if (meta?.demo) await callZiptalk(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "전송 실패");
-    } finally {
       setSending(false);
+      return;
+    }
+    setSending(false);
+    if (!demo) return;
+    const ai = await callAi(id);
+    // AI 답에 숫자·날짜 단서가 있으면 AI 메시지를, 아니면 사람 메시지를 분석한다.
+    if (ai && /[0-9내일모레다음주월화수목금토요일시]/.test(ai.text)) {
+      await callZiptalk(ai.id);
+    } else {
+      await callZiptalk(id);
     }
   };
 
@@ -193,6 +234,11 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     const next = !panelOpen;
     setPanelOpen(next);
     if (next) await refreshConditions();
+  };
+
+  const openPanel = async () => {
+    setPanelOpen(true);
+    await refreshConditions();
   };
 
   const scrollToEvidence = (id: string) => {
@@ -214,9 +260,15 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   };
 
   const onAcceptVisit = async (v: RoomVisit) => {
+    const c = findC("방문일");
     try {
-      await setRoomVisitStatus(params.rid, v.id, "수락됨");
-      await confirmCondition(params.rid, "방문일");
+      // 수락과 조건 확인을 한 번에 묶는다(부분 성공 없음).
+      await setRoomVisitStatus(
+        params.rid,
+        v.id,
+        "수락됨",
+        c ? { confirm_visit: true, condition_version: Number(c.version) } : { confirm_visit: true },
+      );
       await refreshConditions();
     } catch (e) {
       setZipError(`일정 확인 실패(${e instanceof Error ? e.message : "오류"})`);
@@ -239,55 +291,123 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   };
 
+  const quickAsk = (q: string) => {
+    setMsg(q);
+    document.getElementById("room-input")?.focus();
+  };
+
   return (
     <div className="grid">
       <section className="card">
         <h2>{meta?.listing ? meta.listing.title : "독립 거래방"}</h2>
         <p className="meta">
-          {meta ? (
-            <>
-              <span className={meta.demo ? "badge no" : "badge ok"}>{meta.demo ? "시연 거래방" : "실거래방"}</span>{" "}
-              {meta.listing ? `${meta.listing.tradeType}` : ""} · 이 방의 대화는 참여자만 볼 수 있습니다. 합성 데이터 시연용입니다.
-            </>
-          ) : (
-            "이 방의 대화는 참여자만 볼 수 있습니다. 합성 데이터 시연용입니다."
-          )}
+          <span className={meta?.demo ? "badge no" : "badge ok"}>{meta?.demo ? "시연 거래방" : "실거래방"}</span>{" "}
+          {meta?.listing ? `${meta.listing.tradeType}` : ""}
+          {meta?.listing && meta.listing.tradeType === "매매" ? ` · 매매 ${meta.listing.salePrice.toLocaleString()}만원` : null}
         </p>
         {meta?.demo ? (
           <p className="meta">
             AI 상대방과 대화 중입니다(시연{lastProvider ? `, ${lastProvider}` : ""}). 실제 소유자가 아닙니다.
           </p>
-        ) : null}
-        {meta?.demo ? (
+        ) : (
+          <p className="meta">이 방의 대화는 참여자만 볼 수 있습니다. 사람이 직접 대화합니다.</p>
+        )}
+        {meta?.demo && messages.length < 3 ? (
           <div>
-            <button className="btn ghost" onClick={onTogglePanel}>{panelOpen ? "거래 현황 닫기" : "거래 현황"}</button>{" "}
-            <button className="btn ghost" onClick={() => callZiptalk()} disabled={zipPending}>
-              {zipPending ? "집톡이 분석 중..." : "집톡이 호출"}
-            </button>
+            <p className="meta">AI 매도자와 자유롭게 대화하세요. 집톡이가 가격·일정을 정리합니다.</p>
+            <div className="quickrow">
+              <button className="btn ghost" onClick={() => quickAsk("가격 협의 가능할까요?")}>가격 협의</button>
+              <button className="btn ghost" onClick={() => quickAsk("방문 가능일이 언제인가요?")}>방문 가능일</button>
+              <button className="btn ghost" onClick={() => quickAsk("옵션이 어떻게 되나요?")}>옵션</button>
+            </div>
           </div>
         ) : null}
-        {zipError ? <p className="error">{zipError}</p> : null}
+      </section>
+      <div className={panelOpen ? "deal-layout open" : "deal-layout"}>
+        <section className="card">
+          {meta?.demo ? (
+            <div>
+              <button className="btn ghost" onClick={onTogglePanel}>{panelOpen ? "거래 현황 닫기" : "거래 현황"}</button>{" "}
+              <button className="btn ghost" onClick={() => callZiptalk()} disabled={zipPending}>
+                {zipPending ? "집톡이 분석 중..." : "집톡이 호출"}
+              </button>
+            </div>
+          ) : null}
+          {zipError ? <p className="error">{zipError}</p> : null}
+          {error ? <p className="error">{error}</p> : null}
+          <div className="msgs" ref={msgsRef}>
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                id={`msg-${m.id}`}
+                className={m.author_type === "human" ? "bubble mine" : m.author_type === "assistant" ? "zipcard" : "bubble theirs"}
+              >
+                <div className="who">{m.author}{authorTag(m)}</div>
+                <div>{m.text}</div>
+                {m.author_type === "assistant" && m.text.includes("거래 현황에서 확인") ? (
+                  <div>
+                    <button className="btn ghost" onClick={openPanel}>거래 현황 열기</button>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+            {aiPending && meta?.demo ? (
+              <div className="bubble theirs">
+                <div className="who">{aiName(meta?.listing?.tradeType)}</div>
+                <div>입력 중...</div>
+              </div>
+            ) : null}
+          </div>
+          {zipPending ? <p className="meta">집톡이 분석 중...</p> : null}
+          {aiError ? (
+            <p className="error">
+              {aiError} <button className="btn ghost" onClick={onRetry} disabled={aiPending}>다시 시도</button>
+            </p>
+          ) : null}
+          <div className="composer">
+            <div className="field">
+              <label>메시지 입력</label>
+              <textarea
+                id="room-input"
+                rows={2}
+                value={msg}
+                placeholder="메시지 입력"
+                onChange={(e) => setMsg(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    onSend();
+                  }
+                }}
+              />
+            </div>
+            <button onClick={onSend} disabled={sending}>{sending ? "전송 중..." : "전송"}</button>
+          </div>
+        </section>
         {panelOpen && meta?.demo ? (
-          <div className="card">
+          <aside className="card drawer open">
+            <div>
+              <button className="btn ghost" onClick={() => setPanelOpen(false)}>닫기</button>
+            </div>
             <h3>거래 현황</h3>
             <p className="meta">초안이며 자동 합의가 아닙니다. 확인은 사람이 직접 누른 것만 기록됩니다.</p>
             <h4>가격</h4>
             <ul>
               {["최초가", "매수 희망가", "매도 제안가"].map((n) => (
-                <ConditionRow key={n} name={n} cond={findC(n)} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
+                <ConditionRow key={n} name={n} cond={findC(n)} me={me} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
               ))}
             </ul>
             <h4>일정</h4>
             {visits.length === 0 ? (
               <ul>
-                <ConditionRow name="방문일" cond={findC("방문일")} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
+                <ConditionRow name="방문일" cond={findC("방문일")} me={me} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
               </ul>
             ) : (
               <ul>
                 {visits.map((v) => (
                   <li key={v.id}>
                     <strong>방문 {formatVisit(v)}</strong>{" "}
-                    <span className={v.status === "수락됨" ? "badge ok" : "badge no"}>{v.status}</span>{" "}
+                    <span className={v.status === "수락됨" ? "badge ok" : "badge no"}>{visitLabel(v)}</span>{" "}
                     {v.proposed_by === "demo" && v.status === "제안됨" ? (
                       <span className="meta">시연 제안(실제 예약 아님)</span>
                     ) : null}{" "}
@@ -304,13 +424,13 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             )}
             <ul>
               {["계약일", "잔금일", "입주일"].map((n) => (
-                <ConditionRow key={n} name={n} cond={findC(n)} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
+                <ConditionRow key={n} name={n} cond={findC(n)} me={me} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
               ))}
             </ul>
             <h4>조건</h4>
             <ul>
               {["옵션", "수리 요청"].map((n) => (
-                <ConditionRow key={n} name={n} cond={findC(n)} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
+                <ConditionRow key={n} name={n} cond={findC(n)} me={me} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
               ))}
             </ul>
             {unconfirmed.length > 0 ? (
@@ -335,29 +455,9 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
                 </ul>
               </>
             ) : null}
-          </div>
+          </aside>
         ) : null}
-        {error ? <p className="error">{error}</p> : null}
-        <div>
-          {messages.map((m) => (
-            <p key={m.id} id={`msg-${m.id}`}>
-              <strong>{m.author}</strong>
-              {authorTag(m) ? <span>{authorTag(m)}</span> : null}: {m.text}
-            </p>
-          ))}
-        </div>
-        {aiPending && meta?.demo ? <p className="meta">{aiName(meta?.listing?.tradeType)}가 입력 중...</p> : null}
-        {aiError ? (
-          <p className="error">
-            {aiError} <button className="btn ghost" onClick={onRetry} disabled={aiPending}>다시 시도</button>
-          </p>
-        ) : null}
-        <div className="field">
-          <label>메시지 입력</label>
-          <input id="room-input" value={msg} placeholder="메시지 입력" onChange={(e) => setMsg(e.target.value)} />
-        </div>
-        <button onClick={onSend} disabled={sending}>{sending ? "전송 중..." : "전송"}</button>
-      </section>
+      </div>
     </div>
   );
 }

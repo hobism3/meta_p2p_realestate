@@ -67,37 +67,66 @@ function priceText(manwom: number): string {
  * 정규식 기반 mock 분석. lib/ziptalk.ts를 테스트 기준선으로 쓴다.
  * 확정(confirmed)은 절대 만들지 않는다. 근거 없는 조건도 만들지 않는다.
  */
+export interface HistoryMsg {
+  id: string;
+  text: string;
+  author_type: string;
+}
+
+function isQuestionLike(t: string): boolean {
+  const s = t.trim();
+  return s.endsWith("?") || /(언제|몇 시|얼마인가|가능할까|될까|돼요\?|되나요|나요\?|가요\?|까요)/.test(s);
+}
+
+function asPriceProposal(text: string): number | null {
+  const price = extractPriceManwon(text);
+  if (price === null) return null;
+  if (!/(제안|깎|네고|하자|합시다|어때|안돼|안될까|조율|협의)/.test(text)) return null;
+  return price;
+}
+
+const VISIT_WORDS = ["방문", "보러", "구경", "보실 수 있"];
+
 export function analyzeMock(
   trigger: TriggerMsg,
   current: Map<string, StoredCondition>,
   refISO = "",
+  history: HistoryMsg[] = [],
 ): AnalysisOutcome {
   const t = trigger.text.trim();
   const proposer = trigger.author_type === "human" ? "human" : "demo";
   const silent = { upserts: [], intervene: false, bubble: null };
   if (hasJudgment(t)) return silent;
   const cls = classify(t);
-  const price = extractPriceManwon(t);
   // 매수자 희망가와 매도자 제안가는 별도 조건으로 유지한다. 서로 다른 가격을 자동 충돌·합의로 보지 않는다.
+  // 트리거뿐 아니라 최근 대화까지 새 순서대로 훑어서 AI 답 속 제안을 놓치지 않는다.
   const pname = proposer === "human" ? "매수 희망가" : "매도 제안가";
-  if (cls === "proposal" && price !== null) {
-    const v = priceText(price);
-    const cur = current.get(pname);
+  const cands: Array<{ id: string; text: string; author_type: string }> = [
+    { id: trigger.id, text: t, author_type: trigger.author_type },
+    ...history.filter((h) => h.author_type === "human" || h.author_type === "demo_agent"),
+  ];
+  for (const c of cands) {
+    const pp = asPriceProposal(c.text);
+    if (pp === null) continue;
+    const cp = c.author_type === "human" ? "human" : "demo";
+    const pn = cp === "human" ? "매수 희망가" : "매도 제안가";
+    const v = priceText(pp);
+    const cur = current.get(pn);
     if (!cur || !cur.value) {
       return {
-        upserts: [{ name: pname, value: v, proposer, status: "proposed", evidence: [trigger.id] }],
+        upserts: [{ name: pn, value: v, proposer: cp, status: "proposed", evidence: [c.id] }],
         intervene: true,
         bubble: `가격이 ${v}으로 새로 제안됐어요. 아직 확정되지는 않았습니다.`,
       };
     }
     if (cur.value !== v) {
       return {
-        upserts: [{ name: pname, value: v, proposer, status: "proposed", evidence: [trigger.id] }],
+        upserts: [{ name: pn, value: v, proposer: cp, status: "proposed", evidence: [c.id] }],
         intervene: true,
         bubble: `가격이 ${cur.value}에서 ${v}로 변경됐어요. 아직 확정되지는 않았습니다.`,
       };
     }
-    return silent;
+    break;
   }
   if (cls === "withdraw") {
     const wcur = current.get(pname);
@@ -110,17 +139,22 @@ export function analyzeMock(
     }
     return silent;
   }
-  if (t.includes("방문") || t.includes("보러") || t.includes("구경")) {
-    const v = parseVisitProposal(t, refISO || trigger.created_at);
-    if (v) {
-      return {
-        upserts: [{ name: "방문일", value: v.display, proposer, status: "proposed", evidence: [trigger.id] }],
-        intervene: true,
-        bubble: v.time
-          ? `방문일로 ${v.display}가 제안됐어요. 거래 현황에서 확인해 주세요.`
-          : `방문일로 ${v.display} 이야기가 나왔어요. 시간을 정해 주세요.`,
-      };
-    }
+  const visitCtx = cands.some((c) => VISIT_WORDS.some((w) => c.text.includes(w)));
+  for (const c of cands) {
+    const hasWord = VISIT_WORDS.some((w) => c.text.includes(w));
+    if (!hasWord && !visitCtx) continue;
+    if (isQuestionLike(c.text)) continue;
+    const v = parseVisitProposal(c.text, refISO || trigger.created_at);
+    if (!v) continue;
+    if (!hasWord && !v.time) continue;
+    const vp = c.author_type === "human" ? "human" : "demo";
+    return {
+      upserts: [{ name: "방문일", value: v.display, proposer: vp, status: "proposed", evidence: [c.id] }],
+      intervene: true,
+      bubble: v.time
+        ? `방문일로 ${v.display}가 제안됐어요. 거래 현황에서 확인해 주세요.`
+        : `방문일로 ${v.display} 이야기가 나왔어요. 시간을 정해 주세요.`,
+    };
   }
   if (cls === "question") {
     if (t.includes("입주")) {
@@ -400,10 +434,22 @@ export async function confirmCondition(
  */
 async function syncVisitProposal(roomId: string, trigger: TriggerMsg, proposer: "human" | "demo"): Promise<string | null> {
   const t = trigger.text;
-  if (!t.includes("방문") && !t.includes("보러") && !t.includes("구경")) return null;
+  const hasWord = VISIT_WORDS.some((w) => t.includes(w));
+  const dal = getDal();
+  if (!hasWord) {
+    const recent = (await dal.all("SELECT text, author_type FROM messages WHERE room_id = ? ORDER BY created_at DESC LIMIT 6", [
+      roomId,
+    ])) as { text: string; author_type: string }[];
+    const ctx = recent.some(
+      (r) =>
+        (String(r.author_type ?? "") === "human" || String(r.author_type ?? "") === "demo_agent") &&
+        VISIT_WORDS.some((w) => String(r.text ?? "").includes(w)),
+    );
+    if (!ctx) return null;
+  }
+  if (isQuestionLike(t)) return null;
   const v = parseVisitProposal(t, trigger.created_at);
   if (!v || !v.time) return null;
-  const dal = getDal();
   const dup = await dal.get(
     "SELECT id FROM visits WHERE room_id = ? AND visit_date = ? AND visit_time = ? AND status IN ('제안됨','수락됨')",
     [roomId, v.date, v.time],
@@ -416,6 +462,48 @@ async function syncVisitProposal(roomId: string, trigger: TriggerMsg, proposer: 
     [id, room ? room.listing_id : "", v.date, v.time, "제안됨", roomId, now(), proposer, JSON.stringify([trigger.id]), "", ""],
   );
   return id;
+}
+
+/**
+ * 일정 수락 원자 처리. 방문 수락과 방문일 조건 확인을 한 트랜잭션으로 묶는다.
+ * 버전이 어긋나면 둘 다 바꾸지 않고 409를 낸다. AI 시연 동의는 여기서 확인으로 쓰지 않는다.
+ */
+export async function acceptVisit(
+  roomId: string,
+  visitId: string,
+  userId: string,
+  expectedVersion?: number,
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const dal = getDal();
+  let result: { ok: true } | { ok: false; status: number; error: string } = { ok: true };
+  await dal.withTransaction(async (tx) => {
+    const visit = await tx.get("SELECT status FROM visits WHERE id = ? AND room_id = ?", [visitId, roomId]);
+    if (!visit) {
+      result = { ok: false, status: 404, error: "일정 없음" };
+      return;
+    }
+    if (String(visit.status ?? "") !== "제안됨") {
+      result = { ok: false, status: 409, error: "이미 처리된 일정" };
+      return;
+    }
+    const cond = await tx.get("SELECT version FROM room_conditions WHERE room_id = ? AND name = '방문일'", [roomId]);
+    if (cond && expectedVersion !== undefined && Number(cond.version ?? 0) !== expectedVersion) {
+      result = { ok: false, status: 409, error: `버전 불일치(현재 ${Number(cond.version ?? 0)})` };
+      return;
+    }
+    await tx.run("UPDATE visits SET status = '수락됨', decided_by = ?, decided_at = ? WHERE id = ?", [
+      userId,
+      now(),
+      visitId,
+    ]);
+    if (cond) {
+      await tx.run(
+        "UPDATE room_conditions SET confirmed_by = ?, confirmed_at = ?, confirmed_version = version WHERE room_id = ? AND name = '방문일'",
+        [userId, now(), roomId],
+      );
+    }
+  });
+  return result;
 }
 
 export interface ZiptalkOk {
@@ -621,7 +709,16 @@ async function executeZiptalk(
       outcome = { upserts: validated.conditions, intervene: validated.intervene, bubble: validated.bubble };
       usageJson = JSON.stringify({ inputTokens: r.usage.inputTokens, outputTokens: r.usage.outputTokens });
     } else {
-      outcome = analyzeMock(trigger, current);
+      const recent = (await getDal().all(
+        "SELECT id, author_type, text FROM messages WHERE room_id = ? AND (author_type = 'human' OR author_type = 'demo_agent') ORDER BY created_at DESC LIMIT 6",
+        [roomId],
+      )) as { id: string; author_type: string; text: string }[];
+      outcome = analyzeMock(
+        trigger,
+        current,
+        trigger.created_at,
+        recent.map((r) => ({ id: String(r.id), text: String(r.text ?? ""), author_type: String(r.author_type ?? "") })),
+      );
     }
     const applied = await applyOutcome(roomId, outcome);
     await syncVisitProposal(roomId, trigger, trigger.author_type === "human" ? "human" : "demo");

@@ -80,7 +80,7 @@ test("시연방: 집톡이 제안 정리→거래 현황", async ({ page }) => {
   await expect(page.getByText("45,000만원").first()).toBeVisible();
   const wishRow = page.locator("li", { hasText: "매수 희망가" }).first();
   await wishRow.getByRole("button", { name: "확인하기" }).click();
-  await expect(wishRow).toContainText("확인됨");
+  await expect(wishRow).toContainText("확인함");
   await page.getByPlaceholder("메시지 입력").fill("44500만원에 합시다");
   await page.getByRole("button", { name: "전송" }).click();
   await expect(wishRow).toContainText("확인 지남");
@@ -110,6 +110,52 @@ test("시연방: 방문 제안→일정 확인→변경", async ({ page }) => {
   await page.getByPlaceholder("메시지 입력").fill("모레 오후 2시로 바꿔서 방문하고 싶어요");
   await page.getByRole("button", { name: "전송" }).click();
   await expect(page.getByRole("button", { name: "일정 확인" })).toHaveCount(1);
+});
+
+test("문의: 같은 매물은 기존 방으로 재입장", async ({ page }) => {
+  await loginAs(page, "e2e-reentry", "E2E재입장");
+  await page.goto("/listings/s21");
+  if (await page.getByRole("button", { name: "문의하기" }).count() > 0) {
+    await page.getByRole("button", { name: "문의하기" }).click();
+    await expect(page).toHaveURL(/\/rooms\//);
+    await page.goto("/listings/s21");
+  }
+  await page.getByRole("link", { name: "대화 이어하기" }).click();
+  await expect(page).toHaveURL(/\/rooms\//);
+  const u1 = page.url();
+  await page.goto("/listings/s21");
+  await page.getByRole("link", { name: "대화 이어하기" }).click();
+  await expect(page).toHaveURL(u1);
+});
+
+test("실거래방: AI가 끼지 않는다", async ({ browser }) => {
+  const octx = await browser.newContext();
+  const opage = await octx.newPage();
+  await loginAs(opage, "e2e-ownerx", "E2E소유X");
+  await opage.goto("/register");
+  await opage.getByPlaceholder("예: 신림역 도보 5분 원룸").fill("E2E 실거래집");
+  await opage.getByPlaceholder("예: 서울 관악구 신림로 100 (가상)").fill("서울 관악구 E2E로 1 (가상)");
+  await opage.getByPlaceholder("예: 1000").fill("500");
+  await opage.getByPlaceholder("예: 65").fill("50");
+  await opage.getByPlaceholder("예: 23").fill("21");
+  await opage.getByPlaceholder(/즉시 입주/).fill("2026-12-01");
+  await opage.getByPlaceholder("예: 홍길동").fill("E2E");
+  await opage.getByRole("button", { name: "등록하기" }).click();
+  const href = await opage.getByRole("link", { name: "상세 보기" }).getAttribute("href");
+  const bctx = await browser.newContext();
+  const bpage = await bctx.newPage();
+  await loginAs(bpage, "e2e-buyerx", "E2E구매X");
+  await bpage.goto(href ?? "/");
+  await bpage.getByRole("button", { name: "문의하기" }).click();
+  await expect(bpage).toHaveURL(/\/rooms\//);
+  await bpage.getByPlaceholder("메시지 입력").fill("실거래 문의입니다");
+  await bpage.getByRole("button", { name: "전송" }).click();
+  await expect(bpage.getByText("실거래 문의입니다")).toBeVisible();
+  await expect(bpage.locator(".bubble.mine")).toBeVisible();
+  await expect(bpage.locator(".zipcard")).toHaveCount(0);
+  await expect(bpage.getByText("(AI)")).toHaveCount(0);
+  await octx.close();
+  await bctx.close();
 });
 
 test("모바일: 가로 넘침이 없다", async ({ page }) => {

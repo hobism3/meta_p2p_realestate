@@ -215,8 +215,8 @@ export async function loadRoomVisits(rid: string): Promise<RoomVisit[]> {
   return (await req(`/api/rooms/${rid}/visits`)) as RoomVisit[];
 }
 
-export async function setRoomVisitStatus(rid: string, vid: string, status: string): Promise<void> {
-  await req(`/api/rooms/${rid}/visits/${vid}`, { method: "PATCH", body: JSON.stringify({ status }) });
+export async function setRoomVisitStatus(rid: string, vid: string, status: string, extra?: { confirm_visit?: boolean; condition_version?: number }): Promise<void> {
+  await req(`/api/rooms/${rid}/visits/${vid}`, { method: "PATCH", body: JSON.stringify({ status, ...(extra ?? {}) }) });
 }
 
 export async function confirmCondition(rid: string, name: string, version?: number): Promise<{ name: string; version: number }> {

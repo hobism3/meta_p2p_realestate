@@ -84,6 +84,43 @@ describe("mock 분석", () => {
     assert.equal(r.upserts.length, 0);
     assert.ok(r.bubble && r.bubble.includes("방문일은 내일"));
   });
+  it("매도자 답 속 제안을 놓치지 않는다", async () => {
+    const r = analyzeMock(
+      { id: "a9", author_type: "demo_agent", author: "AI", text: "내일 오후 2시에 가능합니다" },
+      cur({}),
+      "2026-10-29T00:00:00.000Z",
+      [{ id: "h8", text: "방문일정은 언제되나요?", author_type: "human" }],
+    );
+    assert.equal(r.intervene, true);
+    assert.equal(r.upserts[0].name, "방문일");
+    assert.equal(r.upserts[0].proposer, "demo");
+    assert.ok(r.bubble && r.bubble.includes("거래 현황에서 확인"));
+  });
+  it("보실 수 있어요는 제안이다", async () => {
+    const r = analyzeMock(
+      T("내일 오후 2시에 보실 수 있어요"),
+      cur({}),
+      "2026-10-29T00:00:00.000Z",
+    );
+    assert.equal(r.upserts[0].name, "방문일");
+    assert.ok(r.bubble && r.bubble.includes("10월 30일"));
+  });
+  it("날짜 있는 질문은 질문으로 둔다", async () => {
+    const r = analyzeMock(
+      T("내일 방문 가능해요?"),
+      cur({}),
+      "2026-10-29T00:00:00.000Z",
+    );
+    assert.equal(r.upserts[0].status, "unconfirmed");
+  });
+  it("최근 대화에서 제안을 찾아낸다", async () => {
+    const r = analyzeMock(T("네 알겠습니다"), cur({}), "", [
+      { id: "h1", text: "44000만원에 합시다", author_type: "human" },
+    ]);
+    assert.equal(r.upserts[0].name, "매수 희망가");
+    assert.equal(r.upserts[0].value, "44,000만원");
+    assert.deepEqual(r.upserts[0].evidence, ["h1"]);
+  });
   it("판단은 무시한다", async () => {
     const r = analyzeMock(T("이 집은 최고 등급입니다"), cur({}));
     assert.equal(r.intervene, false);

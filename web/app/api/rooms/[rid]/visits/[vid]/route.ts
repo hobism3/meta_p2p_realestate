@@ -2,6 +2,7 @@ import { VISIT_STATUS, bad, guardWrite, notFound, ok, readJson } from "@/lib/api
 import { authenticate } from "@/lib/auth";
 import { getDal } from "@/lib/dal";
 import { getRoom, isRoomMember } from "@/lib/rooms";
+import { acceptVisit } from "@/lib/ziptalk-service";
 
 export async function PATCH(
   req: Request,
@@ -23,6 +24,12 @@ export async function PATCH(
     params.rid,
   ]);
   if (!cur) return notFound("일정 없음");
+  if (status === "수락됨" && parsed.value.confirm_visit === true) {
+    const cv = parsed.value.condition_version;
+    const r = await acceptVisit(params.rid, params.vid, a.identity.userId, typeof cv === "number" ? cv : undefined);
+    if (!r.ok) return ok({ error: r.error }, r.status);
+    return ok({ id: params.vid, status });
+  }
   await getDal().run("UPDATE visits SET status = ?, decided_by = ?, decided_at = ? WHERE id = ?", [status, a.identity.userId, new Date().toISOString(), params.vid]);
   return ok({ id: params.vid, status });
 }

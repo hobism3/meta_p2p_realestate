@@ -297,3 +297,40 @@ describe("VS-3C 방문 일정", () => {
     assert.equal((await api(`/api/rooms/${roomA}/visits`, {}, STRANGER)).status, 403);
   });
 });
+
+describe("VS-4A 결함 수정", () => {
+  it("실거래방에는 AI가 끼지 않는다", async () => {
+    const t = await say(userRoom, "보증금 협의 가능할까요?");
+    const r = await api(`/api/rooms/${userRoom}/agent/invoke`, {
+      method: "POST", body: JSON.stringify({ trigger_message_id: t }),
+    }, HUMAN);
+    assert.equal(r.status, 404);
+    const list = await api(`/api/rooms/${userRoom}/messages`, {}, HUMAN);
+    assert.ok(list.body.every((m) => m.author_type === "human"));
+  });
+  it("AI 답을 트리거로 분석해도 중복 개입하지 않는다", async () => {
+    const before = (await assistantBubbles(roomA)).length;
+    const t = await say(roomA, "매매가 얼마인가요?");
+    const inv = await api(`/api/rooms/${roomA}/agent/invoke`, {
+      method: "POST", body: JSON.stringify({ trigger_message_id: t }),
+    }, HUMAN);
+    assert.equal(inv.status, 201);
+    const z = await api(`/api/rooms/${roomA}/ziptalk/invoke`, {
+      method: "POST", body: JSON.stringify({}),
+    }, HUMAN);
+    assert.equal(z.status, 200);
+    assert.equal((await assistantBubbles(roomA)).length, before);
+  });
+  it("버전 어긋난 일정 수락은 둘 다 바꾸지 않는다", async () => {
+    const created = await api(`/api/rooms/${roomA}/visits`, {
+      method: "POST", body: JSON.stringify({ date: "2099-12-31", time: "14:00" }),
+    }, HUMAN);
+    assert.equal(created.status, 201);
+    const bad = await api(`/api/rooms/${roomA}/visits/${created.body.id}`, {
+      method: "PATCH", body: JSON.stringify({ status: "수락됨", confirm_visit: true, condition_version: 999 }),
+    }, HUMAN);
+    assert.equal(bad.status, 409);
+    const v = await api(`/api/rooms/${roomA}/visits`, {}, HUMAN);
+    assert.equal(v.body.find((x) => x.id === created.body.id).status, "제안됨");
+  });
+});

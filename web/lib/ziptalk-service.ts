@@ -13,6 +13,7 @@ import {
 } from "./meta.ts";
 import { isDemoListing, listingForDemo } from "./demo.ts";
 import { getRoom } from "./rooms.ts";
+import { bubbleFor, createProposals } from "./agreement-service.ts";
 import { resolveProvider, type DemoProvider } from "./agent-service.ts";
 
 /**
@@ -842,6 +843,7 @@ async function executeZiptalk(
       );
     }
     const applied = await applyOutcome(roomId, outcome);
+    // 방문 행을 먼저 맞춰야 제안 카드에 visit_id가 연결된다.
     const visitDone = await syncVisitProposal(roomId, trigger, trigger.author_type === "human" ? "human" : "demo");
     // AI가 사람 제안을 받아 말했을 때는 AI 답에 날짜가 없어도 사람 발화로 행을 만든다.
     // 질문·날짜 없음은 syncVisitProposal이 거부하므로 질문만으로 생기지 않는다.
@@ -856,6 +858,49 @@ async function executeZiptalk(
           { id: String(hm.id), author_type: "human", author: "", text: String(hm.text ?? ""), created_at: String(hm.created_at ?? "") },
           "human",
         );
+      }
+    }
+    // 구체 조건이 새로 잡혔으면 양측 합의 카드를 만든다. 말풍선과 카드를 연결한다.
+    const concrete = outcome.upserts.filter((u) => u.value && u.status === "proposed");
+    if (concrete.length > 0) {
+      const created = await createProposals(
+        roomId,
+        concrete.map((u) => ({
+          name: u.name,
+          value: u.value,
+          evidence: u.evidence,
+          visitId: u.name === "방문일" ? visitDone ?? "" : "",
+          refISO: trigger.created_at,
+        })),
+        trigger.author_type === "human" ? "human" : "demo",
+      );
+      const cardText = bubbleFor(created);
+      if (cardText && created.length > 0) {
+        let cardMsgId = applied.bubbleMessageId;
+        if (!cardMsgId) {
+          cardMsgId = randomUUID();
+          const listingRow = await getDal().get("SELECT listing_id FROM deal_rooms WHERE id = ?", [roomId]) as
+            | { listing_id: string }
+            | undefined;
+          await getDal().run(
+            "INSERT INTO messages (id,listing_id,author,role,user_id,author_type,room_id,text,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+            [cardMsgId, listingRow ? String(listingRow.listing_id) : "", ZIPTALK_AUTHOR, "", `agent:${roomId}:ziptalk`, "assistant", roomId, cardText, now()],
+          );
+        } else {
+          const prev = (await getDal().get("SELECT text FROM messages WHERE id = ?", [cardMsgId])) as
+            | { text: string }
+            | undefined;
+          await getDal().run("UPDATE messages SET text = ? WHERE id = ?", [
+            `${String(prev?.text ?? "")} ${cardText}`.slice(0, 900),
+            cardMsgId,
+          ]);
+        }
+        for (const c of created) {
+          await getDal().run("UPDATE room_proposals SET card_msg_id = ? WHERE id = ?", [cardMsgId, c.id]);
+        }
+        if (!applied.bubbleMessageId) {
+          return { ok: true, created: true, bubbleMessageId: cardMsgId, applied: applied.applied, provider, model };
+        }
       }
     }
     await getDal().run(

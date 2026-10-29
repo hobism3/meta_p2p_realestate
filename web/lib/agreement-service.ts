@@ -3,7 +3,7 @@ import { getDal } from "./dal.ts";
 import { now } from "./db.ts";
 import { isDemoListing, listingForDemo } from "./demo.ts";
 import { getPersona, type NegotiationPolicy } from "./personas.ts";
-import { parseManwonInt } from "./visit-dates.ts";
+import { parseManwonInt, parseVisitProposal } from "./visit-dates.ts";
 
 /**
  * VS-4C 양측 합의. room_conditions·history는 그대로 두고 제안/승인을 별도로 둔다.
@@ -53,14 +53,44 @@ function fmtRange(min: number, max: number): string {
 }
 
 /** 시연방 AI의 동의/거절을 협상 정책으로 판정한다. 사람 방에서는 쓰지 않는다. */
+export interface DemoContext {
+  aiTexts: string[];
+  aiDated: Array<{ text: string; at: string }>;
+  visitDate: string;
+  visitTime: string;
+}
+
+/** AI 발화 속 날짜 표현을 메시지 시각 기준 절대값으로 푼다. */
+function resolvedBits(text: string, at: string): string[] {
+  const bits: string[] = [];
+  const v = parseVisitProposal(text, at);
+  if (v) {
+    const m = v.date.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+      bits.push(`${Number(m[2])}월`, `${Number(m[3])}일`);
+      if (v.time) {
+        const h = Number(v.time.slice(0, 2)) % 12 === 0 ? 12 : Number(v.time.slice(0, 2)) % 12;
+        bits.push(`${h}시`);
+      }
+    }
+  }
+  return bits;
+}
+
+/**
+ * 시연방 AI의 동의/거절. 가격 외 조건을 무조건 수락하지 않는다.
+ * AI 자신의 발언(createdBy demo)은 동의하고, 사람 제안은 AI가 같은 말을 했을 때만
+ * 동의한다(매도자 발언·일정과 일치). 계약금은 서버 계산값이라 그대로 동의한다.
+ */
 export function evaluateDemoDecision(
   name: string,
   value: string,
   listPriceManwon: number,
   policy: NegotiationPolicy | undefined,
   createdBy: string,
-): { decision: "agree" | "refuse"; reason: string } {
-  if (name === "매도 제안가" || createdBy === "demo") return { decision: "agree", reason: "AI 시연 제안" };
+  ctx: DemoContext = { aiTexts: [], aiDated: [], visitDate: "", visitTime: "" },
+): { decision: "agree" | "refuse" | null; reason: string } {
+  if (createdBy === "demo" && name !== "매수 희망가") return { decision: "agree", reason: "AI 시연 제안" };
   if (name === "매수 희망가") {
     const n = parseManwonInt(value);
     if (n === null) return { decision: "refuse", reason: "AI 시연: 금액을 알 수 없습니다." };
@@ -74,7 +104,53 @@ export function evaluateDemoDecision(
     }
     return { decision: "agree", reason: "AI 시연 동의" };
   }
-  return { decision: "agree", reason: "AI 시연 동의" };
+  if (name === "매도 제안가") return { decision: "agree", reason: "AI 시연 동의" };
+  if (name === "계약금") return { decision: "agree", reason: "AI 시연 동의" };
+  const joined = ctx.aiTexts.join("\n");
+  // 증거가 없으면 대기(null)한다. 섣불리 동의하지도 거절하지도 않는다.
+  // AI가 다른 값을 말했을 때만 거절한다.
+  const resolved = (ctx.aiDated ?? []).flatMap((d) => resolvedBits(d.text, d.at));
+  const known = `${joined}\n${resolved.join("\n")}`;
+  if (name === "방문일") {
+    const m = ctx.visitDate.match(/(\d{4})-(\d{2})-(\d{2})/);
+    const hm = ctx.visitTime.match(/(\d{2}):(\d{2})/);
+    if (!m || !hm) return { decision: null, reason: "" };
+    const h12 = Number(hm[1]) % 12 === 0 ? 12 : Number(hm[1]) % 12;
+    const dayHit = known.includes(`${Number(m[2])}월`) && known.includes(`${Number(m[3])}일`);
+    const timeHit = known.includes(`${h12}시`);
+    if (dayHit && timeHit) return { decision: "agree", reason: "AI 시연 동의" };
+    if (conflictingVisit(joined, Number(m[2]), Number(m[3]))) {
+      return { decision: "refuse", reason: "AI 시연 거절: 다른 일정을 제안했습니다." };
+    }
+    return { decision: null, reason: "" };
+  }
+  const months: string[] = [];
+  const days: string[] = [];
+  let mm: RegExpExecArray | null;
+  const mre = /(\d{1,2})월/g;
+  while ((mm = mre.exec(value)) !== null) months.push(`${Number(mm[1])}월`);
+  const dre = /(\d{1,2})일/g;
+  while ((mm = dre.exec(value)) !== null) days.push(`${Number(mm[1])}일`);
+  if (months.length > 0 || days.length > 0) {
+    if ([...months, ...days].every((bit) => known.includes(bit))) return { decision: "agree", reason: "AI 시연 동의" };
+    return { decision: null, reason: "" };
+  }
+  if (value.replace(/\s/g, "") && joined.replace(/\s/g, "").includes(value.replace(/\s/g, ""))) {
+    return { decision: "agree", reason: "AI 시연 동의" };
+  }
+  return { decision: null, reason: "" };
+}
+
+/** 방문 맥락 AI 발화에서 제안 날짜와 다른 (월, 일)이 나오면 true. */
+export function conflictingVisit(aiJoined: string, month: number, day: number): boolean {
+  const visitCtx = /(방문|보러|구경|보실)/.test(aiJoined);
+  if (!visitCtx) return false;
+  const re = /(\d{1,2})월\s*(\d{1,2})일/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(aiJoined)) !== null) {
+    if (Number(m[1]) !== month || Number(m[2]) !== day) return true;
+  }
+  return false;
 }
 
 async function roomSides(roomId: string, demo: boolean): Promise<Array<{ key: string; label: string }>> {
@@ -99,15 +175,25 @@ function sideOf(actorType: string, actorId: string, demo: boolean): string {
   return demo ? "human" : `human:${actorId}`;
 }
 
-/** 양측 동의 판정. 시연방=사람 1명+AI, 실제방=서로 다른 사람 2명 이상. */
-export function isAgreed(approvals: Approval[], demo: boolean): boolean {
+/**
+ * 양측 동의 판정. 시연방=사람 1명+AI, 실제방=매수(tenant)역할 1명+매도(landlord)역할 1명.
+ * 임의의 두 사용자 동의만으로 확정되지 않는다. roles는 actor_id→room_members.role이다.
+ */
+export function isAgreed(approvals: Approval[], demo: boolean, roles: Record<string, string> = {}): boolean {
+  const decisions = approvals.map((a) => a.decision);
+  if (decisions.includes("refuse")) return false;
   const agrees = approvals.filter((a) => a.decision === "agree");
-  if (agrees.some((a) => a.decision === "refuse")) return false;
   if (demo) {
     return agrees.some((a) => a.actor_type === "human") && agrees.some((a) => a.actor_type === "demo");
   }
-  const humans = new Set(agrees.filter((a) => a.actor_type === "human").map((a) => a.actor_id));
-  return humans.size >= 2;
+  const sideOf = (a: Approval): string => {
+    const r = roles[a.actor_id] ?? "";
+    if (r === "landlord" || r === "seller") return "seller";
+    if (r === "tenant" || r === "buyer") return "buyer";
+    return "";
+  };
+  const sides = new Set(agrees.filter((a) => a.actor_type === "human").map(sideOf));
+  return sides.has("buyer") && sides.has("seller");
 }
 
 export async function getProposals(
@@ -161,9 +247,17 @@ export interface CreatedProposal extends Proposal {
  * 집톡이 분석 확정분에서 합의 카드를 만든다. 구체 값이 있는 협의 조건만 대상이다.
  * 방문일은 시간까지 있어야 카드가 된다(정오·자정 단독 등 모호하면 묻기만 한다).
  */
+export interface ProposalItem {
+  name: string;
+  value: string;
+  evidence: string[];
+  visitId?: string;
+  refISO?: string;
+}
+
 export async function createProposals(
   roomId: string,
-  items: Array<{ name: string; value: string; evidence: string[] }>,
+  items: Array<ProposalItem>,
   createdBy: "human" | "demo",
 ): Promise<CreatedProposal[]> {
   const dal = getDal();
@@ -175,11 +269,21 @@ export async function createProposals(
   const demo = !!listing && isDemoListing(listing);
   const persona = listing ? getPersona(listing.id) : undefined;
   const listPrice = listing ? (listing.tradeType === "매매" ? listing.salePrice : listing.deposit) : 0;
+  const aiDated = demo
+    ? (
+        (await dal.all("SELECT text, created_at FROM messages WHERE room_id = ? AND author_type = 'demo_agent' ORDER BY created_at DESC LIMIT 10", [
+          roomId,
+        ])) as { text: string; created_at: string }[]
+      ).map((r) => ({ text: String(r.text ?? ""), at: String(r.created_at ?? "") }))
+    : [];
+  const aiTexts = aiDated.map((d) => d.text);
+  return dal.withTransaction(async (tx) => {
   const out: CreatedProposal[] = [];
   for (const it of items) {
     if (!PROPOSABLE.includes(it.name) || !it.value) continue;
-    if (it.name === "방문일" && !/(오전|오후|시)/.test(it.value)) continue;
-    const dup = (await dal.get(
+    // 방문일은 시간이 확정될 때만 카드가 된다. 정오·자정 단독 등 모호하면 묻기만 한다.
+    if (it.name === "방문일" && !parseVisitProposal(it.value, it.refISO || now())?.time) continue;
+    const dup = (await tx.get(
       "SELECT id, version, status FROM room_proposals WHERE room_id = ? AND name = ? AND value = ? AND status = 'proposed'",
       [roomId, it.name, it.value],
     )) as { id: string; version: number; status: string } | undefined;
@@ -200,43 +304,68 @@ export async function createProposals(
       });
       continue;
     }
-    const mv = (await dal.get("SELECT MAX(version) AS m FROM room_proposals WHERE room_id = ? AND name = ?", [
+    const mv = (await tx.get("SELECT MAX(version) AS m FROM room_proposals WHERE room_id = ? AND name = ?", [
       roomId,
       it.name,
     ])) as { m: number | null } | undefined;
     const version = Number(mv?.m ?? 0) + 1;
-    let visitId = "";
-    if (it.name === "방문일") {
-      const v = (await dal.get(
-        "SELECT id FROM visits WHERE room_id = ? AND status IN ('제안됨','수락됨') ORDER BY created_at DESC LIMIT 1",
-        [roomId],
-      )) as { id: string } | undefined;
-      if (v) visitId = String(v.id);
+    // 방문일은 값과 정확히 일치하는 visits 행만 연결한다. 최신 행을 임의로 쓰지 않는다.
+    let visitId = it.visitId ?? "";
+    let visitDate = "";
+    let visitTime = "";
+    if (!visitId && it.name === "방문일") {
+      const parsed = parseVisitProposal(it.value, it.refISO || now());
+      if (parsed && parsed.time) {
+        const hit = (await tx.get(
+          "SELECT id, visit_date, visit_time FROM visits WHERE room_id = ? AND visit_date = ? AND visit_time = ? AND status IN ('제안됨','수락됨')",
+          [roomId, parsed.date, parsed.time],
+        )) as { id: string; visit_date: string; visit_time: string } | undefined;
+        if (hit) {
+          visitId = String(hit.id);
+          visitDate = String(hit.visit_date ?? "");
+          visitTime = String(hit.visit_time ?? "");
+        }
+      }
+    } else if (visitId) {
+      const vr = (await tx.get("SELECT visit_date, visit_time FROM visits WHERE id = ?", [visitId])) as
+        | { visit_date: string; visit_time: string }
+        | undefined;
+      if (vr) {
+        visitDate = String(vr.visit_date ?? "");
+        visitTime = String(vr.visit_time ?? "");
+      }
     }
     const id = randomUUID();
     const stamp = now();
-    await dal.run(
+    await tx.run(
       "INSERT INTO room_proposals (id,room_id,name,value,version,source_msg_ids,visit_id,status,created_by,reason,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
       [id, roomId, it.name, it.value, version, JSON.stringify(it.evidence), visitId, "proposed", createdBy, "", stamp, stamp],
     );
-    await dal.run("UPDATE room_proposals SET status = 'superseded', updated_at = ? WHERE room_id = ? AND name = ? AND id <> ? AND status = 'proposed'", [
+    await tx.run("UPDATE room_proposals SET status = 'superseded', updated_at = ? WHERE room_id = ? AND name = ? AND id <> ? AND status = 'proposed'", [
       stamp,
       roomId,
       it.name,
       id,
     ]);
     let demoDecision: "agree" | "refuse" | null = null;
+    let reason = "";
     if (demo) {
-      const ev = evaluateDemoDecision(it.name, it.value, Number(listPrice ?? 0), persona?.policy, createdBy);
+      const ev = evaluateDemoDecision(it.name, it.value, Number(listPrice ?? 0), persona?.policy, createdBy, {
+        aiTexts,
+        aiDated,
+        visitDate,
+        visitTime,
+      });
       demoDecision = ev.decision;
       if (ev.decision === "agree") {
-        await dal.run(
+        await tx.run(
           "INSERT INTO proposal_approvals (proposal_id,actor_id,actor_type,decision,created_at) VALUES (?,?,?,?,?)",
           [id, `demo:${roomId}`, "demo", "agree", stamp],
         );
-      } else {
-        await dal.run("UPDATE room_proposals SET status = 'refused', reason = ?, updated_at = ? WHERE id = ?", [
-          ev.reason,
+      } else if (ev.decision === "refuse") {
+        reason = ev.reason;
+        await tx.run("UPDATE room_proposals SET status = 'refused', reason = ?, updated_at = ? WHERE id = ?", [
+          reason,
           stamp,
           id,
         ]);
@@ -253,16 +382,12 @@ export async function createProposals(
       status: demoDecision === "refuse" ? "refused" : "proposed",
       card_msg_id: "",
       created_by: createdBy,
-      reason: demoDecision === "refuse" ? (await reasonOf(id)) : "",
+      reason,
       demoDecision,
     });
   }
   return out;
-}
-
-async function reasonOf(id: string): Promise<string> {
-  const r = (await getDal().get("SELECT reason FROM room_proposals WHERE id = ?", [id])) as { reason: string } | undefined;
-  return String(r?.reason ?? "");
+  });
 }
 
 /** 사람 동의/거절. 버전이 어긋나거나 이미 처리됐으면 409, 같은 주체 중복도 409. */
@@ -283,44 +408,72 @@ export async function decideProposal(
   if (expectedVersion !== undefined && Number(p.version ?? 0) !== expectedVersion) {
     return { ok: false, status: 409, error: `버전 불일치(현재 ${Number(p.version ?? 0)})` };
   }
-  const dup = await dal.get("SELECT decision FROM proposal_approvals WHERE proposal_id = ? AND actor_id = ?", [proposalId, actorId]);
-  if (dup) return { ok: false, status: 409, error: "이미 응답한 제안" };
-  const stamp = now();
-  await dal.run("INSERT INTO proposal_approvals (proposal_id,actor_id,actor_type,decision,created_at) VALUES (?,?,?,?,?)", [
-    proposalId,
-    actorId,
-    "human",
-    decision,
-    stamp,
-  ]);
-  const ars = (await dal.all("SELECT actor_id, actor_type, decision FROM proposal_approvals WHERE proposal_id = ?", [proposalId])) as {
-    actor_id: string;
-    actor_type: string;
-    decision: string;
-  }[];
-  const approvals: Approval[] = ars.map((a) => ({ actor_id: String(a.actor_id), actor_type: String(a.actor_type), decision: String(a.decision) }));
   const room = (await dal.get("SELECT listing_id FROM deal_rooms WHERE id = ?", [roomId])) as { listing_id: string } | undefined;
   const listing = room ? await listingForDemo(String(room.listing_id ?? "")) : null;
   const demo = !!listing && isDemoListing(listing);
-  let status: ProposalStatus = "proposed";
-  if (approvals.some((a) => a.decision === "refuse")) status = "refused";
-  else if (isAgreed(approvals, demo)) status = "agreed";
-  await dal.run("UPDATE room_proposals SET status = ?, updated_at = ? WHERE id = ?", [status, stamp, proposalId]);
-  const visitId = String(p.visit_id ?? "");
-  if (visitId && (status === "agreed" || status === "refused")) {
-    const v = (await dal.get("SELECT status FROM visits WHERE id = ? AND room_id = ?", [visitId, roomId])) as
-      | { status: string }
-      | undefined;
-    if (v && String(v.status) === "제안됨") {
-      await dal.run("UPDATE visits SET status = ?, decided_by = ?, decided_at = ? WHERE id = ?", [
-        status === "agreed" ? "수락됨" : "거절됨",
-        `agreement:${proposalId}`,
-        stamp,
-        visitId,
+  const memberRows = (await dal.all("SELECT user_id, role FROM room_members WHERE room_id = ?", [roomId])) as {
+    user_id: string;
+    role: string;
+  }[];
+  const roles: Record<string, string> = {};
+  for (const m of memberRows) roles[String(m.user_id)] = String(m.role ?? "");
+  const stamp = now();
+  // 승인·제안·방문 갱신은 한 트랜잭션으로 묶는다. 동시 동의도 복합키가 막는다.
+  try {
+    return await dal.withTransaction(async (tx) => {
+      const dup = await tx.get("SELECT decision FROM proposal_approvals WHERE proposal_id = ? AND actor_id = ?", [
+        proposalId,
+        actorId,
       ]);
+      if (dup) return { ok: false as const, status: 409 as const, error: "이미 응답한 제안" };
+      const cur = (await tx.get("SELECT status, version FROM room_proposals WHERE id = ?", [proposalId])) as
+        | { status: string; version: number }
+        | undefined;
+      if (!cur || String(cur.status ?? "") !== "proposed") return { ok: false as const, status: 409 as const, error: "이미 처리된 제안" };
+      if (expectedVersion !== undefined && Number(cur.version ?? 0) !== expectedVersion) {
+        return { ok: false as const, status: 409 as const, error: `버전 불일치(현재 ${Number(cur.version ?? 0)})` };
+      }
+      await tx.run("INSERT INTO proposal_approvals (proposal_id,actor_id,actor_type,decision,created_at) VALUES (?,?,?,?,?)", [
+        proposalId,
+        actorId,
+        "human",
+        decision,
+        stamp,
+      ]);
+      const ars = (await tx.all("SELECT actor_id, actor_type, decision FROM proposal_approvals WHERE proposal_id = ?", [
+        proposalId,
+      ])) as { actor_id: string; actor_type: string; decision: string }[];
+      const approvals: Approval[] = ars.map((a) => ({
+        actor_id: String(a.actor_id),
+        actor_type: String(a.actor_type),
+        decision: String(a.decision),
+      }));
+      let status: ProposalStatus = "proposed";
+      if (approvals.some((a) => a.decision === "refuse")) status = "refused";
+      else if (isAgreed(approvals, demo, roles)) status = "agreed";
+      await tx.run("UPDATE room_proposals SET status = ?, updated_at = ? WHERE id = ?", [status, stamp, proposalId]);
+      const visitId = String(p.visit_id ?? "");
+      if (visitId && (status === "agreed" || status === "refused")) {
+        const v = (await tx.get("SELECT status FROM visits WHERE id = ? AND room_id = ?", [visitId, roomId])) as
+          | { status: string }
+          | undefined;
+        if (v && String(v.status) === "제안됨") {
+          await tx.run("UPDATE visits SET status = ?, decided_by = ?, decided_at = ? WHERE id = ?", [
+            status === "agreed" ? "수락됨" : "거절됨",
+            `agreement:${proposalId}`,
+            stamp,
+            visitId,
+          ]);
+        }
+      }
+      return { ok: true as const, status, version: Number(p.version ?? 1) };
+    });
+  } catch (e) {
+    if (/unique|23505|constraint/i.test(e instanceof Error ? e.message : "")) {
+      return { ok: false, status: 409, error: "이미 응답한 제안" };
     }
+    throw e;
   }
-  return { ok: true, status, version: Number(p.version ?? 1) };
 }
 
 export function bubbleFor(created: CreatedProposal[]): string | null {

@@ -219,6 +219,15 @@
 - [x] 검증: build 성공 + node 210/210 + E2E 신규 2건(desktop·mobile) 통과. 전체 E2E는 이 환경에서 지도 타일 대기·잔존 프로세스 포트 점유로 행 발생이 있어, 잔존 테스트 서버 정리 후 재실행 필요. mock·Meta 구분 유지, 운영 DB 자동 쓰기 없음.
 - VS-4B는 아래 거래 정합성으로 확정(사용자 지시). 메인·매물 상세·등록 UX는 별도 단계로 남김.
 
+## VS-4C 양측 합의 — DONE(mock)
+
+- [x] DB(`011_proposals.sql`): room_proposals(조건·값·버전·근거·visit 연결·상태 proposed/agreed/refused/superseded·카드 메시지 연결)+proposal_approvals(제안·주체 복합키). room_conditions·history 보존.
+- [x] 합의 서비스(`lib/agreement-service.ts`): 구체 조건만 카드화(방문일은 시간 필수, 정오·자정 단독은 묻기만), 버전 증가·열린 구버전 superseded·합의된 과거 보존·동일 주체 중복 409·버전 불일치 409. 시연방 AI는 협상 정책으로 즉시 판정(ranged 범위 안 동의·밖 거절, none 정가 미만 거절, AI 자신 제안 동의). 사람 동의는 토큰 신원만.
+- [x] API: `GET /proposals`(멤버만, 제안+승인+양측+me), `POST /proposals/create`(실거래방 수동 생성, 근거 검증), `POST /proposals/[pid]/decide`(agree/refuse+버전). 합의 시 방문 수락됨, 거절 시 거절됨으로 연동(제안됨일 때만).
+- [x] UI: 채팅 집톡이 말풍선 아래 합의 카드(양측 상태·동의하기·거절하기·변경 제안·보류·근거 보기), 거래 현황 합의 행으로 교체(확인하기 제거), 실거래방에도 현황 개방. AI 시연 동의는 실제 계약 아님 문구.
+- [x] 검증: build 성공 + node 253/253 + `tests/agreement.test.mjs`·`tests/m1agree.test.mjs`(시연방 카드·AI 선동의·양측 동의·중복/구버전 409·supersede·범위밖 거절·방문 수락 연동·계약금 3,850만원 합의·타인 차단, 실거래 2인 합의·거절). E2E는 로컬 25/28(집톡이 문구·방문 모바일 타임아웃 잔여) — 전체 통과는 CI `verify-e2e`에 위임. Meta 실호출 BLOCKED(`MODEL_API_KEY` 없음). mock·Meta 구분 유지, 운영 DB 자동 쓰기 없음.
+- 다음: 메인·매물 상세·등록 화면 UX 개선.
+
 ## VS-4B 거래 정합성 — DONE(mock)
 
 - [x] 매도자 기억: room 조건·방문 최신 상태를 `formatDealState`로 요약해 Meta 프롬프트에 주입(매수 희망·매도 제안·확인 구분, 계약금 10% 기준액은 협상가 기준 서버 계산). 집톡이 발화 오인 금지·완료 행세 금지·방문≠계약확정 문구 추가. mock 경로(골든 고정)는 손대지 않음.

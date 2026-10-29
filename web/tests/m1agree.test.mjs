@@ -191,7 +191,7 @@ describe("VS-4C 시연방 합의", () => {
   });
   it("방문 합의는 일정도 수락한다", async () => {
     const t = await say(room, "내일 오후 2시에 방문하고 싶어요");
-    await zip(room, t);
+    await zip(room, await invokeAgent(room, t));
     const data = await proposals(room);
     const p = latest(data, "방문일");
     assert.ok(p && p.visit_id, "방문 제안은 visits 행과 연결된다");
@@ -200,6 +200,25 @@ describe("VS-4C 시연방 합의", () => {
     assert.equal(r.body.status, "agreed");
     const v = await api(`/api/rooms/${room}/visits`, {}, HUMAN);
     assert.equal(v.body.find((x) => x.id === p.visit_id).status, "수락됨");
+  });
+  it("방문 변경은 제안을 분리하고 섞지 않는다", async () => {
+    const t = await say(room, "모레 낮 12시에 방문하고 싶어요");
+    await zip(room, t);
+    const data = await proposals(room);
+    const visits = data.proposals.filter((p) => p.name === "방문일" && p.status !== "superseded");
+    assert.equal(visits.length, 2);
+    assert.notEqual(visits[0].visit_id, visits[1].visit_id, "서로 다른 visits 행에 연결되어야 한다");
+    const first = visits.find((p) => p.version === 1);
+    const second = visits.find((p) => p.version === 2);
+    assert.equal(first.status, "agreed");
+    assert.equal(second.status, "proposed");
+    const demoWait = (data.approvals[second.id] ?? []).some((x) => x.actor_type === "demo");
+    assert.equal(demoWait, false, "AI가 말하지 않은 일정은 대기한다");
+    const r = await decide(room, second.id, "agree", second.version);
+    assert.equal(r.body.status, "proposed", "AI 대기 중에는 사람 동의만으로 확정되면 안 된다");
+    const v = await api(`/api/rooms/${room}/visits`, {}, HUMAN);
+    assert.equal(v.body.find((x) => x.id === first.visit_id).status, "수락됨");
+    assert.equal(v.body.find((x) => x.id === second.visit_id).status, "제안됨");
   });
   it("계약금 10% 제안을 합의한다", async () => {
     const t = await say(room, "계약금 10%로 합시다");

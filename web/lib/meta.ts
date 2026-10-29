@@ -71,8 +71,15 @@ export function describeBodyShape(data: unknown): string {
   if (typeof data !== "object") return `type:${typeof data}`;
   const d = data as { choices?: unknown };
   const keys = Object.keys(d).join(",");
-  const ch = Array.isArray(d.choices) ? d.choices.length : -1;
-  return `keys:${keys} choices:${ch}`;
+  if (!Array.isArray(d.choices)) return `keys:${keys} choices:-1`;
+  if (d.choices.length === 0) return `keys:${keys} choices:0`;
+  const first = d.choices[0] as { message?: unknown; finish_reason?: unknown; finishReason?: unknown };
+  const m = (first?.message ?? {}) as Record<string, unknown>;
+  const mkeys = Object.keys(m).join("+") || "none";
+  const c = m.content;
+  const ctype = Array.isArray(c) ? `array[${c.length}]` : c === null ? "null" : typeof c;
+  const fin = first?.finish_reason ?? (first as { finishReason?: unknown }).finishReason ?? "?";
+  return `keys:${keys} choices:${d.choices.length} msg:${mkeys} content:${ctype} finish:${String(fin)}`;
 }
 
 function refusalMessage(data: unknown): string {

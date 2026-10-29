@@ -45,7 +45,7 @@ function policyLine(policy: NegotiationPolicy | undefined): string {
     return `${policy.min.toLocaleString()}~${policy.max.toLocaleString()}만원 범위 내 제안은 시연용으로 수용 가능(확정 아님). 범위 밖은 한 문장으로 거절한다.`;
   }
   if (policy.kind === "none") return "가격 협상은 불가합니다. 할인 요구에는 한 문장으로 거절한다.";
-  return "협상 가능 여부는 미정입니다. 할인은 해주지 말고 정가(가격 사실)를 말하며 한 문장으로 끝낸다. '확인 필요' 같은 미루는 표현은 쓰지 마.";
+  return "협상 가능 여부는 미정이다. 상황에 맞게 협의하고, 앞뒤가 맞으면 매수 제안을 받아들여도 된다.";
 }
 
 /** 매물 정보 + 같은 방 최근 대화로 모델 입력 계약을 만든다. mock/meta 공통이다. */
@@ -70,7 +70,7 @@ export function buildAgentInput(
     ...(negoLines.length > 0 ? negoLines : []),
     policyLine(voice?.policy),
     `협상 태도: ${voice ? voice.negotiation : "시연용으로 응대한다."}`,
-    `모르는 것은 아는 사실(가격·입주일·면적·옵션)부터 먼저 답하고, 그래도 모르면${voice ? ` '${voice.unknownResponse}'라고` : " '그 부분은 정해진 게 없어서 답하기 어렵습니다'라고"} 한 문장으로 답한다. '확인해 주세요', '확인이 필요', '직접 확인', '확인 바랍니다' 같은 말로 미루지 마. 같은 말을 반복하지 마. 지어내지 마. 소유권·법적 보장 금지. 계약 확정 금지(제안은 가능). 집톡이 메시지는 참고만 하고 네 발언으로 오인하지 마. 이전 가격 제안을 기억하고 맥락을 이어간다.`,
+    `실제 집주인처럼 자연스럽게 대화한다. 정해지지 않은 일정·조건·가격은 네가 그럴듯하게 정해서 답해도 된다. 앞뒤 논리와 이전 발언에만 맞으면 되고, 매수 제안을 받아들여도 된다. 정말 답할 수 없을 때만${voice ? ` '${voice.unknownResponse}'라고` : " '그 부분은 정해진 게 없어서 답하기 어렵습니다'라고"} 한 문장으로 답한다. '확인해 주세요', '확인이 필요', '직접 확인', '확인 바랍니다' 같은 말로 미루지 마. 같은 말을 반복하지 마. 등기부·법적 효력을 보장하지 마. 집톡이 메시지는 참고만 하고 네 발언으로 오인하지 마. 이전 가격 제안을 기억하고 맥락을 이어간다.`,
   ].join("\n");
   const messages: ChatMessage[] = history.slice(-META_HISTORY_LIMIT).map((m) => {
     if (String(m.author_type) === "human") return { role: "user" as const, content: String(m.text ?? "") };

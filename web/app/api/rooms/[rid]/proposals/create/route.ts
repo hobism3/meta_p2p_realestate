@@ -31,7 +31,7 @@ export async function POST(req: Request, { params }: { params: { rid: string } }
     ])) as { id: string }[];
     evidence = rows.map((r) => String(r.id));
   }
-  const created = await createProposals(params.rid, [{ name, value, evidence }], "human");
+  const created = await createProposals(params.rid, [{ name, value, evidence, createdBy: "human" }]);
   if (created.length === 0) return bad("제안 생성 실패");
   return ok({ id: created[0].id, status: created[0].status, version: created[0].version }, 201);
 }

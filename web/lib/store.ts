@@ -225,3 +225,47 @@ export async function confirmCondition(rid: string, name: string, version?: numb
     body: JSON.stringify(version === undefined ? { name } : { name, version }),
   })) as { name: string; version: number };
 }
+
+export interface ProposalApproval {
+  actor_id: string;
+  actor_type: string;
+  decision: string;
+}
+
+export interface RoomProposal {
+  id: string;
+  room_id: string;
+  name: string;
+  value: string;
+  version: number;
+  source_msg_ids: string[];
+  visit_id: string;
+  status: string;
+  card_msg_id: string;
+  created_by: string;
+  reason: string;
+}
+
+export interface ProposalSide {
+  key: string;
+  label: string;
+}
+
+export interface ProposalsData {
+  proposals: RoomProposal[];
+  approvals: Record<string, ProposalApproval[]>;
+  sides: ProposalSide[];
+  demo: boolean;
+  me: string;
+}
+
+export async function loadProposals(rid: string): Promise<ProposalsData> {
+  return (await req(`/api/rooms/${rid}/proposals`)) as ProposalsData;
+}
+
+export async function decideProposal(rid: string, pid: string, decision: "agree" | "refuse", version: number): Promise<{ id: string; status: string; version: number }> {
+  return (await req(`/api/rooms/${rid}/proposals/${pid}/decide`, {
+    method: "POST",
+    body: JSON.stringify({ decision, version }),
+  })) as { id: string; status: string; version: number };
+}

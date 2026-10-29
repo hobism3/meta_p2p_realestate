@@ -24,6 +24,19 @@ describe("시연 AI 판정", () => {
     const r = evaluateDemoDecision("매도 제안가", "38,500만원", 39000, { kind: "ranged", min: 37000, max: 39000 }, "demo");
     assert.equal(r.decision, "agree");
   });
+  it("미정 정책은 수락 발언이 있을 때만 동의한다", async () => {
+    const at = "2026-10-29T00:00:00+09:00";
+    const wait = evaluateDemoDecision("매수 희망가", "70,000만원", 72000, { kind: "undecided" }, "human", {
+      aiTexts: ["7억은 어렵습니다"], aiDated: [{ text: "7억은 어렵습니다", at }], visitDate: "", visitTime: "",
+    });
+    assert.equal(wait.decision, null);
+    const ok = evaluateDemoDecision("매수 희망가", "71,000만원", 72000, { kind: "undecided" }, "human", {
+      aiTexts: ["7억1천에 가능합니다"],
+      aiDated: [{ text: "7억1천에 가능합니다", at }],
+      visitDate: "", visitTime: "",
+    });
+    assert.equal(ok.decision, "agree");
+  });
   it("계약금 10%는 서버 계산값을 그대로 동의한다", async () => {
     const r = evaluateDemoDecision("계약금", "3,850만원", 39000, { kind: "ranged", min: 37000, max: 39000 }, "human");
     assert.equal(r.decision, "agree");

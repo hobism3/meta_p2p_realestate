@@ -79,7 +79,7 @@ export function scenarioFor(l: DemoListing): Scenario {
   const facts: Record<string, string> = {
     매물명: l.title,
     가격: `${price.toLocaleString()}만원`,
-    입주일: l.moveIn || "협의 가능",
+    입주일: moveInText(l.moveIn),
     면적: `${l.area}㎡`,
     옵션: l.options.length > 0 ? l.options.join(", ") : "없음",
   };
@@ -93,8 +93,14 @@ export function scenarioFor(l: DemoListing): Scenario {
   return { persona: persona ? persona.name : demoName(l.tradeType), side: "seller", facts, negotiable };
 }
 
+export function moveInText(moveIn: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(moveIn.trim());
+  if (m) return `${Number(m[1])}년 ${Number(m[2])}월 ${Number(m[3])}일`;
+  return moveIn || "협의 가능";
+}
+
 export function demoGreeting(l: DemoListing): string {
-  return `안녕하세요, ${demoName(l.tradeType)}(시연)입니다. ${l.title} ${priceText(l)}, ${l.moveIn || "입주 협의 가능"}합니다. 궁금한 점을 물어보세요.`;
+  return `안녕하세요, ${demoName(l.tradeType)}(시연)입니다. ${l.title} ${priceText(l)}, 입주일은 ${moveInText(l.moveIn)}입니다. 궁금한 점을 물어보세요.`;
 }
 
 async function insertDemo(roomId: string, listingId: string, author: string, text: string): Promise<void> {

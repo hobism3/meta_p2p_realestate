@@ -4,6 +4,7 @@ import { now } from "./db.ts";
 import { isDemoListing, listingForDemo } from "./demo.ts";
 import { getPersona, type NegotiationPolicy } from "./personas.ts";
 import { parseManwonInt, parseVisitProposal } from "./visit-dates.ts";
+import { extractPriceManwon } from "./ziptalk.ts";
 
 /**
  * VS-4C 양측 합의. room_conditions·history는 그대로 두고 제안/승인을 별도로 둔다.
@@ -102,7 +103,9 @@ export function evaluateDemoDecision(
       if (n >= listPriceManwon && listPriceManwon > 0) return { decision: "agree", reason: "AI 시연 동의" };
       return { decision: "refuse", reason: "AI 시연 거절: 협의 불가 매물입니다." };
     }
-    return { decision: "agree", reason: "AI 시연 동의" };
+    // undecided: 정책만으로 동의하지 않는다. AI가 같은 값에 수락 발언을 했을 때만 동의한다.
+    if (aiAcceptsPrice(ctx.aiDated, n)) return { decision: "agree", reason: "AI 시연 동의" };
+    return { decision: null, reason: "" };
   }
   if (name === "매도 제안가") return { decision: "agree", reason: "AI 시연 동의" };
   if (name === "계약금") return { decision: "agree", reason: "AI 시연 동의" };
@@ -139,6 +142,17 @@ export function evaluateDemoDecision(
     return { decision: "agree", reason: "AI 시연 동의" };
   }
   return { decision: null, reason: "" };
+}
+
+const ACCEPT_CUES = /(가능합니다|좋습니다|그러시죠|알겠습니다)/;
+
+/** AI가 같은 금액에 수락 발언을 했는지 확인한다. 근거 없으면 대기한다. */
+export function aiAcceptsPrice(aiDated: Array<{ text: string; at: string }>, manwon: number): boolean {
+  return (aiDated ?? []).some((d) => {
+    if (!ACCEPT_CUES.test(d.text)) return false;
+    const p = extractPriceManwon(d.text);
+    return p === manwon;
+  });
 }
 
 /** 방문 맥락 AI 발화에서 제안 날짜와 다른 (월, 일)이 나오면 true. */
@@ -241,6 +255,7 @@ export async function getProposals(
 
 export interface CreatedProposal extends Proposal {
   demoDecision: "agree" | "refuse" | null;
+  isNew: boolean;
 }
 
 /**
@@ -253,12 +268,33 @@ export interface ProposalItem {
   evidence: string[];
   visitId?: string;
   refISO?: string;
+  createdBy: "human" | "demo";
+}
+
+/**
+ * 최종 거래가격: 매수 희망가와 매도 제안가가 같은 값·버전으로 모두 합의됐을 때만
+ * 하나의 거래가격으로 본다. 따로 합의된 희망·역제안은 거래가격이 아니다.
+ */
+export function agreedDealPrice(
+  proposals: Proposal[],
+  approvals: Record<string, Approval[]>,
+  demo: boolean,
+  roles: Record<string, string> = {},
+): { value: string } | null {
+  const agreedOf = (name: string): Proposal[] =>
+    proposals.filter((p) => p.name === name && p.status === "agreed");
+  for (const w of agreedOf("매수 희망가")) {
+    const match = agreedOf("매도 제안가").find((o) => o.value === w.value);
+    if (match && isAgreed(approvals[w.id] ?? [], demo, roles) && isAgreed(approvals[match.id] ?? [], demo, roles)) {
+      return { value: w.value };
+    }
+  }
+  return null;
 }
 
 export async function createProposals(
   roomId: string,
   items: Array<ProposalItem>,
-  createdBy: "human" | "demo",
 ): Promise<CreatedProposal[]> {
   const dal = getDal();
   const room = (await dal.get("SELECT listing_id FROM deal_rooms WHERE id = ?", [roomId])) as
@@ -298,9 +334,10 @@ export async function createProposals(
         visit_id: "",
         status: "proposed",
         card_msg_id: "",
-        created_by: createdBy,
+        created_by: it.createdBy,
         reason: "",
         demoDecision: null,
+        isNew: false,
       });
       continue;
     }
@@ -339,7 +376,7 @@ export async function createProposals(
     const stamp = now();
     await tx.run(
       "INSERT INTO room_proposals (id,room_id,name,value,version,source_msg_ids,visit_id,status,created_by,reason,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-      [id, roomId, it.name, it.value, version, JSON.stringify(it.evidence), visitId, "proposed", createdBy, "", stamp, stamp],
+      [id, roomId, it.name, it.value, version, JSON.stringify(it.evidence), visitId, "proposed", it.createdBy, "", stamp, stamp],
     );
     await tx.run("UPDATE room_proposals SET status = 'superseded', updated_at = ? WHERE room_id = ? AND name = ? AND id <> ? AND status = 'proposed'", [
       stamp,
@@ -350,7 +387,7 @@ export async function createProposals(
     let demoDecision: "agree" | "refuse" | null = null;
     let reason = "";
     if (demo) {
-      const ev = evaluateDemoDecision(it.name, it.value, Number(listPrice ?? 0), persona?.policy, createdBy, {
+      const ev = evaluateDemoDecision(it.name, it.value, Number(listPrice ?? 0), persona?.policy, it.createdBy, {
         aiTexts,
         aiDated,
         visitDate,
@@ -381,9 +418,10 @@ export async function createProposals(
       visit_id: visitId,
       status: demoDecision === "refuse" ? "refused" : "proposed",
       card_msg_id: "",
-      created_by: createdBy,
+      created_by: it.createdBy,
       reason,
       demoDecision,
+      isNew: true,
     });
   }
   return out;

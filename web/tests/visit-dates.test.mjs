@@ -3,7 +3,7 @@
 // 기준 시각은 KST. ref는 UTC ISO로 준다(2026-10-29T00:00:00Z = KST 10-29 09:00, 목).
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseManwonInt, parseMonthRef, parseVisitProposal } from "../lib/visit-dates.ts";
+import { parseManwonInt, parseManwon, parseMonthRef, parseVisitProposal } from "../lib/visit-dates.ts";
 
 const REF = "2026-10-29T00:00:00.000Z";
 
@@ -58,6 +58,18 @@ describe("만원 정수", () => {
     assert.equal(parseManwonInt("3억 8,500만원"), 38500);
     assert.equal(parseManwonInt("2.6억"), 26000);
     assert.equal(parseManwonInt("협의 가능"), null);
+  });
+  it("천 단위와 합성 표기를 푼다", async () => {
+    assert.equal(parseManwon("7억1천"), 71000);
+    assert.equal(parseManwon("7억1천만원"), 71000);
+    assert.equal(parseManwon("7.1억"), 71000);
+    assert.equal(parseManwon("71,000만원"), 71000);
+    assert.equal(parseManwon("3억8천"), 38000);
+    assert.equal(parseManwon("3억8,500만원"), 38500);
+    assert.equal(parseManwon("1천만"), 1000);
+    assert.equal(parseManwon("12시"), null);
+    assert.equal(parseManwon("10월 30일"), null);
+    assert.equal(parseManwon("2026년"), null);
   });
 });
 

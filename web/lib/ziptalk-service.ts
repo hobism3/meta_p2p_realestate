@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getDal } from "./dal.ts";
 import { now } from "./db.ts";
 import { classify, extractPriceManwon, hasJudgment } from "./ziptalk.ts";
-import { parseVisitProposal, parseMonthRef, parseManwonInt } from "./visit-dates.ts";
+import { parseVisitProposal, parseMonthRef, parseManwonInt, parseManwon, bareHour } from "./visit-dates.ts";
 import {
   callMeta,
   META_HISTORY_LIMIT,
@@ -79,7 +79,7 @@ function isQuestionLike(t: string): boolean {
   return s.endsWith("?") || /(언제|몇 시|얼마인가|가능할까|될까|돼요\?|되나요|나요\?|가요\?|까요)/.test(s);
 }
 
-const PRICE_MARKERS = /(제안|깎|네고|하자|합시다|어때|안돼|안될까|조율|협의|가능합니다)/;
+const PRICE_MARKERS = /(제안|깎|네고|하자|합시다|어때|어떠|안돼|안될까|조율|협의|가능합니다)/;
 
 function asPriceProposal(text: string): number | null {
   const price = extractPriceManwon(text);
@@ -198,9 +198,26 @@ export function analyzeMock(
     const hasWord = VISIT_WORDS.some((w) => c.text.includes(w));
     if (!hasWord && !visitCtx) continue;
     if (isQuestionLike(c.text)) continue;
+    // "그때 뵐게요" 같은 지시어는 같은 방의 가장 최근 방문일을 가리킨다. 확정 없이 묻기만 한다.
+    if (/그때|그날|그 시간/.test(c.text)) {
+      const prior = cands.slice(cands.indexOf(c) + 1).map((o) => parseVisitProposal(o.text, refISO || trigger.created_at)).find((p) => p && p.time);
+      if (prior && prior.time) {
+        bubbles.push(`${prior.display} 말씀하시는 거죠? 아직 확정되지는 않았습니다.`);
+        break;
+      }
+      continue;
+    }
     const v = parseVisitProposal(c.text, refISO || trigger.created_at);
     if (!v) continue;
     if (!hasWord && !v.time) continue;
+    // 오전/오후 없는 1~11시는 추측하지 않고 후보로 묻는다. 기록·카드 금지.
+    if (!v.time) {
+      const bh = bareHour(c.text);
+      if (bh !== null) {
+        bubbles.push(`방문일로 ${v.display} 이야기가 나왔어요. ${v.display} 오후 ${bh}시 맞나요?`);
+        break;
+      }
+    }
     const cur = current.get("방문일");
     if (cur && cur.value === v.display) break;
     const vp = c.author_type === "human" ? "human" : "demo";
@@ -328,7 +345,7 @@ export function analyzeMock(
       bubbles.push("잔금일과 입주일이 다릅니다. 인도일을 정할까요?");
     }
   }
-  if (upserts.length === 0) return silent;
+  if (upserts.length === 0 && bubbles.length === 0) return silent;
   return { upserts, intervene: true, bubble: bubbles.join(" ") };
 }
 
@@ -349,37 +366,10 @@ export interface ValidatedAnalysis {
 /** 금액 표기를 만원 정수로 정규화한다. 파싱 불가면 원문을 둔다(지어내지 않음). */
 export function normalizeValue(raw: string): string {
   const v = raw.trim();
-  if (!/\d/.test(v) || !/[만억원]/.test(v)) return v;
-  const s = v.replace(/원/g, "");
-  let total = 0;
-  let seen = false;
-  const parts = s.split("억");
-  const parseMan = (t: string): number => {
-    const m = t.match(/([\d,]+(?:\.\d+)?)\s*만?/);
-    if (!m) return 0;
-    return parseFloat(m[1].replace(/,/g, ""));
-  };
-  if (parts.length === 2) {
-    const eok = parseFloat((parts[0].match(/[\d,]+(?:\.\d+)?/) ?? [""])[0].replace(/,/g, ""));
-    if (!Number.isFinite(eok)) return v;
-    total += eok * 10000;
-    total += parseMan(parts[1]);
-    seen = true;
-  } else {
-    const m = s.match(/([\d,]+(?:\.\d+)?)\s*만/);
-    if (m) {
-      total += parseFloat(m[1].replace(/,/g, ""));
-      seen = true;
-    } else {
-      const t = s.match(/([\d,]+)\s*천/);
-      if (t && !/만/.test(s)) {
-        total += parseInt(t[1].replace(/,/g, ""), 10) / 10;
-        seen = total > 0;
-      }
-    }
-  }
-  if (!seen || !Number.isInteger(total) || total <= 0) return v;
-  return `${total.toLocaleString()}만원`;
+  if (!/\d/.test(v) || !/[만억천]/.test(v)) return v;
+  const n = parseManwon(v);
+  if (n === null) return v;
+  return `${n.toLocaleString()}만원`;
 }
 
 /** 값에 나온 숫자·문구가 근거 문구에 실제로 있는지 확인한다. */
@@ -871,11 +861,13 @@ async function executeZiptalk(
           evidence: u.evidence,
           visitId: u.name === "방문일" ? visitDone ?? "" : "",
           refISO: trigger.created_at,
+          createdBy: u.proposer === "demo" ? "demo" : "human",
         })),
-        trigger.author_type === "human" ? "human" : "demo",
       );
-      const cardText = bubbleFor(created);
-      if (cardText && created.length > 0) {
+      // 새로 생긴 카드만 안내한다. 기존 제안을 되풀이하지 않고 카드 ID도 덮어쓰지 않는다.
+      const fresh = created.filter((c) => c.isNew);
+      const cardText = bubbleFor(fresh);
+      if (cardText && fresh.length > 0) {
         let cardMsgId = applied.bubbleMessageId;
         if (!cardMsgId) {
           cardMsgId = randomUUID();
@@ -895,8 +887,8 @@ async function executeZiptalk(
             cardMsgId,
           ]);
         }
-        for (const c of created) {
-          await getDal().run("UPDATE room_proposals SET card_msg_id = ? WHERE id = ?", [cardMsgId, c.id]);
+        for (const c of fresh) {
+          await getDal().run("UPDATE room_proposals SET card_msg_id = ? WHERE id = ? AND (card_msg_id IS NULL OR card_msg_id = '')", [cardMsgId, c.id]);
         }
         if (!applied.bubbleMessageId) {
           return { ok: true, created: true, bubbleMessageId: cardMsgId, applied: applied.applied, provider, model };

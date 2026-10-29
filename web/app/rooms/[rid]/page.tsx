@@ -4,10 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../../../lib/client-auth";
 import { hasNewProposalCue } from "../../../lib/agent";
 import {
-  confirmCondition,
   invokeAgent,
   invokeZiptalk,
+  decideProposal,
   loadConditions,
+  loadProposals,
   loadRoomMessages,
   loadRoomMeta,
   loadRoomVisits,
@@ -16,8 +17,10 @@ import {
   type AgentInvokeResult,
   type ConditionHistoryRow,
   type DealMessage,
+  type ProposalsData,
   type RoomCondition,
   type RoomMeta,
+  type RoomProposal,
   type RoomVisit,
 } from "../../../lib/store";
 
@@ -98,6 +101,94 @@ function ConditionRow({ name, cond, me, onEvidence, onConfirm }: {
   );
 }
 
+function approvalOf(approvals: Record<string, { actor_id: string; actor_type: string; decision: string }[]>, pid: string, sideKey: string, demo: boolean): string {
+  const list = approvals[pid] ?? [];
+  const hit = list.find((a) =>
+    sideKey === "demo" ? a.actor_type === "demo" : demo ? a.actor_type === "human" : a.actor_id === sideKey.replace(/^human:/, ""),
+  );
+  if (!hit) return "대기";
+  return hit.decision === "agree" ? "동의함" : "거절함";
+}
+
+function AgreementRow({ name, cond, propData, me, onDecide, onEvidence }: {
+  name: string;
+  cond: RoomCondition | undefined;
+  propData: ProposalsData | null;
+  me: string;
+  onDecide: (pid: string, decision: "agree" | "refuse", version: number) => void;
+  onEvidence: (id: string) => void;
+}) {
+  const props = (propData?.proposals ?? []).filter((p) => p.name === name && p.status !== "superseded");
+  const p = props.length > 0 ? props[props.length - 1] : undefined;
+  const approvals = propData?.approvals ?? {};
+  const sides = propData?.sides ?? [];
+  const demo = propData?.demo ?? true;
+  const mine = p ? (approvals[p.id] ?? []).some((a) => a.actor_id === me) : false;
+  const badge = !p ? "합의 없음" : p.status === "agreed" ? "양측 동의" : p.status === "refused" ? "거절됨" : "동의 대기";
+  const ev = p?.source_msg_ids[0] ?? (cond ? evidenceIds(cond)[0] : undefined);
+  return (
+    <li>
+      <strong>{name}</strong>: {cond && cond.value ? cond.value : "미정"}{" "}
+      <span className={badge === "양측 동의" ? "badge ok" : "badge no"}>{badge}</span>
+      {p ? (
+        <span className="meta"> v{p.version} {sides.map((s) => `${s.label} ${approvalOf(approvals, p.id, s.key, demo)}`).join(" · ")}</span>
+      ) : null}{" "}
+      {p && p.reason ? <span className="meta">{p.reason}</span> : null}{" "}
+      {ev ? <button className="btn ghost" onClick={() => onEvidence(ev)}>근거 보기</button> : null}{" "}
+      {p && p.status === "proposed" && !mine ? (
+        <>
+          <button className="btn ghost" onClick={() => onDecide(p.id, "agree", p.version)}>동의하기</button>{" "}
+          <button className="btn ghost" onClick={() => onDecide(p.id, "refuse", p.version)}>거절하기</button>
+        </>
+      ) : null}
+    </li>
+  );
+}
+
+function ProposalCard({ p, approvals, sides, demo, me, onDecide, onSuggest, onHold, onEvidence }: {
+  p: RoomProposal;
+  approvals: Record<string, { actor_id: string; actor_type: string; decision: string }[]>;
+  sides: { key: string; label: string }[];
+  demo: boolean;
+  me: string;
+  onDecide: (pid: string, decision: "agree" | "refuse", version: number) => void;
+  onSuggest: (name: string, value: string) => void;
+  onHold: (pid: string) => void;
+  onEvidence: (id: string) => void;
+}) {
+  const mine = (approvals[p.id] ?? []).some((a) => a.actor_id === me);
+  const open = p.status === "proposed";
+  const badge = p.status === "agreed" ? "양측 동의" : p.status === "refused" ? "거절됨" : "동의 대기";
+  return (
+    <div className="card">
+      <div>
+        <strong>{p.name}</strong>: {p.value}{" "}
+        <span className={p.status === "agreed" ? "badge ok" : "badge no"}>{badge}</span>
+      </div>
+      <ul>
+        {sides.map((s) => (
+          <li key={s.key}>{s.label}: {approvalOf(approvals, p.id, s.key, demo)}</li>
+        ))}
+      </ul>
+      {p.reason ? <p className="meta">{p.reason}</p> : null}
+      {p.source_msg_ids[0] ? (
+        <div>
+          <button className="btn ghost" onClick={() => onEvidence(p.source_msg_ids[0])}>근거 보기</button>
+        </div>
+      ) : null}
+      {open && !mine ? (
+        <div>
+          <button className="btn ghost" onClick={() => onDecide(p.id, "agree", p.version)}>동의하기</button>{" "}
+          <button className="btn ghost" onClick={() => onDecide(p.id, "refuse", p.version)}>거절하기</button>{" "}
+          <button className="btn ghost" onClick={() => onSuggest(p.name, p.value)}>변경 제안</button>{" "}
+          <button className="btn ghost" onClick={() => onHold(p.id)}>보류</button>
+        </div>
+      ) : null}
+      {open && mine ? <p className="meta">상대방의 동의를 기다립니다.</p> : null}
+    </div>
+  );
+}
+
 export default function RoomPage({ params }: { params: { rid: string } }) {
   const [messages, setMessages] = useState<DealMessage[]>([]);
   const [meta, setMeta] = useState<RoomMeta | null>(null);
@@ -116,6 +207,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const [zipPending, setZipPending] = useState(false);
   const [zipError, setZipError] = useState("");
   const [me] = useState(() => myId());
+  const [propData, setPropData] = useState<ProposalsData | null>(null);
+  const [dismissed, setDismissed] = useState<string[]>([]);
   const msgsRef = useRef<HTMLDivElement | null>(null);
   const zipBusy = useRef(false);
 
@@ -135,6 +228,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
       setConditions(c.conditions);
       setHistory(c.history);
       setVisits(await loadRoomVisits(params.rid));
+      setPropData(await loadProposals(params.rid));
     } catch {
       // 패널은 조용히 비워 둔다. 채팅 흐름을 막지 않는다.
     }
@@ -188,7 +282,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     try {
       await invokeZiptalk(params.rid, triggerId);
       await refresh();
-      if (panelOpen) await refreshConditions();
+      // 채팅 카드(ProposalCard)도 제안 목록에 의존하므로 패널이 닫혀 있어도 갱신한다.
+      await refreshConditions();
     } catch (e) {
       setZipError(`집톡이 분석 실패(${e instanceof Error ? e.message : "오류"})`);
     } finally {
@@ -250,17 +345,6 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const findC = (name: string): RoomCondition | undefined => conditions.find((c) => c.name === name);
   const unconfirmed = conditions.filter((c) => statusOf(c) === "미확인");
 
-  const onConfirm = async (name: string) => {
-    const c = findC(name);
-    try {
-      await confirmCondition(params.rid, name, c ? Number(c.version) : undefined);
-      await refreshConditions();
-    } catch (e) {
-      setZipError(`확인 실패(${e instanceof Error ? e.message : "오류"})`);
-      await refreshConditions();
-    }
-  };
-
   const onAcceptVisit = async (v: RoomVisit) => {
     const c = findC("방문일");
     try {
@@ -291,6 +375,25 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     setPanelOpen(true);
     document.getElementById("room-input")?.focus();
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  };
+
+  const onDecide = async (pid: string, decision: "agree" | "refuse", version: number) => {
+    try {
+      await decideProposal(params.rid, pid, decision, version);
+      await refreshConditions();
+    } catch (e) {
+      setZipError(`합의 실패(${e instanceof Error ? e.message : "오류"})`);
+      await refreshConditions();
+    }
+  };
+
+  const onSuggest = (name: string, value: string) => {
+    setMsg(`${name} ${value} 말고 다른 조건을 제안합니다. `);
+    document.getElementById("room-input")?.focus();
+  };
+
+  const onHold = (pid: string) => {
+    setDismissed((d) => (d.includes(pid) ? d : [...d, pid]));
   };
 
   const quickAsk = (q: string) => {
@@ -327,14 +430,14 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
       </section>
       <div className={panelOpen ? "deal-layout open" : "deal-layout"}>
         <section className="card">
-          {meta?.demo ? (
-            <div>
-              <button className="btn ghost" onClick={onTogglePanel}>{panelOpen ? "거래 현황 닫기" : "거래 현황"}</button>{" "}
+          <div>
+            <button className="btn ghost" onClick={onTogglePanel}>{panelOpen ? "거래 현황 닫기" : "거래 현황"}</button>{" "}
+            {meta?.demo ? (
               <button className="btn ghost" onClick={() => callZiptalk()} disabled={zipPending}>
                 {zipPending ? "집톡이 분석 중..." : "집톡이 호출"}
               </button>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
           {zipError ? <p className="error">{zipError}</p> : null}
           {error ? <p className="error">{error}</p> : null}
           <div className="msgs" ref={msgsRef}>
@@ -351,6 +454,24 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
                     <button className="btn ghost" onClick={openPanel}>거래 현황 열기</button>
                   </div>
                 ) : null}
+                {m.author_type === "assistant" && propData
+                  ? propData.proposals
+                    .filter((p) => p.card_msg_id === m.id && p.status !== "superseded" && !dismissed.includes(p.id))
+                    .map((p) => (
+                      <ProposalCard
+                        key={p.id}
+                        p={p}
+                        approvals={propData.approvals}
+                        sides={propData.sides}
+                        demo={propData.demo}
+                        me={me}
+                        onDecide={onDecide}
+                        onSuggest={onSuggest}
+                        onHold={onHold}
+                        onEvidence={scrollToEvidence}
+                      />
+                    ))
+                  : null}
               </div>
             ))}
             {aiPending && meta?.demo ? (
@@ -386,17 +507,17 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             <button onClick={onSend} disabled={sending}>{sending ? "전송 중..." : "전송"}</button>
           </div>
         </section>
-        {panelOpen && meta?.demo ? (
+        {panelOpen ? (
           <aside className="card drawer open">
             <div>
               <button className="btn ghost" onClick={() => setPanelOpen(false)}>닫기</button>
             </div>
             <h3>거래 현황</h3>
-            <p className="meta">초안이며 자동 합의가 아닙니다. 확인은 사람이 직접 누른 것만 기록됩니다.</p>
+            <p className="meta">제안은 양측이 모두 동의해야 확정됩니다. AI 시연 동의는 실제 계약이 아닙니다.</p>
             <h4>가격</h4>
             <ul>
               {["최초가", "매수 희망가", "매도 제안가", "계약금"].map((n) => (
-                <ConditionRow key={n} name={n} cond={findC(n)} me={me} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
+                <AgreementRow key={n} name={n} cond={findC(n)} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
               ))}
             </ul>
             {(() => {
@@ -417,7 +538,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             <h4>일정</h4>
             {visits.length === 0 ? (
               <ul>
-                <ConditionRow name="방문일" cond={findC("방문일")} me={me} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
+                <AgreementRow name="방문일" cond={findC("방문일")} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
               </ul>
             ) : (
               <ul>
@@ -441,13 +562,13 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             )}
             <ul>
               {["계약일", "잔금일", "인도일", "입주일"].map((n) => (
-                <ConditionRow key={n} name={n} cond={findC(n)} me={me} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
+                <AgreementRow key={n} name={n} cond={findC(n)} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
               ))}
             </ul>
             <h4>조건</h4>
             <ul>
               {["옵션", "수리 요청"].map((n) => (
-                <ConditionRow key={n} name={n} cond={findC(n)} me={me} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
+                <AgreementRow key={n} name={n} cond={findC(n)} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
               ))}
             </ul>
             {unconfirmed.length > 0 ? (

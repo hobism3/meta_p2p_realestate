@@ -77,10 +77,31 @@ function parseTime(t: string): string | null {
   return `${pad(h)}:${min}`;
 }
 
+/**
+ * 표기 오타를 정규화한다. 토오일→토요일 등.
+ */
+export function normalizeDateTypo(text: string): string {
+  return text.replace(/토오일/g, "토요일").replace(/수오일/g, "수요일");
+}
+
+/**
+ * 오전/오후 표시 없는 1~11시를 돌려준다. 낮 시간대 추측이 아니라 확인 후보용이다.
+ * 표시가 있거나 12시·24시 표기면 null이다.
+ */
+export function bareHour(text: string): number | null {
+  const t = text.replace(/\s/g, "");
+  if (/(오전|오후|낮|밤|저녁|새벽|아침|자정|정오)/.test(t)) return null;
+  const m = t.match(/(\d{1,2})\s*시/);
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  if (h < 1 || h > 11) return null;
+  return h;
+}
+
 export function parseVisitProposal(text: string, refISO: string): VisitDateTime | null {
   const base = kstParts(refISO);
   if (!base) return null;
-  const t = text.replace(/\s/g, "");
+  const t = normalizeDateTypo(text).replace(/\s/g, "");
   let ymd: string | null = null;
 
   const full = t.match(/(\d{4})-(\d{1,2})-(\d{1,2})/) ?? t.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);
@@ -175,21 +196,45 @@ export function parseVisitProposal(text: string, refISO: string): VisitDateTime 
 /**
  * "38,500만원"·"3억 8,500만원" 같은 표기를 만원 정수로 바꾼다. 파싱 불가면 null.
  */
-export function parseManwonInt(value: string): number | null {
-  const s = value.replace(/,/g, "");
+/**
+ * 공통 만원 정수 파서. extractPriceManwon·parseManwonInt·normalizeValue가 공유한다.
+ * - 7억1천/7억1천만원/7.1억/71,000만원 → 71000
+ * - 3억8천 → 38000, 3억8,500만원 → 38500, 1천만 → 1000
+ * - 단위 없는 맨 숫자는 만원으로 본다(3억8500 → 38500). 천은 천만원이다.
+ * - 시·일·월·년은 금액 단위가 아니라서 null이다. 해석 실패도 null이다.
+ */
+export function parseManwon(text: string): number | null {
+  const clean = text.replace(/,/g, "");
   let total = 0;
   let seen = false;
-  const eok = s.match(/(\d+(?:\.\d+)?)\s*억/);
+  let rest = clean;
+  const eok = clean.match(/(\d+(?:\.\d+)?)\s*억/);
   if (eok) {
     total += Math.round(parseFloat(eok[1]) * 10000);
     seen = true;
+    rest = clean.slice((eok.index ?? 0) + eok[0].length);
   }
-  const man = s.match(/(\d+(?:\.\d+)?)\s*만/);
-  if (man) {
-    total += Math.round(parseFloat(man[1]));
+  const scope = eok ? rest : clean;
+  const um = scope.match(/(\d+(?:\.\d+)?)\s*(천만|천|만)/);
+  if (um) {
+    const n = parseFloat(um[1]);
+    const unit = um[2];
+    total += Math.round(n * (unit === "만" ? 1 : 1000));
     seen = true;
+  } else {
+    const bm = scope.match(/(\d+(?:\.\d+)?)/);
+    if (bm && !eok) return null;
+    if (bm) {
+      const n = parseFloat(bm[1]);
+      total += Math.round(n >= 1000 ? n : n * 1000);
+      seen = true;
+    }
   }
   return seen && total > 0 ? total : null;
+}
+
+export function parseManwonInt(value: string): number | null {
+  return parseManwon(value);
 }
 
 export interface MonthRef {

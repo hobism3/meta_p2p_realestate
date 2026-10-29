@@ -191,6 +191,52 @@ describe("mock 분석", () => {
     );
     assert.ok(r.bubble && r.bubble.includes("인도일을 정할까요"));
   });
+  it("표시 없는 시간은 후보로 묻고 기록하지 않는다", async () => {
+    const r = analyzeMock(T("토요일 1시에 방문하고 싶어요"), cur({}), "2026-10-29T00:00:00+09:00");
+    assert.equal(r.upserts.length, 0);
+    assert.ok(r.bubble && r.bubble.includes("오후 1시 맞나요"));
+  });
+  it("오타 요일은 정규화한다", async () => {
+    const r = analyzeMock(T("이번주 토오일 1시에 방문하고 싶어요"), cur({}), "2026-10-29T00:00:00+09:00");
+    assert.ok(r.bubble && r.bubble.includes("맞나요"));
+  });
+  it("그때 지시어는 이전 일정을 묻는다", async () => {
+    const r = analyzeMock(T("그때 뵐게요"), cur({}), "2026-10-29T00:00:00+09:00", [
+      { id: "h", text: "그때 뵐게요", author_type: "human" },
+      { id: "h0", text: "내일 오후 2시에 방문하고 싶어요", author_type: "human" },
+    ]);
+    assert.equal(r.upserts.length, 0);
+    assert.ok(r.bubble && r.bubble.includes("말씀하시는 거죠"));
+  });
+  it("s23 실제 대화: 7억 희망을 70,000만원으로 기록한다", async () => {
+    const r = analyzeMock(T("7억에 협의 부탁드려요"), cur({}), "2026-10-29T00:00:00+09:00");
+    assert.equal(r.upserts.length, 1);
+    assert.equal(r.upserts[0].name, "매수 희망가");
+    assert.equal(r.upserts[0].value, "70,000만원");
+  });
+  it("s23 실제 대화: 7.1억 카운터는 합의가 아니라 재협의다", async () => {
+    const r = analyzeMock(
+      T("7억1천은 어떠세요", "demo_agent"),
+      cur({ "매수 희망가": { name: "매수 희망가", value: "70,000만원", proposer: "human", status: "proposed" } }),
+      "2026-10-29T00:00:00+09:00",
+    );
+    assert.equal(r.upserts.length, 1);
+    assert.equal(r.upserts[0].name, "매도 제안가");
+    assert.equal(r.upserts[0].value, "71,000만원");
+    assert.ok((r.bubble ?? "").includes("확정되지는 않았습니다"));
+  });
+  it("s23 실제 대화: 토요일 1시는 묻고 기록하지 않는다", async () => {
+    const r = analyzeMock(
+      T("토요일 1시에 방문하고 싶어요"),
+      cur({
+        "매수 희망가": { name: "매수 희망가", value: "70,000만원", proposer: "human", status: "proposed" },
+        "매도 제안가": { name: "매도 제안가", value: "71,000만원", proposer: "demo", status: "proposed" },
+      }),
+      "2026-10-29T00:00:00+09:00",
+    );
+    assert.ok(!r.upserts.some((u) => u.name === "방문일"));
+    assert.ok(r.bubble && r.bubble.includes("오후 1시 맞나요"));
+  });
   it("확인된 조건이 바뀌면 재협의를 안내한다", async () => {
     const r = analyzeMock(T("43000만원에 합시다"), cur({
       "매수 희망가": { name: "매수 희망가", value: "44,000만원", proposer: "human", status: "proposed", confirmedBy: "u1", confirmedVersion: 1 },

@@ -3,6 +3,7 @@
  * 제안·질문·희망·철회 구분, 변경·충돌 탐지, 원문 근거 연결.
  * 판단·확정은 하지 않는다.
  */
+import { parseManwon } from "./visit-dates.ts";
 
 export type UtteranceKind = "proposal" | "question" | "wish" | "withdraw";
 
@@ -16,12 +17,7 @@ export function classify(text: string): UtteranceKind {
 }
 
 export function extractPriceManwon(text: string): number | null {
-  const clean = text.replace(/,/g, "");
-  const eok = clean.match(/(\d+(?:\.\d+)?)\s*억/);
-  if (eok) return Math.round(Number(eok[1]) * 10000);
-  const m = clean.match(/(\d+(?:\.\d+)?)\s*만\s*원?/);
-  if (m) return Number(m[1]);
-  return null;
+  return parseManwon(text);
 }
 
 export interface ChangeEvent {

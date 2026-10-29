@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../../../lib/client-auth";
+import { hasNewProposalCue } from "../../../lib/agent";
 import {
   confirmCondition,
   invokeAgent,
@@ -41,7 +42,7 @@ function evidenceIds(c: RoomCondition): string[] {
 
 function statusOf(c: RoomCondition): string {
   if (c.confirmed_by && Number(c.confirmed_version) === Number(c.version)) return "확인됨";
-  if (c.confirmed_by) return "확인 지남";
+  if (c.confirmed_by) return "재협의 필요";
   if (c.status === "unconfirmed" || !c.value) return "미확인";
   return "제안됨";
 }
@@ -217,8 +218,9 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     setSending(false);
     if (!demo) return;
     const ai = await callAi(id);
-    // AI 답에 숫자·날짜 단서가 있으면 AI 메시지를, 아니면 사람 메시지를 분석한다.
-    if (ai && /[0-9내일모레다음주월화수목금토요일시]/.test(ai.text)) {
+    // AI 답에 새 제안·날짜 단서가 있으면 AI 메시지를, 아니면 사람 메시지를 분석한다.
+    // 답변이 끝난 질문(아는 가격 등)은 사람 메시지로 넘겨 집톡이가 정리하게 한다.
+    if (ai && hasNewProposalCue(ai.text)) {
       await callZiptalk(ai.id);
     } else {
       await callZiptalk(id);
@@ -393,10 +395,25 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             <p className="meta">초안이며 자동 합의가 아닙니다. 확인은 사람이 직접 누른 것만 기록됩니다.</p>
             <h4>가격</h4>
             <ul>
-              {["최초가", "매수 희망가", "매도 제안가"].map((n) => (
+              {["최초가", "매수 희망가", "매도 제안가", "계약금"].map((n) => (
                 <ConditionRow key={n} name={n} cond={findC(n)} me={me} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
               ))}
             </ul>
+            {(() => {
+              const bal = findC("잔금일");
+              const mv = findC("입주일");
+              const ho = findC("인도일");
+              if (!bal?.value || !mv?.value || bal.value === mv.value || ho?.value) return null;
+              const balEv = evidenceIds(bal);
+              const mvEv = evidenceIds(mv);
+              return (
+                <p className="card">
+                  <span className="badge no">재협의 필요</span> 잔금일({bal.value})과 입주일({mv.value})이 다릅니다. 인도일을 정할까요?{" "}
+                  {balEv[0] ? <button className="btn ghost" onClick={() => scrollToEvidence(balEv[0])}>잔금 근거</button> : null}{" "}
+                  {mvEv[0] ? <button className="btn ghost" onClick={() => scrollToEvidence(mvEv[0])}>입주 근거</button> : null}
+                </p>
+              );
+            })()}
             <h4>일정</h4>
             {visits.length === 0 ? (
               <ul>
@@ -423,7 +440,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               </ul>
             )}
             <ul>
-              {["계약일", "잔금일", "입주일"].map((n) => (
+              {["계약일", "잔금일", "인도일", "입주일"].map((n) => (
                 <ConditionRow key={n} name={n} cond={findC(n)} me={me} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
               ))}
             </ul>

@@ -13,6 +13,7 @@ import {
   type ChatMessage,
 } from "./meta.ts";
 import { getRoom } from "./rooms.ts";
+import { parseManwonInt } from "./visit-dates.ts";
 
 /**
  * VS-2C 공통 Agent Service. 시연 AI 응답의 유일한 실행점이다.
@@ -49,6 +50,57 @@ function policyLine(policy: NegotiationPolicy | undefined): string {
 }
 
 /** 매물 정보 + 같은 방 최근 대화로 모델 입력 계약을 만든다. mock/meta 공통이다. */
+export interface DealStateCondition {
+  name: string;
+  value: string;
+  proposer: string;
+  status: string;
+  confirmedBy: string;
+}
+
+export interface DealStateVisit {
+  visit_date: string;
+  visit_time: string;
+  status: string;
+}
+
+function fmtVisitDate(isoDate: string): string {
+  const m = isoDate.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return isoDate;
+  return `${parseInt(m[2], 10)}월 ${parseInt(m[3], 10)}일`;
+}
+
+/**
+ * 방의 최신 조건·일정을 모델용 한 줄 요약으로 만든다. 매수 희망·매도 제안·확인 여부를
+ * 구분하고, 계약금 10% 기준액은 현재 협상가에서 서버가 직접 계산한다.
+ */
+export function formatDealState(conditions: DealStateCondition[], visits: DealStateVisit[]): string {
+  const lines: string[] = [];
+  const byName = new Map(conditions.map((c) => [c.name, c]));
+  for (const n of ["최초가", "매수 희망가", "매도 제안가"]) {
+    const c = byName.get(n);
+    if (c && c.value) lines.push(`- ${n}: ${c.value}${c.confirmedBy ? "(사용자 확인됨)" : "(미확정)"}`);
+  }
+  const dep = byName.get("계약금");
+  if (dep && dep.value) lines.push(`- 계약금: ${dep.value}${dep.confirmedBy ? "(사용자 확인됨)" : "(제안)"}`);
+  for (const n of ["매도 제안가", "매수 희망가", "최초가"]) {
+    const c = byName.get(n);
+    const cv = c?.value ?? "";
+    const base = cv ? parseManwonInt(cv) : null;
+    if (base) {
+      lines.push(`- 계약금 10% 기준액: ${Math.round(base / 10).toLocaleString()}만원(${n} ${cv} 기준)`);
+      break;
+    }
+  }
+  const v = visits[0];
+  if (v && v.visit_date) lines.push(`- 방문: ${fmtVisitDate(v.visit_date)}${v.visit_time ? ` ${v.visit_time}` : ""}(${v.status})`);
+  for (const n of ["계약일", "잔금일", "인도일", "입주일"]) {
+    const c = byName.get(n);
+    if (c && c.value) lines.push(`- ${n}: ${c.value}${c.confirmedBy ? "(사용자 확인됨)" : "(미확정)"}`);
+  }
+  return lines.join("\n");
+}
+
 export function buildAgentInput(
   persona: string,
   label: string,
@@ -57,6 +109,7 @@ export function buildAgentInput(
   history: { author_type: string; author: string; text: string }[],
   voice?: ListingPersona | undefined,
   title?: string,
+  dealState?: string,
 ): AgentInput {
   const who = voice ? `${persona}(${voice.personality}). ${voice.tone} ${voice.style}.` : `${persona}이다.`;
   const factLines = Object.entries(facts).map(([k, v]) => `- ${k}: ${v}`);
@@ -68,9 +121,10 @@ export function buildAgentInput(
     ...(title ? [`[매물] ${title}`] : []),
     ...factLines,
     ...(negoLines.length > 0 ? negoLines : []),
+    ...(dealState ? [`[거래 상태 — 아래 조건과 어긋나게 말하지 마]\n${dealState}`] : []),
     policyLine(voice?.policy),
     `협상 태도: ${voice ? voice.negotiation : "시연용으로 응대한다."}`,
-    `실제 집주인처럼 자연스럽게 대화한다. 정해지지 않은 일정·조건·가격은 네가 그럴듯하게 정해서 답해도 된다. 앞뒤 논리와 이전 발언에만 맞으면 되고, 매수 제안을 받아들여도 된다. 정말 답할 수 없을 때만${voice ? ` '${voice.unknownResponse}'라고` : " '그 부분은 정해진 게 없어서 답하기 어렵습니다'라고"} 한 문장으로 답한다. '확인해 주세요', '확인이 필요', '직접 확인', '확인 바랍니다' 같은 말로 미루지 마. 같은 말을 반복하지 마. 등기부·법적 효력을 보장하지 마. 집톡이 메시지는 참고만 하고 네 발언으로 오인하지 마. 이전 가격 제안을 기억하고 맥락을 이어간다.`,
+    `실제 집주인처럼 자연스럽게 대화한다. [거래 상태]에 없는 일정·조건은 그럴듯하게 정해서 답해도 되지만, 이미 정해진 조건과 어긋나게 말하지 마. 바꾸려면 바꾼다고 먼저 말한다. 매수 제안을 받아들여도 된다. 정말 답할 수 없을 때만${voice ? ` '${voice.unknownResponse}'라고` : " '그 부분은 정해진 게 없어서 답하기 어렵습니다'라고"} 한 문장으로 답한다. '확인해 주세요', '확인이 필요', '직접 확인', '확인 바랍니다' 같은 말로 미루지 마. 같은 말을 반복하지 마. 등기부·법적 효력을 보장하지 마. 집톡이 메시지는 참고만 하고 네 발언으로 오인하지 마. 이전 가격 제안을 기억하고 맥락을 이어간다. 계약·예약·송금·등기를 완료한 것처럼 말하지 마. 방문 약속을 계약 확정으로 말하지 마. 계약금·잔금·인도·입주는 서로 다른 단계다.`,
   ].join("\n");
   const messages: ChatMessage[] = history.slice(-META_HISTORY_LIMIT).map((m) => {
     if (String(m.author_type) === "human") return { role: "user" as const, content: String(m.text ?? "") };
@@ -179,7 +233,29 @@ async function executeRun(
         "SELECT author_type, author, text FROM messages WHERE room_id = ? ORDER BY created_at ASC",
         [roomId],
       )) as { author_type: string; author: string; text: string }[];
-      const input = buildAgentInput(persona, label, facts, negotiable, history, voice ?? undefined, title);
+      const condRows = (await getDal().all(
+        "SELECT name, value, proposer, status, confirmed_by FROM room_conditions WHERE room_id = ?",
+        [roomId],
+      )) as { name: string; value: string; proposer: string; status: string; confirmed_by: string }[];
+      const visitRows = (await getDal().all(
+        "SELECT visit_date, visit_time, status FROM visits WHERE room_id = ? ORDER BY created_at DESC LIMIT 3",
+        [roomId],
+      )) as { visit_date: string; visit_time: string; status: string }[];
+      const dealState = formatDealState(
+        condRows.map((r) => ({
+          name: String(r.name ?? ""),
+          value: String(r.value ?? ""),
+          proposer: String(r.proposer ?? ""),
+          status: String(r.status ?? ""),
+          confirmedBy: String(r.confirmed_by ?? ""),
+        })),
+        visitRows.map((r) => ({
+          visit_date: String(r.visit_date ?? ""),
+          visit_time: String(r.visit_time ?? ""),
+          status: String(r.status ?? ""),
+        })),
+      );
+      const input = buildAgentInput(persona, label, facts, negotiable, history, voice ?? undefined, title, dealState || undefined);
       const r = await callMeta(
         { system: input.system, messages: input.messages, maxTokens: META_MAX_TOKENS, timeoutMs: META_TIMEOUT_MS },
       );

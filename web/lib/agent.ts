@@ -6,6 +6,14 @@
 
 export type AgentSide = "seller" | "buyer";
 
+/**
+ * AI 답에 새 제안·날짜 단서가 있는지 본다. 있으면 AI 메시지를, 없으면 사람 메시지를
+ * 집톡이 트리거로 쓴다. 답변이 끝난 질문을 집톡이가 놓치지 않게 한다.
+ */
+export function hasNewProposalCue(text: string): boolean {
+  return /(제안|깎|네고|합시다|어때|안돼|조율|협의|가능합니다|방문|보러|계약|잔금|인도|입주|이사|내일|모레|다음달|다다음달|이번달|내년)/.test(text);
+}
+
 export interface Scenario {
   persona: string;
   side: AgentSide;

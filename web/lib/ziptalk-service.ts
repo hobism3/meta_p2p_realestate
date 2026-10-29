@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getDal } from "./dal.ts";
 import { now } from "./db.ts";
 import { classify, extractPriceManwon, hasJudgment } from "./ziptalk.ts";
-import { parseVisitProposal } from "./visit-dates.ts";
+import { parseVisitProposal, parseMonthRef, parseManwonInt } from "./visit-dates.ts";
 import {
   callMeta,
   META_HISTORY_LIMIT,
@@ -78,11 +78,50 @@ function isQuestionLike(t: string): boolean {
   return s.endsWith("?") || /(언제|몇 시|얼마인가|가능할까|될까|돼요\?|되나요|나요\?|가요\?|까요)/.test(s);
 }
 
+const PRICE_MARKERS = /(제안|깎|네고|하자|합시다|어때|안돼|안될까|조율|협의|가능합니다)/;
+
 function asPriceProposal(text: string): number | null {
   const price = extractPriceManwon(text);
   if (price === null) return null;
-  if (!/(제안|깎|네고|하자|합시다|어때|안돼|안될까|조율|협의)/.test(text)) return null;
+  if (!PRICE_MARKERS.test(text)) return null;
   return price;
+}
+
+/** 입장 인사말은 제안이 아니다. 스캔 후보에서 제외한다. */
+function isGreeting(text: string): boolean {
+  const t = text.trim();
+  return t.startsWith("안녕하세요,") && t.includes("(시연)입니다.");
+}
+
+/**
+ * 계약금 표기를 만원 금액으로 바꾼다. 비율은 현재 협상가(매도 제안가→매수 희망가→최초가)
+ * 기준으로 서버가 직접 계산한다. 기준가가 없으면 비율 원문을 둔다. 계산 불가면 null.
+ */
+export function depositAmount(
+  text: string,
+  current: Map<string, StoredCondition>,
+): { value: string; note: string } | null {
+  if (!PRICE_MARKERS.test(text)) return null;
+  const flat = text.match(/계약금?\s*([\d,]+)\s*만\s*원/);
+  if (flat) {
+    const n = parseInt(flat[1].replace(/,/g, ""), 10);
+    if (Number.isFinite(n) && n > 0) return { value: priceText(n), note: "" };
+    return null;
+  }
+  const pct = text.match(/계약금?\s*(\d+(?:\.\d+)?)\s*(%|퍼센트|프로)/);
+  if (pct) {
+    const p = parseFloat(pct[1]);
+    if (!Number.isFinite(p) || p <= 0 || p >= 100) return null;
+    for (const n of ["매도 제안가", "매수 희망가", "최초가"]) {
+      const cv = current.get(n)?.value ?? "";
+      const base = cv ? parseManwonInt(cv) : null;
+      if (base) {
+        return { value: priceText(Math.round((base * p) / 100)), note: `${cv}의 ${pct[1]}%` };
+      }
+    }
+    return { value: `${pct[1]}%`, note: "" };
+  }
+  return null;
 }
 
 const VISIT_WORDS = ["방문", "보러", "구경", "보실 수 있"];
@@ -101,32 +140,46 @@ export function analyzeMock(
   // 매수자 희망가와 매도자 제안가는 별도 조건으로 유지한다. 서로 다른 가격을 자동 충돌·합의로 보지 않는다.
   // 트리거뿐 아니라 최근 대화까지 새 순서대로 훑어서 AI 답 속 제안을 놓치지 않는다.
   const pname = proposer === "human" ? "매수 희망가" : "매도 제안가";
+  // 사람 트리거는 사람 발화만 훑고, AI 트리거는 AI 자신의 발화를 포함한다.
+  // 입장 인사말은 어느 경우에도 제안 근거가 되지 않는다. 같은 방 대화를 섞지 않는다.
   const cands: Array<{ id: string; text: string; author_type: string }> = [
     { id: trigger.id, text: t, author_type: trigger.author_type },
-    ...history.filter((h) => h.author_type === "human" || h.author_type === "demo_agent"),
-  ];
+    ...history.filter(
+      (h) =>
+        (h.author_type === "human" || (trigger.author_type === "demo_agent" && h.author_type === "demo_agent")) &&
+        !isGreeting(h.text),
+    ),
+  ].filter((c) => !isGreeting(c.text));
+  // 한 턴에 나온 복수 조건을 모두 모은다. 이름별로 최신(가장 새 Cand) 1건만 둔다.
+  const upserts: ConditionUpsert[] = [];
+  const bubbles: string[] = [];
+  const priceSeen = new Set<string>();
   for (const c of cands) {
     const pp = asPriceProposal(c.text);
     if (pp === null) continue;
     const cp = c.author_type === "human" ? "human" : "demo";
     const pn = cp === "human" ? "매수 희망가" : "매도 제안가";
+    if (priceSeen.has(pn)) continue;
+    priceSeen.add(pn);
     const v = priceText(pp);
     const cur = current.get(pn);
-    if (!cur || !cur.value) {
-      return {
-        upserts: [{ name: pn, value: v, proposer: cp, status: "proposed", evidence: [c.id] }],
-        intervene: true,
-        bubble: `가격이 ${v}으로 새로 제안됐어요. 아직 확정되지는 않았습니다.`,
-      };
+    if (cur && cur.value && cur.value === v) continue;
+    const isNew = !cur || !cur.value;
+    upserts.push({ name: pn, value: v, proposer: cp, status: "proposed", evidence: [c.id] });
+    if (pn === "매도 제안가") {
+      bubbles.push(
+        isNew
+          ? `매도 제안이 ${v}으로 새로 나왔어요. 아직 확정되지는 않았습니다.`
+          : `매도 제안이 ${cur.value}에서 ${v}로 변경됐어요. 아직 확정되지는 않았습니다.`,
+      );
+    } else {
+      bubbles.push(
+        isNew
+          ? `가격이 ${v}으로 새로 제안됐어요. 아직 확정되지는 않았습니다.`
+          : `가격이 ${cur.value}에서 ${v}로 변경됐어요. 아직 확정되지는 않았습니다.`,
+      );
     }
-    if (cur.value !== v) {
-      return {
-        upserts: [{ name: pn, value: v, proposer: cp, status: "proposed", evidence: [c.id] }],
-        intervene: true,
-        bubble: `가격이 ${cur.value}에서 ${v}로 변경됐어요. 아직 확정되지는 않았습니다.`,
-      };
-    }
-    break;
+    if (!isNew && cur.confirmedBy) bubbles.push(`이전에 확인한 ${cur.value}와 다릅니다. 다시 협의할까요?`);
   }
   if (cls === "withdraw") {
     const wcur = current.get(pname);
@@ -147,16 +200,65 @@ export function analyzeMock(
     const v = parseVisitProposal(c.text, refISO || trigger.created_at);
     if (!v) continue;
     if (!hasWord && !v.time) continue;
+    const cur = current.get("방문일");
+    if (cur && cur.value === v.display) break;
     const vp = c.author_type === "human" ? "human" : "demo";
-    return {
-      upserts: [{ name: "방문일", value: v.display, proposer: vp, status: "proposed", evidence: [c.id] }],
-      intervene: true,
-      bubble: v.time
+    upserts.push({ name: "방문일", value: v.display, proposer: vp, status: "proposed", evidence: [c.id] });
+    bubbles.push(
+      v.time
         ? `방문일로 ${v.display}가 제안됐어요. 거래 현황에서 확인해 주세요.`
         : `방문일로 ${v.display} 이야기가 나왔어요. 시간을 정해 주세요.`,
-    };
+    );
+    break;
   }
-  if (cls === "question") {
+  // 거래 일정 스캔: 계약금·계약일·잔금일·인도일·입주일. 질문은 질문 분기에서 다룬다.
+  const schedSeen = new Set<string>();
+  const refTime = refISO || trigger.created_at;
+  for (const c of cands) {
+    if (isQuestionLike(c.text)) continue;
+    const cp = c.author_type === "human" ? "human" : "demo";
+    if (!schedSeen.has("계약금") && c.text.includes("계약금")) {
+      const amt = depositAmount(c.text, current);
+      if (amt) {
+        schedSeen.add("계약금");
+        upserts.push({ name: "계약금", value: amt.value, proposer: cp, status: "proposed", evidence: [c.id] });
+        bubbles.push(
+          amt.note
+            ? `계약금이 ${amt.value}(${amt.note})으로 제안됐어요. 아직 확정되지는 않았습니다.`
+            : `계약금이 ${amt.value}으로 제안됐어요. 아직 확정되지는 않았습니다.`,
+        );
+      }
+    }
+    const keys: Array<[string, string[]]> = [
+      ["계약일", ["계약일", "계약"]],
+      ["잔금일", ["잔금"]],
+      ["인도일", ["인도"]],
+      ["입주일", ["입주", "이사"]],
+    ];
+    for (const [name, words] of keys) {
+      if (schedSeen.has(name)) continue;
+      if (name === "계약일" && c.text.includes("계약금")) continue;
+      if (!words.some((w) => c.text.includes(w))) continue;
+      const day = parseVisitProposal(c.text, refTime);
+      const disp = day ? day.display : parseMonthRef(c.text, refTime)?.display ?? null;
+      if (!disp) continue;
+      const cur = current.get(name);
+      if (cur && cur.value === disp) {
+        schedSeen.add(name);
+        continue;
+      }
+      schedSeen.add(name);
+      const isNew = !cur || !cur.value;
+      upserts.push({ name, value: disp, proposer: cp, status: "proposed", evidence: [c.id] });
+      bubbles.push(
+        isNew
+          ? `${name}이 ${disp}으로 제안됐어요. 아직 확정되지는 않았습니다.`
+          : `${name}이 ${cur.value}에서 ${disp}로 변경됐어요. 아직 확정되지는 않았습니다.`,
+      );
+      if (!isNew && cur.confirmedBy) bubbles.push(`이전에 확인한 ${cur.value}와 다릅니다. 다시 협의할까요?`);
+    }
+  }
+  if (upserts.length === 0 && cls === "question") {
     if (t.includes("입주")) {
       const ic = current.get("입주일");
       if (!ic || !ic.value) {
@@ -173,8 +275,10 @@ export function analyzeMock(
     }
     const slots: Array<[string, string]> = [
       ["방문", "방문일"],
+      ["계약금", "계약금"],
       ["계약", "계약일"],
       ["잔금", "잔금일"],
+      ["인도", "인도일"],
       ["옵션", "옵션"],
       ["수리", "수리 요청"],
     ];
@@ -213,7 +317,18 @@ export function analyzeMock(
       return { upserts: [], intervene: true, bubble: `${bits.join(", ")}입니다.` };
     }
   }
-  return silent;
+  // 잔금일과 입주일이 어긋나면 오류가 아니라 인도일 확인이 필요한 상태로 안내한다.
+  // 이번 턴에 잔금·입주 중 하나라도 새로 잡혔을 때만 말한다.
+  if (upserts.some((u) => u.name === "잔금일" || u.name === "입주일")) {
+    const val = (n: string) => upserts.find((u) => u.name === n)?.value ?? current.get(n)?.value ?? "";
+    const bal = val("잔금일");
+    const mv = val("입주일");
+    if (bal && mv && bal !== mv && !val("인도일")) {
+      bubbles.push("잔금일과 입주일이 다릅니다. 인도일을 정할까요?");
+    }
+  }
+  if (upserts.length === 0) return silent;
+  return { upserts, intervene: true, bubble: bubbles.join(" ") };
 }
 
 export interface ValidatedCondition {
@@ -269,6 +384,9 @@ export function normalizeValue(raw: string): string {
 /** 값에 나온 숫자·문구가 근거 문구에 실제로 있는지 확인한다. */
 function valueSupported(value: string, evidenceText: string): boolean {
   const ev = evidenceText.replace(/\s/g, "");
+  // 월 정밀도 값은 월이 원문에 있으면 뒷받침된 것으로 본다. 연도는 기준 시각에서 정규화된다.
+  const ym = value.match(/^(\d{4})년\s*(\d{1,2})월$/);
+  if (ym) return ev.includes(`${parseInt(ym[2], 10)}월`);
   if (/\d/.test(value)) {
     const groups = value.replace(/,/g, "").match(/\d{2,}/g) ?? [];
     if (groups.length > 0) {
@@ -359,7 +477,10 @@ export function buildZiptalkInput(
     `[지금까지 조건]${prevLines.length > 0 ? "" : " 없음"}`,
     ...prevLines,
     "[규칙]",
-    "- 조건 이름은 최초가·매수 희망가·매도 제안가·입주일·방문일·계약일·잔금일·옵션·수리 요청만 쓴다. 매물 정가는 최초가, 사람의 희망은 매수 희망가, AI의 제안은 매도 제안가로 나눈다.",
+    "- 조건 이름은 최초가·매수 희망가·매도 제안가·계약금·입주일·방문일·계약일·잔금일·인도일·옵션·수리 요청만 쓴다. 매물 정가는 최초가, 사람의 희망은 매수 희망가, AI의 제안은 매도 제안가로 나눈다.",
+    "- 계약금은 비율 계산을 하지 말고 원문 그대로(예: 10%) 쓰거나, 금액이 분명할 때만 만원 단위로 쓴다.",
+    "- 입주·잔금 월만 나왔으면 'YYYY년 M월' 형태로 쓰고 일을 만들지 마.",
+    "- 잔금일과 입주일이 다르면 오류가 아니라 인도일 확인이 필요하다고 안내한다.",
     "- 값·제안자(human|demo)·근거 메시지 ID가 분명할 때만 조건으로 낸다. 근거 IDs는 아래 대화의 [id]만 쓴다.",
     "- 값은 근거 문구에 실제로 나온 형태만 쓴다. 연도는 근거에 있을 때만 쓰고, 없으면 월·일만 쓴다. 금액은 만원·억원 단위 그대로 쓴다.",
     "- 근거가 부족하거나 모호하면 조건을 만들지 마.",
@@ -721,7 +842,22 @@ async function executeZiptalk(
       );
     }
     const applied = await applyOutcome(roomId, outcome);
-    await syncVisitProposal(roomId, trigger, trigger.author_type === "human" ? "human" : "demo");
+    const visitDone = await syncVisitProposal(roomId, trigger, trigger.author_type === "human" ? "human" : "demo");
+    // AI가 사람 제안을 받아 말했을 때는 AI 답에 날짜가 없어도 사람 발화로 행을 만든다.
+    // 질문·날짜 없음은 syncVisitProposal이 거부하므로 질문만으로 생기지 않는다.
+    if (!visitDone && trigger.author_type !== "human") {
+      const hm = (await getDal().get(
+        "SELECT id, text, created_at FROM messages WHERE room_id = ? AND author_type = 'human' ORDER BY created_at DESC LIMIT 1",
+        [roomId],
+      )) as { id: string; text: string; created_at: string } | undefined;
+      if (hm) {
+        await syncVisitProposal(
+          roomId,
+          { id: String(hm.id), author_type: "human", author: "", text: String(hm.text ?? ""), created_at: String(hm.created_at ?? "") },
+          "human",
+        );
+      }
+    }
     await getDal().run(
       "UPDATE agent_runs SET status = 'done', latency_ms = ?, usage_json = ?, message_id = ?, summary = ? WHERE id = ?",
       [Date.now() - started, usageJson, applied.bubbleMessageId ?? "", (outcome.bubble ?? "").slice(0, 120), runId],

@@ -2,7 +2,7 @@
 // 실행: web/에서 `node --test tests/ziptalk.test.mjs`
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { analyzeMock, buildZiptalkInput, normalizeValue, validateZiptalkOutput } from "../lib/ziptalk-service.ts";
+import { analyzeMock, buildZiptalkInput, depositAmount, normalizeValue, validateZiptalkOutput } from "../lib/ziptalk-service.ts";
 
 const T = (text, author_type = "human") => ({ id: "m1", author_type, author: "h", text });
 const cur = (entries) => new Map(Object.entries(entries));
@@ -24,6 +24,18 @@ describe("mock 분석", () => {
     const r = analyzeMock(T("44000만원에 합시다", "demo_agent"), cur({}));
     assert.equal(r.upserts[0].name, "매도 제안가");
     assert.equal(r.upserts[0].proposer, "demo");
+  });
+  it("AI 수락 뒤 사람 질문은 상태를 다시 답한다", async () => {
+    // AI 답(단서 없음) 뒤 사람 메시지를 트리거로 넘기면 이전 제안을 되묻지 않는다.
+    const r = analyzeMock(T("매매가 얼마인가요?"), cur({
+      "매수 희망가": wish("44,500만원"),
+      "매도 제안가": { name: "매도 제안가", value: "44,500만원", proposer: "demo", status: "proposed" },
+    }), "", [
+      { id: "h1", text: "44500만원에 합시다", author_type: "human" },
+      { id: "a1", text: "시연용으로 가격 44500만원에 가능합니다. (미확정, 사람 확인 필요)", author_type: "demo_agent" },
+    ]);
+    assert.equal(r.upserts.length, 0);
+    assert.ok(r.bubble && r.bubble.includes("매수 희망가는 44,500만원"));
   });
   it("같은 값은 조용하다", async () => {
     const r = analyzeMock(T("44000만원에 합시다"), cur({ "매수 희망가": wish("44,000만원") }));
@@ -129,6 +141,61 @@ describe("mock 분석", () => {
   it("확정(confirmed)은 절대 만들지 않는다", async () => {
     const r = analyzeMock(T("44000만원에 합시다"), cur({}));
     assert.ok(r.upserts.every((u) => u.status !== "confirmed"));
+  });
+  it("입장 인사말은 제안으로 기록하지 않는다", async () => {
+    const greet = "안녕하세요, AI 매도자(시연)입니다. 급매 매매 투룸 매매 39,000만원, 협의 가능합니다. 궁금한 점을 물어보세요.";
+    const r = analyzeMock(T("안녕하세요"), cur({}), "", [
+      { id: "h", text: "안녕하세요", author_type: "human" },
+      { id: "g", text: greet, author_type: "demo_agent" },
+    ]);
+    assert.equal(r.intervene, false);
+    assert.equal(r.upserts.length, 0);
+  });
+  it("가능합니다 수락은 매도 제안가로 기록한다", async () => {
+    const r = analyzeMock(
+      T("시연용으로 가격 38500만원에 가능합니다. (미확정, 사람 확인 필요)", "demo_agent"),
+      cur({ "매수 희망가": wish("38,500만원") }),
+      "",
+      [{ id: "h", text: "38500만원에 합시다", author_type: "human" }],
+    );
+    assert.equal(r.upserts[0].name, "매도 제안가");
+    assert.equal(r.upserts[0].value, "38,500만원");
+    assert.ok(r.bubble && r.bubble.includes("매도 제안이"));
+  });
+  it("계약금 10%는 협상가 기준으로 계산한다", async () => {
+    const d = depositAmount("계약금 10%로 합시다", cur({
+      "매도 제안가": { name: "매도 제안가", value: "38,500만원", proposer: "demo", status: "proposed" },
+    }));
+    assert.equal(d.value, "3,850만원");
+    assert.ok(d.note.includes("38,500만원"));
+    const r = analyzeMock(T("계약금 10%로 합시다"), cur({
+      "매도 제안가": { name: "매도 제안가", value: "38,500만원", proposer: "demo", status: "proposed" },
+    }));
+    const c = r.upserts.find((u) => u.name === "계약금");
+    assert.equal(c.value, "3,850만원");
+  });
+  it("월만 나온 입주는 일을 만들지 않는다", async () => {
+    const r = analyzeMock(
+      T("입주는 내년 2월에 하고 싶어요"),
+      cur({}),
+      "2026-10-29T00:00:00+09:00",
+    );
+    const c = r.upserts.find((u) => u.name === "입주일");
+    assert.equal(c.value, "2027년 2월");
+  });
+  it("잔금과 입주가 어긋나면 인도일 확인을 안내한다", async () => {
+    const r = analyzeMock(
+      T("입주는 내년 2월에 하고 싶어요"),
+      cur({ "잔금일": { name: "잔금일", value: "11월 15일", proposer: "human", status: "proposed" } }),
+      "2026-10-29T00:00:00+09:00",
+    );
+    assert.ok(r.bubble && r.bubble.includes("인도일을 정할까요"));
+  });
+  it("확인된 조건이 바뀌면 재협의를 안내한다", async () => {
+    const r = analyzeMock(T("43000만원에 합시다"), cur({
+      "매수 희망가": { name: "매수 희망가", value: "44,000만원", proposer: "human", status: "proposed", confirmedBy: "u1", confirmedVersion: 1 },
+    }));
+    assert.ok(r.bubble && r.bubble.includes("다시 협의할까요"));
   });
 });
 

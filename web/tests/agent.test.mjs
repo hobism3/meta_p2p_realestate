@@ -2,7 +2,8 @@
 // 실행: web/에서 `node --test tests/agent.test.mjs`
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildAgentInput, resolveModel, resolveProvider } from "../lib/agent-service.ts";
+import { buildAgentInput, formatDealState, resolveModel, resolveProvider } from "../lib/agent-service.ts";
+import { hasNewProposalCue } from "../lib/agent.ts";
 import {
   callMeta,
   META_DEFAULT_MODEL,
@@ -44,12 +45,39 @@ describe("입력 계약", () => {
       HISTORY,
     );
     assert.ok(input.system.includes("45,000만원"));
-    assert.ok(input.system.includes("앞뒤 논리"));
+    assert.ok(input.system.includes("어긋나게 말하지 마"));
+    assert.ok(input.system.includes("완료한 것처럼 말하지 마"));
     assert.ok(input.system.includes("확정"));
     assert.deepEqual(input.messages, [
       { role: "user", content: "매매가 얼마인가요?" },
       { role: "assistant", content: "가격은 45,000만원입니다." },
     ]);
+  });
+  it("거래 상태를 주입하면 기억한다", async () => {
+    const withState = buildAgentInput("AI 매도자", "AI 매도자", {}, {}, HISTORY, undefined, "급매 투룸", "- 매도 제안가: 38,500만원(미확정)");
+    assert.ok(withState.system.includes("매도 제안가: 38,500만원"));
+    const without = buildAgentInput("AI 매도자", "AI 매도자", {}, {}, HISTORY);
+    assert.ok(!without.system.includes("매도 제안가: 38,500만원"));
+    assert.ok(!without.system.includes("아래 조건과 어긋나게 말하지 마"));
+  });
+  it("계약금 10%는 협상가 기준으로 계산한다", async () => {
+    const s = formatDealState(
+      [
+        { name: "최초가", value: "39,000만원", proposer: "demo", status: "proposed", confirmedBy: "" },
+        { name: "매도 제안가", value: "38,500만원", proposer: "demo", status: "proposed", confirmedBy: "" },
+      ],
+      [{ visit_date: "2026-10-30", visit_time: "14:00", status: "제안됨" }],
+    );
+    assert.ok(s.includes("매도 제안가: 38,500만원(미확정)"));
+    assert.ok(s.includes("계약금 10% 기준액: 3,850만원(매도 제안가 38,500만원 기준)"));
+    assert.ok(s.includes("10월 30일 14:00"));
+    assert.equal(formatDealState([], []), "");
+  });
+  it("새 단서가 있을 때만 AI 답을 트리거로 쓴다", async () => {
+    assert.equal(hasNewProposalCue("시연용으로 가격 44000만원에 가능합니다. (미확정, 사람 확인 필요)"), true);
+    assert.equal(hasNewProposalCue("내일 오후 2시에 가능합니다"), true);
+    assert.equal(hasNewProposalCue("가격은 45,000만원입니다."), false);
+    assert.equal(hasNewProposalCue("그 금액은 어렵습니다."), false);
   });
   it("대화는 최근 12건만 쓴다", async () => {
     const many = Array.from({ length: 20 }, (_, i) => ({ author_type: "human", author: "h", text: `m${i}` }));

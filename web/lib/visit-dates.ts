@@ -134,6 +134,21 @@ export function parseVisitProposal(text: string, refISO: string): VisitDateTime 
     }
   }
   if (!ymd) {
+    const nm = t.match(/다다음달\s*(\d{1,2})일/) ?? t.match(/다음달\s*(\d{1,2})일/);
+    if (nm) {
+      const d = parseInt(nm[1], 10);
+      if (d >= 1 && d <= 31) {
+        let y = base.y;
+        let m = base.m + (/다다음달/.test(t) ? 2 : 1);
+        while (m > 12) {
+          m -= 12;
+          y++;
+        }
+        if (d <= daysIn(y, m)) ymd = iso(y, m, d);
+      }
+    }
+  }
+  if (!ymd) {
     const dd = t.match(/(\d{1,2})일/);
     if (dd && !/월/.test(t)) {
       const d = parseInt(dd[1], 10);
@@ -155,4 +170,75 @@ export function parseVisitProposal(text: string, refISO: string): VisitDateTime 
   if (ymd < iso(base.y, base.m, base.d)) return null;
   const time = parseTime(text);
   return { date: ymd, time, display: fmt(ymd, time) };
+}
+
+/**
+ * "38,500만원"·"3억 8,500만원" 같은 표기를 만원 정수로 바꾼다. 파싱 불가면 null.
+ */
+export function parseManwonInt(value: string): number | null {
+  const s = value.replace(/,/g, "");
+  let total = 0;
+  let seen = false;
+  const eok = s.match(/(\d+(?:\.\d+)?)\s*억/);
+  if (eok) {
+    total += Math.round(parseFloat(eok[1]) * 10000);
+    seen = true;
+  }
+  const man = s.match(/(\d+(?:\.\d+)?)\s*만/);
+  if (man) {
+    total += Math.round(parseFloat(man[1]));
+    seen = true;
+  }
+  return seen && total > 0 ? total : null;
+}
+
+export interface MonthRef {
+  year: number;
+  month: number;
+  display: string;
+}
+
+/**
+ * 일 없는 월 표현을 KST 기준 YYYY년 M월로 정규화한다. 일을 임의로 만들지 않는다.
+ * 내년 M월·다음달·다다음달·이번달·M월(지나간 월은 내년)을 지원한다.
+ */
+export function parseMonthRef(text: string, refISO: string): MonthRef | null {
+  const base = kstParts(refISO);
+  if (!base) return null;
+  const t = text.replace(/\s/g, "");
+  const ny = t.match(/내년(\d{1,2})월/);
+  if (ny) {
+    const m = parseInt(ny[1], 10);
+    if (m < 1 || m > 12) return null;
+    return { year: base.y + 1, month: m, display: `${base.y + 1}년 ${m}월` };
+  }
+  if (/다다음달/.test(t)) {
+    let y = base.y;
+    let m = base.m + 2;
+    while (m > 12) {
+      m -= 12;
+      y++;
+    }
+    return { year: y, month: m, display: `${y}년 ${m}월` };
+  }
+  if (/다음달/.test(t)) {
+    let y = base.y;
+    let m = base.m + 1;
+    if (m > 12) {
+      m = 1;
+      y++;
+    }
+    return { year: y, month: m, display: `${y}년 ${m}월` };
+  }
+  if (/이번달/.test(t)) {
+    return { year: base.y, month: base.m, display: `${base.y}년 ${base.m}월` };
+  }
+  const bm = t.match(/(\d{1,2})월/);
+  if (bm && !/(\d{1,2})월(\d{1,2})일/.test(t)) {
+    const m = parseInt(bm[1], 10);
+    if (m < 1 || m > 12) return null;
+    const y = m < base.m ? base.y + 1 : base.y;
+    return { year: y, month: m, display: `${y}년 ${m}월` };
+  }
+  return null;
 }

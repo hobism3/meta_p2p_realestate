@@ -3,7 +3,7 @@
 // 기준 시각은 KST. ref는 UTC ISO로 준다(2026-10-29T00:00:00Z = KST 10-29 09:00, 목).
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseVisitProposal } from "../lib/visit-dates.ts";
+import { parseManwonInt, parseMonthRef, parseVisitProposal } from "../lib/visit-dates.ts";
 
 const REF = "2026-10-29T00:00:00.000Z";
 
@@ -31,6 +31,33 @@ describe("상대 날짜", () => {
   it("없는 날짜는 받지 않는다", async () => {
     assert.equal(parseVisitProposal("2월 30일에 봐요", REF), null);
     assert.equal(parseVisitProposal("13월 40일에 봐요", REF), null);
+  });
+  it("다음달·다다음달 N일을 푼다", async () => {
+    assert.equal(parseVisitProposal("잔금은 다음달 15일로 해주세요", REF)?.date, "2026-11-15");
+    assert.equal(parseVisitProposal("다다음달 1일에 봐요", REF)?.date, "2026-12-01");
+    assert.equal(parseVisitProposal("다음달 15일로 해주세요", "2026-12-20T00:00:00.000Z")?.date, "2027-01-15");
+  });
+});
+
+describe("월 참조", () => {
+  it("내년·다음달·이번달을 연월로 정규화한다", async () => {
+    assert.equal(parseMonthRef("입주는 내년 2월에 하고 싶어요", REF)?.display, "2027년 2월");
+    assert.equal(parseMonthRef("잔금은 다음달로 해주세요", REF)?.display, "2026년 11월");
+    assert.equal(parseMonthRef("이번달에 입주해요", REF)?.display, "2026년 10월");
+  });
+  it("일은 만들지 않는다", async () => {
+    assert.equal(parseMonthRef("2월에 입주하고 싶어요", "2026-10-29T00:00:00.000Z")?.display, "2027년 2월");
+    assert.equal(parseMonthRef("12월에 입주해요", REF)?.display, "2026년 12월");
+    assert.equal(parseMonthRef("안녕하세요", REF), null);
+  });
+});
+
+describe("만원 정수", () => {
+  it("억·만원 표기를 푼다", async () => {
+    assert.equal(parseManwonInt("38,500만원"), 38500);
+    assert.equal(parseManwonInt("3억 8,500만원"), 38500);
+    assert.equal(parseManwonInt("2.6억"), 26000);
+    assert.equal(parseManwonInt("협의 가능"), null);
   });
 });
 

@@ -21,5 +21,22 @@ export async function GET(req: Request, { params }: { params: { rid: string } })
     "SELECT name, old_value, new_value, source_msg_ids, created_at FROM condition_history WHERE room_id = ? ORDER BY created_at DESC LIMIT 20",
     [params.rid],
   );
-  return ok({ conditions, history });
+  const ids: string[] = [];
+  for (const c of conditions as { confirmed_by?: unknown }[]) {
+    const v = String(c.confirmed_by ?? "");
+    if (v && ids.indexOf(v) < 0) ids.push(v);
+  }
+  const names: Record<string, string> = {};
+  for (const id of ids) {
+    const m = await dal.get(
+      "SELECT author FROM messages WHERE room_id = ? AND user_id = ? AND author_type = 'human' ORDER BY created_at DESC LIMIT 1",
+      [params.rid, id],
+    );
+    names[id] = m ? String(m.author ?? id) : id;
+  }
+  const withNames = (conditions as Record<string, unknown>[]).map((c) => ({
+    ...c,
+    confirmed_name: names[String(c.confirmed_by ?? "")] ?? "",
+  }));
+  return ok({ conditions: withNames, history });
 }

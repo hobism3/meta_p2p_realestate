@@ -246,3 +246,54 @@ describe("집톡이 반복 개입 방지·직접 답변", () => {
     assert.ok(!last.text.includes("확인이 필요"));
   });
 });
+
+describe("VS-3C 방문 일정", () => {
+  it("방문 제안을 행으로 만든다", async () => {
+    const t = await say(roomA, "내일 오후 2시에 방문하고 싶어요");
+    const z = await zip(roomA, t);
+    assert.equal(z.status, 201);
+    const v = await api(`/api/rooms/${roomA}/visits`, {}, HUMAN);
+    assert.equal(v.status, 200);
+    assert.equal(v.body.length, 1);
+    assert.equal(v.body[0].status, "제안됨");
+    assert.equal(v.body[0].proposed_by, "human");
+    assert.ok(/^\d{2}:\d{2}$/.test(v.body[0].visit_time));
+    const c = await api(`/api/rooms/${roomA}/conditions`, {}, HUMAN);
+    assert.ok(c.body.conditions.find((x) => x.name === "방문일" && x.value));
+  });
+  it("같은 제안은 중복 생성하지 않는다", async () => {
+    const t = await say(roomA, "내일 오후 2시에 방문하고 싶어요");
+    await zip(roomA, t);
+    const v = await api(`/api/rooms/${roomA}/visits`, {}, HUMAN);
+    assert.equal(v.body.length, 1);
+  });
+  it("일정을 확인하면 수락되고 조건도 확인된다", async () => {
+    const v = await api(`/api/rooms/${roomA}/visits`, {}, HUMAN);
+    const id = v.body[0].id;
+    const p = await api(`/api/rooms/${roomA}/visits/${id}`, {
+      method: "PATCH", body: JSON.stringify({ status: "수락됨" }),
+    }, HUMAN);
+    assert.equal(p.status, 200);
+    const c = await api(`/api/rooms/${roomA}/conditions/confirm`, {
+      method: "POST", body: JSON.stringify({ name: "방문일" }),
+    }, HUMAN);
+    assert.equal(c.status, 200);
+    const g = await api(`/api/rooms/${roomA}/visits`, {}, HUMAN);
+    assert.equal(g.body.find((x) => x.id === id).status, "수락됨");
+  });
+  it("구버전 확인은 409다", async () => {
+    const r = await api(`/api/rooms/${roomA}/conditions/confirm`, {
+      method: "POST", body: JSON.stringify({ name: "매수 희망가", version: 1 }),
+    }, HUMAN);
+    assert.equal(r.status, 409);
+  });
+  it("모호한 날짜는 행을 만들지 않는다", async () => {
+    const t = await say(roomB, "다음 주에 방문하고 싶어요");
+    await zip(roomB, t);
+    const v = await api(`/api/rooms/${roomB}/visits`, {}, HUMAN);
+    assert.equal(v.body.length, 0);
+  });
+  it("제삼자는 방문을 못 본다", async () => {
+    assert.equal((await api(`/api/rooms/${roomA}/visits`, {}, STRANGER)).status, 403);
+  });
+});

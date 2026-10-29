@@ -92,6 +92,26 @@ test("시연방: 집톡이 제안 정리→거래 현황", async ({ page }) => {
   await expect(page.getByText("44,000만원").first()).toBeVisible();
 });
 
+test("시연방: 방문 제안→일정 확인→변경", async ({ page }) => {
+  await loginAs(page, "e2e-visit", "E2E방문");
+  await page.goto("/listings/s24");
+  await page.getByRole("button", { name: "문의하기" }).click();
+  await expect(page).toHaveURL(/\/rooms\//);
+  await page.getByPlaceholder("메시지 입력").fill("38000만원에 합시다");
+  await page.getByRole("button", { name: "전송" }).click();
+  await expect(page.getByText("새로 제안됐어요").first()).toBeVisible();
+  await page.getByPlaceholder("메시지 입력").fill("내일 오후 2시에 방문하고 싶어요");
+  await page.getByRole("button", { name: "전송" }).click();
+  await expect(page.getByText("거래 현황에서 확인해 주세요").first()).toBeVisible();
+  await page.getByRole("button", { name: "거래 현황" }).click();
+  await page.getByRole("button", { name: "일정 확인" }).click();
+  await expect(page.getByText("수락됨").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "일정 확인" })).toHaveCount(0);
+  await page.getByPlaceholder("메시지 입력").fill("모레 오후 2시로 바꿔서 방문하고 싶어요");
+  await page.getByRole("button", { name: "전송" }).click();
+  await expect(page.getByRole("button", { name: "일정 확인" })).toHaveCount(1);
+});
+
 test("모바일: 가로 넘침이 없다", async ({ page }) => {
   for (const path of ["/", "/login", "/register"]) {
     await page.goto(path);

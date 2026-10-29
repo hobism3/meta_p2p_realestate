@@ -20,7 +20,13 @@ export async function POST(req: Request, { params }: { params: { rid: string } }
   if ("err" in parsed) return parsed.err;
   const name = parsed.value.name;
   if (typeof name !== "string" || !name.trim()) return ok({ error: "조건명 필요" }, 400);
-  const r = await confirmCondition(params.rid, name.trim(), a.identity.userId);
+  const version = parsed.value.version;
+  const r = await confirmCondition(
+    params.rid,
+    name.trim(),
+    a.identity.userId,
+    typeof version === "number" ? version : undefined,
+  );
   if (!r.ok) return ok({ error: r.error }, r.status);
   return ok({ name: name.trim(), version: r.version, confirmed_by: a.identity.userId });
 }

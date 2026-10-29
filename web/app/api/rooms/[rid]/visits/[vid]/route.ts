@@ -23,6 +23,6 @@ export async function PATCH(
     params.rid,
   ]);
   if (!cur) return notFound("일정 없음");
-  await getDal().run("UPDATE visits SET status = ? WHERE id = ?", [status, params.vid]);
+  await getDal().run("UPDATE visits SET status = ?, decided_by = ?, decided_at = ? WHERE id = ?", [status, a.identity.userId, new Date().toISOString(), params.vid]);
   return ok({ id: params.vid, status });
 }

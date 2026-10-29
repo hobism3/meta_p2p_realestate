@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getDal } from "./dal.ts";
 import { now } from "./db.ts";
 import { classify, extractPriceManwon, hasJudgment } from "./ziptalk.ts";
+import { parseVisitProposal } from "./visit-dates.ts";
 import {
   callMeta,
   META_HISTORY_LIMIT,
@@ -32,6 +33,7 @@ export interface TriggerMsg {
   author_type: string;
   author: string;
   text: string;
+  created_at: string;
 }
 
 export interface StoredCondition {
@@ -68,6 +70,7 @@ function priceText(manwom: number): string {
 export function analyzeMock(
   trigger: TriggerMsg,
   current: Map<string, StoredCondition>,
+  refISO = "",
 ): AnalysisOutcome {
   const t = trigger.text.trim();
   const proposer = trigger.author_type === "human" ? "human" : "demo";
@@ -106,6 +109,18 @@ export function analyzeMock(
       };
     }
     return silent;
+  }
+  if (t.includes("방문") || t.includes("보러") || t.includes("구경")) {
+    const v = parseVisitProposal(t, refISO || trigger.created_at);
+    if (v) {
+      return {
+        upserts: [{ name: "방문일", value: v.display, proposer, status: "proposed", evidence: [trigger.id] }],
+        intervene: true,
+        bubble: v.time
+          ? `방문일로 ${v.display}가 제안됐어요. 거래 현황에서 확인해 주세요.`
+          : `방문일로 ${v.display} 이야기가 나왔어요. 시간을 정해 주세요.`,
+      };
+    }
   }
   if (cls === "question") {
     if (t.includes("입주")) {
@@ -317,6 +332,7 @@ export function buildZiptalkInput(
     "- 이미 정리된 내용을 또 안내하지 마. 새 제안·변경·모순·미확인 발견이 없으면 intervene=false, bubble=null.",
     "- 질문에 대한 답이 [지금까지 조건]에 있으면 bubble에 한 문장으로 답한다(최초가·희망가·제안가를 그대로 전달). 답할 때도 협상·확정·판단은 하지 마.",
     "- bubble에서 '확인이 필요합니다'라는 말을 반복하지 마.",
+    "- 방문일 값은 'M월 D일 오전/오후 H시' 형태와 근거 ID를 함께 낸다. 시간이 없으면 날짜만 쓴다.",
     "- 상태는 proposed(제안됨) 또는 unconfirmed(미확인)만 쓴다. confirmed는 절대 쓰지 마.",
     "- 등급·판단·특약·법률 해석은 다루지 않는다.",
     "- 이전 조건과 모순되거나 바뀌었으면 그대로 기록하고 확정하지 마.",
@@ -364,14 +380,42 @@ export async function confirmCondition(
   roomId: string,
   name: string,
   userId: string,
+  expectedVersion?: number,
 ): Promise<{ ok: true; version: number } | { ok: false; status: number; error: string }> {
   const cur = await getDal().get("SELECT version FROM room_conditions WHERE room_id = ? AND name = ?", [roomId, name]);
   if (!cur) return { ok: false, status: 404, error: "조건 없음" };
+  if (expectedVersion !== undefined && Number(cur.version ?? 0) !== expectedVersion) {
+    return { ok: false, status: 409, error: `버전 불일치(현재 ${Number(cur.version ?? 0)})` };
+  }
   await getDal().run(
     "UPDATE room_conditions SET confirmed_by = ?, confirmed_at = ?, confirmed_version = version WHERE room_id = ? AND name = ?",
     [userId, now(), roomId, name],
   );
   return { ok: true, version: Number(cur.version ?? 0) };
+}
+
+/**
+ * 방문 제안이면 visits 행을 만든다. 시간까지 확정된 제안만 행으로 둔다.
+ * 같은 방·같은 일시는 중복 생성하지 않는다. AI 시연 제안은 proposed_by로 구분한다.
+ */
+async function syncVisitProposal(roomId: string, trigger: TriggerMsg, proposer: "human" | "demo"): Promise<string | null> {
+  const t = trigger.text;
+  if (!t.includes("방문") && !t.includes("보러") && !t.includes("구경")) return null;
+  const v = parseVisitProposal(t, trigger.created_at);
+  if (!v || !v.time) return null;
+  const dal = getDal();
+  const dup = await dal.get(
+    "SELECT id FROM visits WHERE room_id = ? AND visit_date = ? AND visit_time = ? AND status IN ('제안됨','수락됨')",
+    [roomId, v.date, v.time],
+  );
+  if (dup) return String(dup.id);
+  const room = await getRoom(roomId);
+  const id = randomUUID();
+  await dal.run(
+    "INSERT INTO visits (id,listing_id,visit_date,visit_time,status,room_id,created_at,proposed_by,source_msg_ids,decided_by,decided_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+    [id, room ? room.listing_id : "", v.date, v.time, "제안됨", roomId, now(), proposer, JSON.stringify([trigger.id]), "", ""],
+  );
+  return id;
 }
 
 export interface ZiptalkOk {
@@ -464,7 +508,7 @@ export async function runZiptalk(opts: {
   const dal = getDal();
   let trigger: TriggerMsg;
   if (opts.triggerMessageId) {
-    const t = await dal.get("SELECT id, author_type, author, text FROM messages WHERE id = ? AND room_id = ?", [
+    const t = await dal.get("SELECT id, author_type, author, text, created_at FROM messages WHERE id = ? AND room_id = ?", [
       opts.triggerMessageId,
       opts.roomId,
     ]);
@@ -472,14 +516,14 @@ export async function runZiptalk(opts: {
     if (String(t.author_type ?? "") !== "human" && String(t.author_type ?? "") !== "demo_agent") {
       return { ok: false, status: 409, error: "트리거 없음", provider, model };
     }
-    trigger = { id: String(t.id), author_type: String(t.author_type), author: String(t.author ?? ""), text: String(t.text ?? "") };
+    trigger = { id: String(t.id), author_type: String(t.author_type), author: String(t.author ?? ""), text: String(t.text ?? ""), created_at: String(t.created_at ?? "") };
   } else {
     const last = await dal.get(
-      "SELECT id, author_type, author, text FROM messages WHERE room_id = ? AND (author_type = 'human' OR author_type = 'demo_agent') ORDER BY created_at DESC LIMIT 1",
+      "SELECT id, author_type, author, text, created_at FROM messages WHERE room_id = ? AND (author_type = 'human' OR author_type = 'demo_agent') ORDER BY created_at DESC LIMIT 1",
       [opts.roomId],
     );
     if (!last) return { ok: false, status: 409, error: "트리거 없음", provider, model };
-    trigger = { id: String(last.id), author_type: String(last.author_type), author: String(last.author ?? ""), text: String(last.text ?? "") };
+    trigger = { id: String(last.id), author_type: String(last.author_type), author: String(last.author ?? ""), text: String(last.text ?? ""), created_at: String(last.created_at ?? "") };
   }
   const listing = await listingForDemo(room.listing_id);
   if (!listing) return { ok: false, status: 404, error: "매물 없음", provider, model };
@@ -580,6 +624,7 @@ async function executeZiptalk(
       outcome = analyzeMock(trigger, current);
     }
     const applied = await applyOutcome(roomId, outcome);
+    await syncVisitProposal(roomId, trigger, trigger.author_type === "human" ? "human" : "demo");
     await getDal().run(
       "UPDATE agent_runs SET status = 'done', latency_ms = ?, usage_json = ?, message_id = ?, summary = ? WHERE id = ?",
       [Date.now() - started, usageJson, applied.bubbleMessageId ?? "", (outcome.bubble ?? "").slice(0, 120), runId],

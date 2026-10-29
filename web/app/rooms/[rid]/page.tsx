@@ -5,9 +5,12 @@ import { getAccessToken } from "../../../lib/client-auth";
 import {
   confirmCondition,
   invokeAgent,
+  loadRoomVisits,
+  setRoomVisitStatus,
   invokeZiptalk,
   loadConditions,
   loadRoomMessages,
+  type RoomVisit,
   loadRoomMeta,
   sendRoomMessage,
   type ConditionHistoryRow,
@@ -53,7 +56,8 @@ function ConditionRow({ name, cond, onEvidence, onConfirm }: {
   return (
     <li>
       <strong>{name}</strong>: {cond && cond.value ? cond.value : "미정"}{" "}
-      <span className={st === "확인됨" ? "badge ok" : "badge no"}>{st}</span>{" "}
+      <span className={st === "확인됨" ? "badge ok" : "badge no"}>{st}</span>
+      {cond && st === "확인됨" ? <span className="meta"> 확인: {cond.confirmed_name || cond.confirmed_by}</span> : null}{" "}
       {ev.length > 0 ? (
         <button className="btn ghost" onClick={() => onEvidence(ev[0])}>근거 보기</button>
       ) : null}{" "}
@@ -62,6 +66,16 @@ function ConditionRow({ name, cond, onEvidence, onConfirm }: {
       ) : null}
     </li>
   );
+}
+
+function formatVisit(v: RoomVisit): string {
+  const m = parseInt(v.visit_date.slice(5, 7), 10);
+  const d = parseInt(v.visit_date.slice(8, 10), 10);
+  const h = parseInt(v.visit_time.slice(0, 2), 10);
+  const min = v.visit_time.slice(3, 5);
+  const ap = h < 12 ? "오전" : "오후";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${m}월 ${d}일 ${ap} ${h12}시${min === "30" ? " 반" : ""}`;
 }
 
 export default function RoomPage({ params }: { params: { rid: string } }) {
@@ -78,6 +92,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [conditions, setConditions] = useState<RoomCondition[]>([]);
   const [history, setHistory] = useState<ConditionHistoryRow[]>([]);
+  const [visits, setVisits] = useState<RoomVisit[]>([]);
   const [zipPending, setZipPending] = useState(false);
   const [zipError, setZipError] = useState("");
 
@@ -96,6 +111,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
       const c = await loadConditions(params.rid);
       setConditions(c.conditions);
       setHistory(c.history);
+      setVisits(await loadRoomVisits(params.rid));
     } catch {
       // 패널은 조용히 비워 둔다. 채팅 흐름을 막지 않는다.
     }
@@ -187,12 +203,40 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const unconfirmed = conditions.filter((c) => statusOf(c) === "미확인");
 
   const onConfirm = async (name: string) => {
+    const c = findC(name);
     try {
-      await confirmCondition(params.rid, name);
+      await confirmCondition(params.rid, name, c ? Number(c.version) : undefined);
       await refreshConditions();
     } catch (e) {
       setZipError(`확인 실패(${e instanceof Error ? e.message : "오류"})`);
+      await refreshConditions();
     }
+  };
+
+  const onAcceptVisit = async (v: RoomVisit) => {
+    try {
+      await setRoomVisitStatus(params.rid, v.id, "수락됨");
+      await confirmCondition(params.rid, "방문일");
+      await refreshConditions();
+    } catch (e) {
+      setZipError(`일정 확인 실패(${e instanceof Error ? e.message : "오류"})`);
+      await refreshConditions();
+    }
+  };
+
+  const onDeclineVisit = async (vid: string) => {
+    try {
+      await setRoomVisitStatus(params.rid, vid, "거절됨");
+      await refreshConditions();
+    } catch (e) {
+      setZipError(`일정 거절 실패(${e instanceof Error ? e.message : "오류"})`);
+    }
+  };
+
+  const onChangeRequest = () => {
+    setPanelOpen(true);
+    document.getElementById("room-input")?.focus();
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   };
 
   return (
@@ -234,8 +278,32 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               ))}
             </ul>
             <h4>일정</h4>
+            {visits.length === 0 ? (
+              <ul>
+                <ConditionRow name="방문일" cond={findC("방문일")} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
+              </ul>
+            ) : (
+              <ul>
+                {visits.map((v) => (
+                  <li key={v.id}>
+                    <strong>방문 {formatVisit(v)}</strong>{" "}
+                    <span className={v.status === "수락됨" ? "badge ok" : "badge no"}>{v.status}</span>{" "}
+                    {v.proposed_by === "demo" && v.status === "제안됨" ? (
+                      <span className="meta">시연 제안(실제 예약 아님)</span>
+                    ) : null}{" "}
+                    {v.status === "제안됨" ? (
+                      <>
+                        <button className="btn ghost" onClick={() => onAcceptVisit(v)}>일정 확인</button>{" "}
+                        <button className="btn ghost" onClick={() => onDeclineVisit(v.id)}>거절</button>{" "}
+                        <button className="btn ghost" onClick={onChangeRequest}>변경 요청</button>
+                      </>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
             <ul>
-              {["방문일", "계약일", "잔금일", "입주일"].map((n) => (
+              {["계약일", "잔금일", "입주일"].map((n) => (
                 <ConditionRow key={n} name={n} cond={findC(n)} onEvidence={scrollToEvidence} onConfirm={onConfirm} />
               ))}
             </ul>
@@ -286,7 +354,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
         ) : null}
         <div className="field">
           <label>메시지 입력</label>
-          <input value={msg} placeholder="메시지 입력" onChange={(e) => setMsg(e.target.value)} />
+          <input id="room-input" value={msg} placeholder="메시지 입력" onChange={(e) => setMsg(e.target.value)} />
         </div>
         <button onClick={onSend} disabled={sending}>{sending ? "전송 중..." : "전송"}</button>
       </section>

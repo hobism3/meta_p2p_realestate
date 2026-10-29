@@ -184,6 +184,7 @@ export interface RoomCondition {
   confirmed_by: string;
   confirmed_at: string;
   confirmed_version: number;
+  confirmed_name: string;
   updated_at: string;
 }
 
@@ -199,9 +200,28 @@ export async function loadConditions(rid: string): Promise<{ conditions: RoomCon
   return (await req(`/api/rooms/${rid}/conditions`)) as { conditions: RoomCondition[]; history: ConditionHistoryRow[] };
 }
 
-export async function confirmCondition(rid: string, name: string): Promise<{ name: string; version: number }> {
+export interface RoomVisit {
+  id: string;
+  visit_date: string;
+  visit_time: string;
+  status: string;
+  proposed_by: string;
+  source_msg_ids: string;
+  decided_by: string;
+  decided_at: string;
+}
+
+export async function loadRoomVisits(rid: string): Promise<RoomVisit[]> {
+  return (await req(`/api/rooms/${rid}/visits`)) as RoomVisit[];
+}
+
+export async function setRoomVisitStatus(rid: string, vid: string, status: string): Promise<void> {
+  await req(`/api/rooms/${rid}/visits/${vid}`, { method: "PATCH", body: JSON.stringify({ status }) });
+}
+
+export async function confirmCondition(rid: string, name: string, version?: number): Promise<{ name: string; version: number }> {
   return (await req(`/api/rooms/${rid}/conditions/confirm`, {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(version === undefined ? { name } : { name, version }),
   })) as { name: string; version: number };
 }

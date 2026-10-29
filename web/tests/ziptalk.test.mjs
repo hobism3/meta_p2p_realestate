@@ -66,6 +66,24 @@ describe("mock 분석", () => {
     assert.equal(r.upserts.length, 0);
     assert.ok(r.bubble && r.bubble.includes("확인되지 않았어요"));
   });
+  it("아는 가격은 직접 답해준다", async () => {
+    const r = analyzeMock(T("매매가 얼마인가요?"), cur({
+      "최초가": { name: "최초가", value: "45,000만원", proposer: "demo", status: "proposed" },
+      "매수 희망가": wish("26,000만원"),
+    }));
+    assert.equal(r.intervene, true);
+    assert.equal(r.upserts.length, 0);
+    assert.ok(r.bubble && r.bubble.includes("매수 희망가는 26,000만원"));
+    assert.ok(r.bubble && !r.bubble.includes("확인"));
+  });
+  it("아는 일정은 직접 답해준다", async () => {
+    const r = analyzeMock(T("방문은 언제 되나요?"), cur({
+      "방문일": { name: "방문일", value: "내일", proposer: "demo", status: "proposed" },
+    }));
+    assert.equal(r.intervene, true);
+    assert.equal(r.upserts.length, 0);
+    assert.ok(r.bubble && r.bubble.includes("방문일은 내일"));
+  });
   it("판단은 무시한다", async () => {
     const r = analyzeMock(T("이 집은 최고 등급입니다"), cur({}));
     assert.equal(r.intervene, false);

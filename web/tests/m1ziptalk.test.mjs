@@ -226,3 +226,23 @@ describe("VS-3B 사용자 확인", () => {
     }, OWNER)).status, 403);
   });
 });
+
+describe("집톡이 반복 개입 방지·직접 답변", () => {
+  it("같은 제안을 반복해도 추가 개입하지 않는다", async () => {
+    const before = (await assistantBubbles(roomA)).length;
+    const t = await say(roomA, "43000만원에 합시다");
+    const r = await zip(roomA, t);
+    assert.equal(r.status, 200);
+    assert.equal(r.body.bubble_message_id, null);
+    assert.equal((await assistantBubbles(roomA)).length, before);
+  });
+  it("아는 가격은 직접 답해준다", async () => {
+    const t = await say(roomA, "매매가 얼마인가요?");
+    const r = await zip(roomA, t);
+    assert.equal(r.status, 201);
+    const bubbles = await assistantBubbles(roomA);
+    const last = bubbles[bubbles.length - 1];
+    assert.ok(last.text.includes("43,000만원"));
+    assert.ok(!last.text.includes("확인이 필요"));
+  });
+});

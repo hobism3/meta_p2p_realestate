@@ -117,6 +117,9 @@ export function analyzeMock(
           bubble: "입주일은 아직 확인되지 않았어요.",
         };
       }
+      if (ic && ic.value) {
+        return { upserts: [], intervene: true, bubble: `입주일은 ${ic.value}입니다.` };
+      }
       return silent;
     }
     const slots: Array<[string, string]> = [
@@ -136,6 +139,9 @@ export function analyzeMock(
             bubble: `${slots[i][1]}은 아직 확인되지 않았어요.`,
           };
         }
+        if (sc && sc.value) {
+          return { upserts: [], intervene: true, bubble: `${slots[i][1]}은 ${sc.value}입니다.` };
+        }
         return silent;
       }
     }
@@ -143,10 +149,19 @@ export function analyzeMock(
       const w = current.get("매수 희망가");
       const o = current.get("매도 제안가");
       if ((!w || !w.value) && (!o || !o.value)) {
+        const f0 = current.get("최초가");
+        if (f0 && f0.value) {
+          return { upserts: [], intervene: true, bubble: `최초가는 ${f0.value}입니다.` };
+        }
         // 가격 질문은 조건을 만들지 않고 안내만 한다. 제안이 나와야 기록된다.
         return { upserts: [], intervene: true, bubble: "가격은 아직 확인되지 않았어요. 희망가를 말씀해 보세요." };
       }
-      return silent;
+      const bits: string[] = [];
+      const f = current.get("최초가");
+      if (f && f.value) bits.push(`최초가는 ${f.value}`);
+      if (w && w.value) bits.push(`매수 희망가는 ${w.value}`);
+      if (o && o.value) bits.push(`매도 제안은 ${o.value}`);
+      return { upserts: [], intervene: true, bubble: `${bits.join(", ")}입니다.` };
     }
   }
   return silent;
@@ -299,6 +314,9 @@ export function buildZiptalkInput(
     "- 값·제안자(human|demo)·근거 메시지 ID가 분명할 때만 조건으로 낸다. 근거 IDs는 아래 대화의 [id]만 쓴다.",
     "- 값은 근거 문구에 실제로 나온 형태만 쓴다. 연도는 근거에 있을 때만 쓰고, 없으면 월·일만 쓴다. 금액은 만원·억원 단위 그대로 쓴다.",
     "- 근거가 부족하거나 모호하면 조건을 만들지 마.",
+    "- 이미 정리된 내용을 또 안내하지 마. 새 제안·변경·모순·미확인 발견이 없으면 intervene=false, bubble=null.",
+    "- 질문에 대한 답이 [지금까지 조건]에 있으면 bubble에 한 문장으로 답한다(최초가·희망가·제안가를 그대로 전달). 답할 때도 협상·확정·판단은 하지 마.",
+    "- bubble에서 '확인이 필요합니다'라는 말을 반복하지 마.",
     "- 상태는 proposed(제안됨) 또는 unconfirmed(미확인)만 쓴다. confirmed는 절대 쓰지 마.",
     "- 등급·판단·특약·법률 해석은 다루지 않는다.",
     "- 이전 조건과 모순되거나 바뀌었으면 그대로 기록하고 확정하지 마.",
@@ -412,7 +430,13 @@ async function applyOutcome(roomId: string, outcome: AnalysisOutcome): Promise<{
         applied++;
       }
     }
-    if (outcome.intervene && outcome.bubble) {
+    // 같은 안내 반복 금지: 바뀐 조건이 없고 마지막 말풍선과 같은 문구면 조용히 넘긴다.
+    let speak = outcome.intervene && !!outcome.bubble && (applied > 0 || outcome.upserts.length === 0);
+    if (speak && outcome.upserts.length === 0 && outcome.bubble) {
+      const last = await tx.get("SELECT text FROM messages WHERE room_id = ? AND author_type = 'assistant' ORDER BY created_at DESC LIMIT 1", [roomId]);
+      if (last && String(last.text ?? "") === outcome.bubble) speak = false;
+    }
+    if (speak && outcome.bubble) {
       bubbleMessageId = randomUUID();
       const listingRow = await tx.get("SELECT listing_id FROM deal_rooms WHERE id = ?", [roomId]);
       await tx.run(

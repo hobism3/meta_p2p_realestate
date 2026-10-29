@@ -45,7 +45,7 @@ function policyLine(policy: NegotiationPolicy | undefined): string {
     return `${policy.min.toLocaleString()}~${policy.max.toLocaleString()}만원 범위 내 제안은 시연용으로 수용 가능(확정 아님). 범위 밖은 한 문장으로 거절한다.`;
   }
   if (policy.kind === "none") return "가격 협상은 불가합니다. 할인 요구에는 한 문장으로 거절한다.";
-  return "협상 가능 여부는 미정입니다. 금액을 수용·확정하지 말고 확인이 필요하다고 한 문장으로 답한다.";
+  return "협상 가능 여부는 미정입니다. 할인은 해주지 말고 정가(가격 사실)를 말하며 한 문장으로 끝낸다. '확인 필요' 같은 미루는 표현은 쓰지 마.";
 }
 
 /** 매물 정보 + 같은 방 최근 대화로 모델 입력 계약을 만든다. mock/meta 공통이다. */

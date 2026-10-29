@@ -200,6 +200,11 @@ describe("페르소나 프롬프트", () => {
     assert.ok(input.system.includes(PERSONAS.s21.unknownResponse));
     assert.ok(input.system.includes("신림역 매매"));
   });
+  it("미정 매물은 정가를 고수한다", async () => {
+    const input = buildAgentInput("AI 매도자", "AI 매도자", { 가격: "28,000만원" }, {}, [], PERSONAS.s22, "남향 매매");
+    assert.ok(input.system.includes("정가"));
+    assert.ok(input.system.includes("미루는 표현은 쓰지 마"));
+  });
   it("집톡이 메시지를 구분한다", async () => {
     const input = buildAgentInput("AI 매도자", "AI 매도자", {}, {}, [
       { author_type: "human", author: "h", text: "hi" },

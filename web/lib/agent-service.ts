@@ -3,6 +3,7 @@ import { getDal } from "./dal.ts";
 import { now } from "./db.ts";
 import { disclosureLabel, draftReply, MOCK_PROMPT_VERSION, type AgentSide } from "./agent.ts";
 import { demoName, isDemoListing, listingForDemo, scenarioFor, type DemoListing } from "./demo.ts";
+import { getPersona, type ListingPersona, type NegotiationPolicy } from "./personas.ts";
 import {
   callMeta,
   META_HISTORY_LIMIT,
@@ -38,28 +39,46 @@ export interface AgentInput {
 }
 
 /** 매물 정보 + 같은 방 최근 대화로 모델 입력 계약을 만든다. mock/meta 공통이다. */
+function policyLine(policy: NegotiationPolicy | undefined): string {
+  if (!policy) return "범위 내 제안은 시연용으로 수용 가능(확정 아님).";
+  if (policy.kind === "ranged") {
+    return `${policy.min.toLocaleString()}~${policy.max.toLocaleString()}만원 범위 내 제안은 시연용으로 수용 가능(확정 아님). 범위 밖은 한 문장으로 거절한다.`;
+  }
+  if (policy.kind === "none") return "가격 협상은 불가합니다. 할인 요구에는 한 문장으로 거절한다.";
+  return "협상 가능 여부는 미정입니다. 금액을 수용·확정하지 말고 확인이 필요하다고 한 문장으로 답한다.";
+}
+
+/** 매물 정보 + 같은 방 최근 대화로 모델 입력 계약을 만든다. mock/meta 공통이다. */
 export function buildAgentInput(
   persona: string,
   label: string,
   facts: Record<string, string>,
   negotiable: Record<string, { min: number; max: number; unit: string }>,
   history: { author_type: string; author: string; text: string }[],
+  voice?: ListingPersona | undefined,
+  title?: string,
 ): AgentInput {
+  const who = voice ? `${persona}(${voice.personality}). ${voice.tone} ${voice.style}.` : `${persona}이다.`;
   const factLines = Object.entries(facts).map(([k, v]) => `- ${k}: ${v}`);
   const negoLines = Object.entries(negotiable).map(
     ([k, r]) => `- ${k}: ${r.min.toLocaleString()}~${r.max.toLocaleString()}${r.unit} (시연용 제안 가능, 확정 금지)`,
   );
   const system = [
-    `너는 합성 매물 시연용 ${persona}이다. 한국어로 1~3문장, 짧고 자연스럽게 답한다.`,
-    "[매물]",
+    `너는 ${who} 한국어로 한 문장(15~50자 내외)으로만 답한다. 목록·마크다운·이모지·불필요한 역질문·반복 인사·요약정리 금지.`,
+    ...(title ? [`[매물] ${title}`] : []),
     ...factLines,
     ...(negoLines.length > 0 ? negoLines : []),
-    "규칙: 없는 정보 지어내기 금지, 소유권·법적 보장 금지, 계약 확정 금지, 가격 맥락 이어가기.",
+    policyLine(voice?.policy),
+    `협상 태도: ${voice ? voice.negotiation : "시연용으로 응대한다."}`,
+    `모르는 것은${voice ? ` '${voice.unknownResponse}'처럼` : ""} 한 문장으로 답하고 지어내지 마. 소유권·법적 보장 금지. 계약 확정 금지(제안은 가능). 집톡이 메시지는 참고만 하고 네 발언으로 오인하지 마. 이전 가격 제안을 기억하고 맥락을 이어간다.`,
   ].join("\n");
-  const messages: ChatMessage[] = history.slice(-META_HISTORY_LIMIT).map((m) => ({
-    role: String(m.author_type) === "human" ? ("user" as const) : ("assistant" as const),
-    content: String(m.text ?? ""),
-  }));
+  const messages: ChatMessage[] = history.slice(-META_HISTORY_LIMIT).map((m) => {
+    if (String(m.author_type) === "human") return { role: "user" as const, content: String(m.text ?? "") };
+    if (String(m.author_type) === "demo_agent") {
+      return { role: "assistant" as const, content: String(m.text ?? "") };
+    }
+    return { role: "assistant" as const, content: `[${String(m.author ?? "집톡이")}] ${String(m.text ?? "")}` };
+  });
   return { system, messages };
 }
 
@@ -139,6 +158,8 @@ async function executeRun(
   negotiable: Record<string, { min: number; max: number; unit: string }>,
   provider: DemoProvider,
   model: string,
+  voice: ListingPersona | undefined,
+  title: string,
 ): Promise<RunOk | RunErr> {
   const started = Date.now();
   const fail = async (error: string, status: number, logExtra = ""): Promise<RunErr> => {
@@ -158,7 +179,7 @@ async function executeRun(
         "SELECT author_type, author, text FROM messages WHERE room_id = ? ORDER BY created_at ASC",
         [roomId],
       )) as { author_type: string; author: string; text: string }[];
-      const input = buildAgentInput(persona, label, facts, negotiable, history);
+      const input = buildAgentInput(persona, label, facts, negotiable, history, voice ?? undefined, title);
       const r = await callMeta(
         { system: input.system, messages: input.messages, maxTokens: META_MAX_TOKENS, timeoutMs: META_TIMEOUT_MS },
       );
@@ -233,6 +254,8 @@ export async function runDemoAgent(opts: {
   if (!listing) return { ok: false, status: 404, error: "매물 없음", provider, model };
   const resolved = await scenarioForRoom(opts.roomId, listing);
   if (!resolved) return { ok: false, status: 404, error: "시연 없음", provider, model };
+  const voice = getPersona(room.listing_id);
+  const title = listing.title;
   const runId = randomUUID();
   try {
     await dal.run(
@@ -263,6 +286,7 @@ export async function runDemoAgent(opts: {
       return executeRun(
         String(existing.id), opts.roomId, room.listing_id, triggerText,
         resolved.label, resolved.side, resolved.persona, resolved.facts, resolved.negotiable, provider, model,
+        voice, title,
       );
     }
     return { ok: false, status: 409, error: "처리 중", provider, model };
@@ -270,5 +294,6 @@ export async function runDemoAgent(opts: {
   return executeRun(
     runId, opts.roomId, room.listing_id, triggerText,
     resolved.label, resolved.side, resolved.persona, resolved.facts, resolved.negotiable, provider, model,
+    voice, title,
   );
 }

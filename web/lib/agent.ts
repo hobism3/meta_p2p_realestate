@@ -42,7 +42,7 @@ export function draftReply(scenario: Scenario, humanText: string): AgentReply {
   const t = humanText.trim();
   if (mentions(t, "등급", "판결", "소송", "법률", "특약")) {
     return {
-      text: "그 부분은 제가 답할 수 없습니다. 사람 확인이 필요합니다.",
+      text: "그 부분은 제가 답할 수 없습니다.",
       proposal: null,
       needsHuman: true,
     };
@@ -69,7 +69,7 @@ export function draftReply(scenario: Scenario, humanText: string): AgentReply {
       }
     }
     return {
-      text: "제안 범위를 벗어났습니다. 사람 확인이 필요합니다.",
+      text: "그 금액은 어렵습니다.",
       proposal: null,
       needsHuman: true,
     };
@@ -81,7 +81,7 @@ export function draftReply(scenario: Scenario, humanText: string): AgentReply {
   const factHit = Object.entries(scenario.facts).find(([k]) => t.includes(k));
   if (factHit) return { text: `${factHit[0]}은 ${factHit[1]}입니다.`, proposal: null, needsHuman: false };
   return {
-    text: "시나리오에 없어 답할 수 없습니다. 사람 확인이 필요합니다.",
+    text: "시나리오에 없어 확인이 필요합니다.",
     proposal: null,
     needsHuman: true,
   };

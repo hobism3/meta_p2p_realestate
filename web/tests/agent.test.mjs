@@ -10,6 +10,7 @@ import {
   META_TIMEOUT_MS,
   parseChatResponse,
 } from "../lib/meta.ts";
+import { getPersona, PERSONAS, policyToNegotiable } from "../lib/personas.ts";
 
 const HISTORY = [
   { author_type: "human", author: "사람", text: "매매가 얼마인가요?" },
@@ -42,7 +43,7 @@ describe("입력 계약", () => {
       HISTORY,
     );
     assert.ok(input.system.includes("45,000만원"));
-    assert.ok(input.system.includes("지어내기 금지"));
+    assert.ok(input.system.includes("지어내지 마"));
     assert.ok(input.system.includes("확정"));
     assert.deepEqual(input.messages, [
       { role: "user", content: "매매가 얼마인가요?" },
@@ -52,8 +53,8 @@ describe("입력 계약", () => {
   it("대화는 최근 12건만 쓴다", async () => {
     const many = Array.from({ length: 20 }, (_, i) => ({ author_type: "human", author: "h", text: `m${i}` }));
     const input = buildAgentInput("AI 매도자", "AI 매도자", {}, {}, many);
-    assert.equal(input.messages.length, 12);
-    assert.equal(input.messages[0].content, "m8");
+    assert.equal(input.messages.length, 8);
+    assert.equal(input.messages[0].content, "m12");
   });
 });
 
@@ -92,13 +93,13 @@ describe("meta 호출", () => {
       {
         key: "k",
         fetchImpl: (async (url, init) => {
-          seen = { url, auth: init.headers.Authorization, model: JSON.parse(init.body).model };
+          seen = { url, auth: init.headers.Authorization, model: JSON.parse(init.body).model, reasoning: JSON.parse(init.body).reasoning_effort };
           return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: " hi " } }] }) };
         }),
       },
     );
     assert.equal(r.ok, true);
-    assert.deepEqual(seen, { url: "https://api.meta.ai/v1/chat/completions", auth: "Bearer k", model: "muse-spark-1.3" });
+    assert.deepEqual(seen, { url: "https://api.meta.ai/v1/chat/completions", auth: "Bearer k", model: "muse-spark-1.3", reasoning: "minimal" });
   });
   it("http 오류를 구분한다", async () => {
     const r = await callMeta(
@@ -161,5 +162,49 @@ describe("meta 호출", () => {
     );
     assert.equal(r.kind, "bad_response");
     assert.equal(r.detail, "empty");
+  });
+});
+
+describe("페르소나", () => {
+  it("24개 매물에 고정된다", async () => {
+    const ids = Object.keys(PERSONAS);
+    assert.equal(ids.length, 24);
+    for (const [id, p] of Object.entries(PERSONAS)) {
+      assert.equal(p.listingId, id);
+      assert.ok(p.personaId && p.name && p.personality && p.tone);
+      assert.equal(p.name, p.role === "seller" ? "AI 매도자" : "AI 임대인");
+    }
+    assert.ok(["s21", "s22", "s23", "s24"].every((id) => PERSONAS[id].role === "seller"));
+    assert.ok(Object.keys(PERSONAS).filter((id) => !["s21", "s22", "s23", "s24"].includes(id)).every((id) => PERSONAS[id].role === "landlord"));
+  });
+  it("매매 4개의 말투가 다르다", async () => {
+    const tones = ["s21", "s22", "s23", "s24"].map((id) => PERSONAS[id].tone);
+    assert.equal(new Set(tones).size, 4);
+  });
+  it("같은 매물은 항상 같다", async () => {
+    assert.deepEqual(getPersona("s21"), getPersona("s21"));
+  });
+  it("협상 정책 3종을 구분한다", async () => {
+    assert.deepEqual(policyToNegotiable(PERSONAS.s03.policy, "만원"), {});
+    assert.deepEqual(policyToNegotiable(PERSONAS.s23.policy, "만원"), {});
+    assert.deepEqual(policyToNegotiable(PERSONAS.s21.policy, "만원"), { 가격: { min: 44000, max: 45000, unit: "만원" } });
+  });
+});
+
+describe("페르소나 프롬프트", () => {
+  it("말투·정책·모름대응이 들어간다", async () => {
+    const input = buildAgentInput("AI 매도자", "AI 매도자", { 가격: "45,000만원" }, {}, [], PERSONAS.s21, "신림역 매매");
+    assert.ok(input.system.includes(PERSONAS.s21.tone));
+    assert.ok(input.system.includes("한 문장"));
+    assert.ok(input.system.includes("44,000~45,000만원"));
+    assert.ok(input.system.includes(PERSONAS.s21.unknownResponse));
+    assert.ok(input.system.includes("신림역 매매"));
+  });
+  it("집톡이 메시지를 구분한다", async () => {
+    const input = buildAgentInput("AI 매도자", "AI 매도자", {}, {}, [
+      { author_type: "human", author: "h", text: "hi" },
+      { author_type: "ziptalk", author: "집톡이", text: "정리" },
+    ]);
+    assert.deepEqual(input.messages[1], { role: "assistant", content: "[집톡이] 정리" });
   });
 });

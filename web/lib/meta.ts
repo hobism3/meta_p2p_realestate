@@ -9,7 +9,7 @@ export const META_DEFAULT_BASE = "https://api.meta.ai/v1";
 export const META_DEFAULT_MODEL = "muse-spark-1.3";
 export const META_TIMEOUT_MS = 20000;
 export const META_MAX_TOKENS = 1024;
-export const META_HISTORY_LIMIT = 12;
+export const META_HISTORY_LIMIT = 8;
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -133,6 +133,7 @@ export async function callMeta(input: MetaCallInput, opts: MetaCallOptions = {})
         messages: [{ role: "system", content: input.system }, ...input.messages],
         max_tokens: input.maxTokens,
         temperature: 0.7,
+        reasoning_effort: "minimal",
       }),
       signal: ctrl.signal,
     });

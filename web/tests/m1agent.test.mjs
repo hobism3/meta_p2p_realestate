@@ -366,7 +366,7 @@ describe("VS-2C Agent Service", () => {
   });
   it("협상 맥락이 이어진다", async () => {
     const s = await api(`/api/rooms/${vs2bRoom}/messages`, {
-      method: "POST", body: JSON.stringify({ text: "42000에 합시다" }),
+      method: "POST", body: JSON.stringify({ text: "44500에 합시다" }),
     }, HUMAN);
     const inv = await api(`/api/rooms/${vs2bRoom}/agent/invoke`, {
       method: "POST", body: JSON.stringify({ trigger_message_id: s.body.id }),
@@ -383,5 +383,43 @@ describe("VS-2C Agent Service", () => {
       method: "POST", body: JSON.stringify({ trigger_message_id: s.body.id }),
     }, HUMAN);
     assert.equal(inv.status, 404);
+  });
+});
+
+describe("VS-2D 페르소나·협상", () => {
+  async function ask(listingId, text) {
+    const room = await api(`/api/deals/${listingId}/rooms`, { method: "POST", body: JSON.stringify({}) }, HUMAN);
+    assert.equal(room.status, 201);
+    const s = await api(`/api/rooms/${room.body.id}/messages`, {
+      method: "POST", body: JSON.stringify({ text }),
+    }, HUMAN);
+    assert.equal(s.status, 201);
+    const inv = await api(`/api/rooms/${room.body.id}/agent/invoke`, {
+      method: "POST", body: JSON.stringify({ trigger_message_id: s.body.id }),
+    }, HUMAN);
+    assert.equal(inv.status, 201);
+    return inv.body.text;
+  }
+  it("매물마다 가격이 정확하다", async () => {
+    assert.ok((await ask("s22", "면적 어떻게 되나요?")).includes("24㎡"));
+    assert.ok((await ask("s24", "매매가 얼마인가요?")).includes("39,000만원"));
+  });
+  it("범위 밖 제안은 거절한다", async () => {
+    assert.equal(await ask("s21", "43000에 합시다"), "그 금액은 어렵습니다.");
+  });
+  it("미정 매물은 임의 할인을 안 한다", async () => {
+    assert.equal(await ask("s23", "70000에 합시다"), "그 금액은 어렵습니다.");
+  });
+  it("모르는 사항은 추측하지 않는다", async () => {
+    assert.equal(await ask("s21", "주차장 있나요?"), "시나리오에 없어 확인이 필요합니다.");
+  });
+  it("같은 질문에는 같은 답을 한다", async () => {
+    const a = await ask("s21", "매매가 얼마인가요?");
+    const b = await ask("s21", "매매가 얼마인가요?");
+    assert.equal(a, b);
+    assert.ok(a.includes("45,000만원"));
+  });
+  it("범위 내 제안은 수용한다", async () => {
+    assert.ok((await ask("s24", "38000에 합시다")).includes("가능합니다"));
   });
 });

@@ -3,6 +3,7 @@ import { getDal } from "./dal.ts";
 import { now } from "./db.ts";
 import { SEED_LISTINGS } from "./listings.ts";
 import { draftReply, type Scenario } from "./agent.ts";
+import { getPersona, policyToNegotiable } from "./personas.ts";
 
 /**
  * VS-2B 시연용 AI 상대방(mock 재료). 실제 모델 호출이 아니다.
@@ -74,18 +75,22 @@ export function priceText(l: DemoListing): string {
 
 export function scenarioFor(l: DemoListing): Scenario {
   const price = l.tradeType === "매매" ? l.salePrice : l.deposit;
+  const persona = getPersona(l.id);
   const facts: Record<string, string> = {
+    매물명: l.title,
     가격: `${price.toLocaleString()}만원`,
     입주일: l.moveIn || "협의 가능",
     면적: `${l.area}㎡`,
     옵션: l.options.length > 0 ? l.options.join(", ") : "없음",
   };
   if (l.description.trim()) facts["설명"] = l.description.trim();
-  const negotiable: Scenario["negotiable"] = {};
-  if (price > 0) {
-    negotiable["가격"] = { min: Math.round(price * 0.9), max: price, unit: "만원" };
-  }
-  return { persona: demoName(l.tradeType), side: "seller", facts, negotiable };
+  // 명시 정책만 쓴다. blanket 90~100% 방식은 폐지. persona 없는 매물은 기존 방식 유지.
+  const negotiable: Scenario["negotiable"] = persona
+    ? policyToNegotiable(persona.policy, "만원")
+    : price > 0
+      ? { 가격: { min: Math.round(price * 0.9), max: price, unit: "만원" } }
+      : {};
+  return { persona: persona ? persona.name : demoName(l.tradeType), side: "seller", facts, negotiable };
 }
 
 export function demoGreeting(l: DemoListing): string {

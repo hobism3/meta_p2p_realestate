@@ -65,6 +65,23 @@ test("시연방: 문의→AI 첫인사→대화→새로고침 유지", async ({
   await expect(page.getByText("가격은").first()).toBeVisible();
 });
 
+test("시연방: 집톡이 제안 정리→거래 현황", async ({ page }) => {
+  await loginAs(page, "e2e-ziptalk", "E2E집톡이");
+  await page.goto("/listings/s21");
+  await page.getByRole("button", { name: "문의하기" }).click();
+  await expect(page).toHaveURL(/\/rooms\//);
+  await page.getByPlaceholder("메시지 입력").fill("44000만원에 합시다");
+  await page.getByRole("button", { name: "전송" }).click();
+  await expect(page.getByText("새로 제안됐어요").first()).toBeVisible();
+  await expect(page.getByText("집톡이").first()).toBeVisible();
+  await page.getByRole("button", { name: "거래 현황" }).click();
+  await expect(page.getByText("44,000만원").first()).toBeVisible();
+  await expect(page.getByText("초안이며 자동 합의가 아닙니다.")).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "거래 현황" }).click();
+  await expect(page.getByText("44,000만원").first()).toBeVisible();
+});
+
 test("모바일: 가로 넘침이 없다", async ({ page }) => {
   for (const path of ["/", "/login", "/register"]) {
     await page.goto(path);

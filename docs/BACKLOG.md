@@ -188,3 +188,13 @@
 - [x] 맥락: 같은 room_id만 사용. 집톡이 메시지는 [이름] 접두로 구분.
 - [x] 검증 1-10: node 144/144 + E2E 20/20. 1(말투 4종 상이)·2(동일 답)·3(가격·면적 정확)·4(단문)·5(추측 거부)·6(정책 준수)·7(제안 이어짐, mock 무상태 한계 명시)·8(방별 가격 분리)·9(잘림 없음)·10(E2E 유지).
 - [ ] 실측 한계: 실제 Meta P50/P95·토큰·단답 준수율·실응답 예시는 키 보유 환경에서 별도 측정 필요(BLOCKED). mock 응답은 수 ms.
+
+## VS-3A 집톡이 분석·개입 — DONE(mock)
+
+- [x] 분석 서비스(`lib/ziptalk-service.ts`): room 대화+매물+이전 조건 → 조건·개입 판정. mock=정규식 기준선, meta=JSON 출력. confirmed 절대 생성 안 함, 근거 없는 조건 저장 안 함.
+- [x] 상태 저장(`008_ziptalk.sql`): room_conditions(room_id별 조건·버전)+condition_history(변경 이력 보존). source_msg_ids로 근거 연결.
+- [x] 실행: `POST /api/rooms/[rid]/ziptalk/invoke` + `GET /api/rooms/[rid]/conditions`. agent_runs agent_type=ziptalk 분리. 트리거는 사람·매도자만(집톡이 409). 시연방 전용(실거래 403). 수호 규칙은 매도자 invoke와 동일(authenticate·멤버).
+- [x] UI(`/rooms/[rid]`): 집톡이 말풍선(집톡이 표기, author_type=assistant)·[거래 현황] 패널(가격·미확인·변경이력·근거 보기·초안 문구)·[집톡이 호출] 버튼. 매도자 응답 후 자동 분석(조용하면 말풍선 없음).
+- [x] 검증: node 166/166 + E2E 22/22(desktop·mobile). 제안 기록·변경 이력·중복 방지·무관 대화 침묵·미확인·방 격리·AI무반응·제삼자/실거래 403. 수정 3건: 라우트 인증 컨벤션(x-user 미사용)·마이그레이션 목록·Map spread(ES5 target).
+- [ ] 실측 한계: Meta 집톡이 분석 품질·토큰은 키 보유 환경에서 별도 측정(BLOCKED). mock은 수 ms.
+- 다음 VS-3B: 거래 현황 상세화·사용자 확인·조건별 변경 이력 관리.

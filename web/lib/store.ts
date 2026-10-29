@@ -159,3 +159,39 @@ export async function invokeAgent(rid: string, triggerMessageId: string): Promis
 export function seedCount(): number {
   return SEED_LISTINGS.length;
 }
+
+export interface ZiptalkInvokeResult {
+  bubble_message_id: string | null;
+  applied: number;
+  provider: string;
+  model: string;
+}
+
+export async function invokeZiptalk(rid: string, triggerMessageId?: string): Promise<ZiptalkInvokeResult> {
+  return (await req(`/api/rooms/${rid}/ziptalk/invoke`, {
+    method: "POST",
+    body: JSON.stringify(triggerMessageId ? { trigger_message_id: triggerMessageId } : {}),
+  })) as ZiptalkInvokeResult;
+}
+
+export interface RoomCondition {
+  name: string;
+  value: string;
+  proposer: string;
+  status: string;
+  source_msg_ids: string;
+  version: number;
+  updated_at: string;
+}
+
+export interface ConditionHistoryRow {
+  name: string;
+  old_value: string;
+  new_value: string;
+  source_msg_ids: string;
+  created_at: string;
+}
+
+export async function loadConditions(rid: string): Promise<{ conditions: RoomCondition[]; history: ConditionHistoryRow[] }> {
+  return (await req(`/api/rooms/${rid}/conditions`)) as { conditions: RoomCondition[]; history: ConditionHistoryRow[] };
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { authHeaders } from "../lib/client-auth";
 import type { RegistryDraft } from "../lib/registry-draft";
 
@@ -23,6 +23,16 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
   const [error, setError] = useState("");
   const [result, setResult] = useState<DraftResponse | null>(null);
   const [applied, setApplied] = useState(false);
+  const [capability, setCapability] = useState<{ provider: "meta" | "mock"; enabled: boolean; sampleOnly: boolean } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/listings/import-registry", { cache: "no-store" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((v) => { if (active && v && (v.provider === "meta" || v.provider === "mock")) setCapability(v); })
+      .catch(() => { /* Display is advisory; POST also validates provider mode. */ });
+    return () => { active = false; };
+  }, []);
 
   const onFile = (ev: ChangeEvent<HTMLInputElement>) => {
     const next = ev.target.files?.[0] ?? null;
@@ -88,6 +98,20 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
           <p>주소·전유면적을 일일이 입력하지 마세요. PDF에서 확인 가능한 항목만 초안으로 가져옵니다.</p>
         </div>
       </div>
+      {capability?.sampleOnly ? (
+        <p className="registry-mode-note" role="status">
+          현재는 <strong>오프라인 Mock 시연</strong>입니다. 지정된 교육용 PDF 예시만 분석할 수 있으며, 실제 Meta 모델 추출이 아닙니다.
+          새 PDF의 실제 AI 분석은 서버에서 Meta 모드를 활성화해야 가능합니다.
+        </p>
+      ) : capability?.provider === "meta" && !capability.enabled ? (
+        <p className="registry-mode-note" role="status">
+          현재 Meta PDF 분석 기능이 비활성화되어 있습니다. 서버 설정을 확인해 주세요.
+        </p>
+      ) : capability?.provider === "meta" ? (
+        <p className="registry-mode-note" role="status">
+          Meta Muse Spark 분석 모드입니다. 민감정보를 가린 PDF만 전송하세요.
+        </p>
+      ) : null}
       <p className="registry-warning">
         <strong>시연 전용 · 진위 확인 아님.</strong> 등기부에는 개인정보와 권리관계가 포함될 수 있습니다.
         성명·주민등록번호·소유자 정보 등을 가린 문서만 사용하세요. 실제 개인정보가 있는 서류는 업로드하지 마세요.
@@ -102,7 +126,7 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} disabled={busy} />
         <span>민감정보를 가린 시연 문서이며, Meta 모드에서는 분석을 위해 PDF가 Meta Model API로 1회 전송됨을 이해하고 동의합니다. 분석 결과는 사람이 확인합니다.</span>
       </label>
-      <button className="btn" onClick={analyze} disabled={busy || !file || !consent}>{busy ? "Meta AI 문서 분석 중..." : "AI로 매물 정보 추출하기"}</button>
+      <button className="btn" onClick={analyze} disabled={busy || !file || !consent}>{busy ? (capability?.sampleOnly ? "가상 PDF 확인 중..." : "Meta AI 문서 분석 중...") : "AI로 매물 정보 추출하기"}</button>
       {error ? <p className="error" role="alert">{error}</p> : null}
       {draft ? <div className="registry-review">
         <div className="registry-review-head"><h3>추출 결과 미리보기</h3><span className="pill">{result?.provider === "meta" ? "Meta Muse Spark" : "가상 샘플 Mock"}</span></div>
@@ -111,7 +135,7 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
           {entries.map(({ title, field }) => (
             <div key={title} className="registry-field">
               <dt>{title}</dt>
-              <dd><strong>{field.value || "확인 필요"}</strong>{field.evidence ? <small>모델이 제시한 근거: {field.evidence}</small> : null}</dd>
+              <dd><strong>{field.value || "확인 필요"}</strong>{field.evidence ? <small>추출 근거(시연/모델): {field.evidence}</small> : null}</dd>
             </div>
           ))}
         </dl>

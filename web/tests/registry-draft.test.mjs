@@ -70,9 +70,72 @@ describe("등기 문서 AI 등록 초안", () => {
     const encrypted = Buffer.concat([makeSampleRegistryPdf(), Buffer.from("/Encrypt")]);
     assert.equal(isPlausiblePdf(encrypted), false);
   });
+  it("실제 업로드된 한국어 가상 등기부의 예상 구조: 동·층·호·전유면적을 구별한다", () => {
+    // Derived from a user-provided FICTIONAL document; original PDF and owner fields
+    // are intentionally NOT committed or copied into the public repository.
+    const proposed = {
+      documentKind: "registry",
+      address: pair("서울특별시 가상구 샘플로 10길 101", "[집합건물] 서울특별시 가상구 샘플로 10길 101, 당당아파트 제105동 제5층 제501호"),
+      exclusiveAreaSqm: pair("59.84", "(전유부분의 건물의 표시) / 주거용 59.84㎡"),
+      buildingType: pair("아파트", "12층 아파트"),
+      buildingName: pair("당당아파트", "당당아파트 제105동"),
+      buildingDong: pair("105", "당당아파트 제105동"),
+      floor: pair("5", "제5층 제501호"),
+      unit: pair("501", "제5층 제501호"),
+      // historical recorded transaction prices are NEVER used as asking prices
+      salePrice: "500000000",
+    };
+    const draft = validateRegistryDraft(proposed);
+    assert.equal(draft?.address.value, "서울특별시 가상구 샘플로 10길 101");
+    assert.equal(draft?.buildingName.value, "당당아파트");
+    assert.equal(draft?.buildingDong.value, "105");
+    assert.equal(draft?.floor.value, "5");
+    assert.equal(draft?.unit.value, "501");
+    assert.equal(draft?.exclusiveAreaSqm.value, "59.84");
+    assert.equal("salePrice" in draft, false);
+  });
+  it("전유부분 헤더가 있어도 근거에 다른 면적만 있으면 빈 값이 된다", () => {
+    const wrongFloor = data();
+    wrongFloor.exclusiveAreaSqm = pair("425.30", "(1동의 건물의 표시) / 1층 425.30㎡");
+    assert.equal(validateRegistryDraft(wrongFloor)?.exclusiveAreaSqm.value, "");
+    const wrongLand = data();
+    wrongLand.exclusiveAreaSqm = pair("5432.10", "(대지권의 목적인 토지의 표시) / 면적 5,432.10㎡");
+    assert.equal(validateRegistryDraft(wrongLand)?.exclusiveAreaSqm.value, "");
+    const mismatched = data();
+    mismatched.exclusiveAreaSqm = pair("425.30", "(전유부분의 건물의 표시) / 주거용 59.84㎡");
+    assert.equal(validateRegistryDraft(mismatched)?.exclusiveAreaSqm.value, "");
+    const realUnit = data();
+    realUnit.exclusiveAreaSqm = pair("59.84", "(전유부분의 건물의 표시) / 주거용 59.84㎡");
+    assert.equal(validateRegistryDraft(realUnit)?.exclusiveAreaSqm.value, "59.84");
+  });
+  it("등기부 전체 층수 12층과 해당 호실 5층을 혼동하지 않는다", () => {
+    const wrong = {
+      ...data(),
+      buildingName: pair("당당아파트", "당당아파트 제105동"),
+      buildingDong: pair("105", "당당아파트 제105동"),
+      floor: pair("12", "12층 아파트"),
+      unit: pair("501", "제5층 제501호"),
+    };
+    assert.equal(validateRegistryDraft(wrong)?.buildingDong.value, "105");
+    assert.equal(validateRegistryDraft(wrong)?.buildingName.value, "당당아파트");
+    assert.equal(validateRegistryDraft(wrong)?.floor.value, "", "12층은 건물 전체 층수로 호실 층수가 아니다");
+    assert.equal(validateRegistryDraft(wrong)?.unit.value, "501");
+    const correct = { ...wrong, floor: pair("5", "제5층 제501호") };
+    assert.equal(validateRegistryDraft(correct)?.floor.value, "5");
+    const mismatchedDong = { ...correct, buildingDong: pair("101", "당당아파트 제105동") };
+    assert.equal(validateRegistryDraft(mismatchedDong)?.buildingDong.value, "");
+  });
+  it("영문 가상 PDF의 Floor와 Unit number 근거도 유효하다", () => {
+    const sample = mockRegistryDraft(makeSampleRegistryPdf());
+    assert.equal(sample?.floor.value, "3");
+    assert.equal(sample?.unit.value, "301");
+    assert.equal(sample?.exclusiveAreaSqm.value, "43.21");
+  });
   it("Meta 요청은 구조화 JSON 응답과 inline PDF를 이용한다", () => {
     const q = buildRegistryMetaRequest(makeSampleRegistryPdf());
     assert.equal(q.response_format.json_schema.name, "registry_listing_draft");
+    assert.ok(q.response_format.json_schema.schema.required.includes("buildingName"));
+    assert.ok(q.response_format.json_schema.schema.required.includes("buildingDong"));
     const parts = q.messages[0].content;
     assert.equal(parts[1].type, "file");
     assert.ok(parts[1].file.file_data.startsWith("data:application/pdf;base64,"));

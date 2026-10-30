@@ -328,3 +328,6 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
   .registry-example-link { width:100%; }
   .registry-review>.btn { width:100%; }
 }
+
+.registry-mode-note { margin:12px 0; padding:11px 13px; color:#2c587d; background:#eaf4ff; border:1px solid #cfdef3; border-radius:10px; font-size:12px; line-height:1.6; }
+.registry-mode-note strong { color:#20529a; }

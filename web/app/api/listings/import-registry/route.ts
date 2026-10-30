@@ -51,6 +51,16 @@ function json(data: unknown, status = 200): NextResponse {
   return NextResponse.json(data, { status, headers: { "Cache-Control": "no-store" } });
 }
 
+/** Public, non-sensitive capability disclosure: avoid promising Meta inference in Mock mode. */
+export function GET(): Response {
+  const provider = process.env.AGENT_PROVIDER === "meta" ? "meta" : "mock";
+  return json({
+    provider,
+    enabled: provider === "mock" || (process.env.REGISTRY_AI_ENABLED === "true" && !!process.env.MODEL_API_KEY),
+    sampleOnly: provider === "mock",
+  });
+}
+
 /**
  * Ephemeral document extraction only; no storage, no publish, no ownership assertion.
  * Deliberately separate from 256 KiB guardWrite because an inline PDF needs ~2 MiB.

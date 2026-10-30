@@ -18,6 +18,27 @@ DirectHome now helps **both sides of a direct transaction**:
 6. Click "비어 있는 등록 항목에 반영하기" to populate **empty** fields. Existing manual input is retained.
 7. The user must still enter and verify sale/deposit/monthly rent, maintenance fee, move-in, amenities and publisher name, then explicitly submit the ordinary listing form.
 
+## Korean educational PDF acceptance case (user-provided)
+
+A one-page Korean title-record **fictional educational sample** was examined offline (908,854 bytes; SHA-256 `2ddff3f07aa134c04456685db796ffb8029e007159eabc3c07c6c0fad1e87b50`).
+The document's PDF signature, trailer, size and inline JSON request limits pass; the original user-uploaded file is **not published or copied into the repository**.
+
+The previous Mock recognized only our own PDF generator; therefore this new file would have been rejected as **422**. This PR now adds an **exact-hash offline Mock fixture** that yields the following known answer for UI testing, and remains visibly labeled "Mock" (never "Meta"):
+
+| Field | Expected draft |
+| --- | --- |
+| Address | 서울특별시 가상구 샘플로 10길 101 |
+| Building | 당당아파트 |
+| Building dong/floor/unit | 105동 / **5층** / 501호 |
+| Exclusive unit area | **59.84㎡** |
+| Original asking price | **Blank / user input required** |
+
+The PDF also contains **12층** (building's total floors), **425.30㎡** (whole floor), **5,432.10㎡** (land), and a **historical registered sale amount**. None must be substituted for the unit's floor, exclusive unit area or current asking price. The Meta schema and field validator were refined accordingly, including buildingName/buildingDong, explicit area-number matching and unit-label evidence.
+
+**This is not a live Meta benchmark.** A hash-matched Mock fixture demonstrates upload/preview/apply workflow only; real inference remains gated and must be measured separately.
+
+For further synthetic edge cases and the rights-versus-registration boundary, see [Registry Sample Cases](REGISTRY_SAMPLE_CASES.md), based on the external [당당 educational guide](https://dangdang.io/blog/registry-document-guide). Those external PDFs are not checked into our repository and their legal-risk categories are not automatically decided by this feature.
+
 ## What the document does *not* tell us
 
 | May be present in a registry | Not safely inferred |
@@ -57,7 +78,7 @@ Local dev also needs the existing authentication and write-token configuration. 
 
 ## Technical locations
 
-- `web/lib/registry-draft.ts`: PDF sample generator, strict preview normalization, mock fixture and Meta request body.
+- `web/lib/registry-draft.ts`: PDF sample generator, strict preview normalization, exact-hash offline educational Mock fixtures and Meta request body.
 - `web/app/api/listings/import-registry/route.ts`: bounded authenticated POST and ephemeral Meta call.
 - `web/app/api/listings/import-registry/sample/route.ts`: fictional PDF download.
 - `web/components/RegistryImport.tsx`: file selection, disclosure, preview, deliberate apply.

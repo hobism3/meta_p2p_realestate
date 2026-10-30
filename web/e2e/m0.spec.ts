@@ -329,3 +329,13 @@ test("등록: 민감정보 가림 동의 없이는 PDF를 분석하지 않는다
   await page.locator("#registry-pdf").setInputFiles({ name: "synthetic.pdf", mimeType: "application/pdf", buffer: await synthetic.body() });
   await expect(page.getByRole("button", { name: "AI로 매물 정보 추출하기" })).toBeDisabled();
 });
+
+
+test("등록: 현재 제공자는 Mock이라고 명시하고 실모델 추출을 주장하지 않는다", async ({ page }) => {
+  const response = await page.request.get("/api/listings/import-registry");
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toMatchObject({ provider: "mock", enabled: true, sampleOnly: true });
+  await page.goto("/register");
+  await expect(page.getByText(/오프라인 Mock 시연/)).toBeVisible();
+  await expect(page.getByText(/실제 Meta 모델 추출이 아닙니다/)).toBeVisible();
+});

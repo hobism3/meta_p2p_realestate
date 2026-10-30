@@ -103,8 +103,8 @@ test.describe("Public Korean registry acceptance (real PDF bytes, offline Mock)"
     await expect(page.locator("#title")).toHaveValue("당당아파트 105동 501호 (확인 필요)");
     await expect(page.locator("#address")).toHaveValue("서울특별시 가상구 샘플로 10길 101");
     await expect(page.locator("#area")).toHaveValue("59.84");
-    await expect(page.locator("#rent")).toHaveValue("");
-    await expect(page.locator("#deposit")).toHaveValue("");
-    await expect(page.getByText(/적용해도 매물은 게시되지 않습니다/)).toBeVisible();
+    await expect(page.locator("#rent")).toHaveCount(0);
+    await expect(page.locator("#deposit")).toHaveCount(0);
+    await expect(page.getByText(/AI가 채운 내용도 등록 전 직접 확인/)).toBeVisible();
   });
 });

@@ -269,3 +269,12 @@
 - [x] 검증: node 166/166 + E2E 22/22(desktop·mobile). 제안 기록·변경 이력·중복 방지·무관 대화 침묵·미확인·방 격리·AI무반응·제삼자/실거래 403. 수정 3건: 라우트 인증 컨벤션(x-user 미사용)·마이그레이션 목록·Map spread(ES5 target).
 - [ ] 실측 한계: Meta 집톡이 분석 품질·토큰은 키 보유 환경에서 별도 측정(BLOCKED). mock은 수 ms.
 - 다음 VS-3B: 거래 현황 상세화·사용자 확인·조건별 변경 이력 관리.
+
+
+## UX Refresh - 단계형 매물 등록 (2026-10-30, 후보)
+
+- [ ] IMPLEMENTED: 5단계 시작/공간/거래/생활/검토 Wizard.
+- [ ] IMPLEMENTED: PDF AI 초안 반영 후 공간 정보로 연결, POST/PATCH 계약 유지.
+- [ ] IMPLEMENTED: 모바일 반응형, 실시간 PC 요약, 단계 검증, 탭 단위 임시보관.
+- [ ] QA: 빌드, Wizard 단위, desktop/mobile Playwright, 기존 PDF 및 등록 동작.
+- [ ] 승인 없이 main 병합/운영 배포 금지. 상세: docs/REGISTER_WIZARD_UX.md.

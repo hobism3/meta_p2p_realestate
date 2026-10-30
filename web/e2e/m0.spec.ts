@@ -17,6 +17,22 @@ async function loginAs(page: Page, sub: string, name: string, role = "tenant"): 
   }, token);
 }
 
+async function startRegistration(page: Page) {
+  await page.goto("/register");
+  await page.getByRole("button", { name: /직접 입력해서 시작/ }).click();
+  await page.locator("#title").fill("E2E 가상 매물");
+  await page.locator("#address").fill("서울 관악구 E2E로 1 (가상)");
+  await page.locator("#area").fill("23");
+  await page.getByRole("button", { name: /다음 단계/ }).click();
+}
+
+async function reachOptions(page: Page) {
+  await startRegistration(page);
+  await page.locator("#deposit").fill("1000");
+  await page.locator("#rent").fill("65");
+  await page.getByRole("button", { name: /다음 단계/ }).click();
+}
+
 test("메인: 임대와 매매 모드가 정확히 분리된다", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator(".listing").first()).toBeVisible();
@@ -30,13 +46,13 @@ test("메인: 임대와 매매 모드가 정확히 분리된다", async ({ page 
 });
 
 test("등록: 거래유형별 필요한 가격 필드만 표시된다", async ({ page }) => {
-  await page.goto("/register");
+  await startRegistration(page);
   await expect(page.getByPlaceholder("예: 1000")).toBeVisible();
   await expect(page.getByPlaceholder("예: 65")).toBeVisible();
-  await page.getByLabel("거래유형").selectOption("전세");
+  await page.getByRole("button", { name: /전세 보증금/ }).click();
   await expect(page.getByPlaceholder("예: 1000")).toBeVisible();
   await expect(page.getByPlaceholder("예: 65")).toHaveCount(0);
-  await page.getByLabel("거래유형").selectOption("매매");
+  await page.getByRole("button", { name: /매매 주택/ }).click();
   await expect(page.getByPlaceholder("예: 85000")).toBeVisible();
   await expect(page.getByPlaceholder("예: 1000")).toHaveCount(0);
 });
@@ -67,18 +83,22 @@ test("상세: 정보와 문의 버튼이 있다", async ({ page }) => {
   await expect(page.getByRole("button", { name: "문의하기" })).toBeVisible();
 });
 
-test("등록: 폼 제출 후 상세가 열린다", async ({ page }) => {
+test("등록: 단계 입력 후 상세가 열린다", async ({ page }) => {
   await loginAs(page, "e2e-owner", "E2E등록자");
   await page.goto("/register");
+  await page.getByRole("button", { name: /직접 입력해서 시작/ }).click();
   await page.getByPlaceholder("예: 신림역 도보 5분 원룸").fill("E2E 테스트방");
   await page.getByPlaceholder("예: 서울 관악구 신림로 100 (가상)").fill("서울 관악구 E2E로 1 (가상)");
+  await page.getByPlaceholder("예: 23").fill("21");
+  await page.getByRole("button", { name: /다음 단계/ }).click();
   await page.getByPlaceholder("예: 1000").fill("500");
   await page.getByPlaceholder("예: 65").fill("50");
-  await page.getByPlaceholder("예: 23").fill("21");
+  await page.getByRole("button", { name: /다음 단계/ }).click();
   await page.getByPlaceholder(/즉시 입주/).fill("2026-12-01");
   await page.getByPlaceholder("예: 홍길동").fill("E2E");
-  await page.getByRole("button", { name: "등록하기" }).click();
-  await expect(page.getByRole("link", { name: "상세 보기" })).toBeVisible();
+  await page.getByRole("button", { name: /다음 단계/ }).click();
+  await page.getByRole("button", { name: /매물 등록하기/ }).click();
+  await expect(page.getByRole("link", { name: /상세 보기/ })).toBeVisible();
 });
 
 test("시연방: 문의→AI 첫인사→대화→새로고침 유지", async ({ page }) => {
@@ -171,14 +191,18 @@ test("실거래방: AI가 끼지 않는다", async ({ browser }) => {
   const opage = await octx.newPage();
   await loginAs(opage, "e2e-ownerx", "E2E소유X");
   await opage.goto("/register");
+  await opage.getByRole("button", { name: /직접 입력해서 시작/ }).click();
   await opage.getByPlaceholder("예: 신림역 도보 5분 원룸").fill("E2E 실거래집");
   await opage.getByPlaceholder("예: 서울 관악구 신림로 100 (가상)").fill("서울 관악구 E2E로 1 (가상)");
+  await opage.getByPlaceholder("예: 23").fill("21");
+  await opage.getByRole("button", { name: /다음 단계/ }).click();
   await opage.getByPlaceholder("예: 1000").fill("500");
   await opage.getByPlaceholder("예: 65").fill("50");
-  await opage.getByPlaceholder("예: 23").fill("21");
+  await opage.getByRole("button", { name: /다음 단계/ }).click();
   await opage.getByPlaceholder(/즉시 입주/).fill("2026-12-01");
   await opage.getByPlaceholder("예: 홍길동").fill("E2E");
-  await opage.getByRole("button", { name: "등록하기" }).click();
+  await opage.getByRole("button", { name: /다음 단계/ }).click();
+  await opage.getByRole("button", { name: /매물 등록하기/ }).click();
   const href = await opage.getByRole("link", { name: "상세 보기" }).getAttribute("href");
   const bctx = await browser.newContext();
   const bpage = await bctx.newPage();
@@ -271,21 +295,24 @@ test("사진: 매물·지도·상세에 생성 시연 이미지를 표시한다"
 });
 
 test("등록: 매매 설비와 임대차 옵션 후보가 전환된다", async ({ page }) => {
-  await page.goto("/register");
+  await reachOptions(page);
   await expect(page.getByRole("button", { name: /침대/ })).toBeVisible();
-  await page.getByLabel("거래유형").selectOption("매매");
+  await page.getByRole("button", { name: /거래 조건/ }).click();
+  await page.getByRole("button", { name: /매매 주택/ }).click();
+  await page.getByRole("button", { name: /생활 정보/ }).click();
   await expect(page.getByRole("button", { name: /확장형/ }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: /침대/ })).toHaveCount(0);
 });
 
-
 test("등록: 서로 배타적인 옵션을 동시에 설정하지 않는다", async ({ page }) => {
-  await page.goto("/register");
+  await reachOptions(page);
   await page.getByRole("button", { name: /반려동물 가능/ }).click();
   await expect(page.getByRole("button", { name: /반려동물 가능/ })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: /반려동물 불가/ }).click();
   await expect(page.getByRole("button", { name: /반려동물 가능/ })).toHaveAttribute("aria-pressed", "false");
-  await page.getByLabel("거래유형").selectOption("매매");
+  await page.getByRole("button", { name: /거래 조건/ }).click();
+  await page.getByRole("button", { name: /매매 주택/ }).click();
+  await page.getByRole("button", { name: /생활 정보/ }).click();
   await page.getByRole("button", { name: /확장형/, exact: false }).first().click();
   await expect(page.getByRole("button", { name: /비확장형/ })).toHaveAttribute("aria-pressed", "false");
 });
@@ -319,8 +346,9 @@ test("등록: 가상 등기 PDF를 AI 초안으로 불러오고 등록 전 검�
   await page.getByRole("button", { name: "비어 있는 등록 항목에 반영하기" }).click();
   await expect(page.locator("#address")).toHaveValue("100 Sillim-ro, Gwanak-gu, Seoul (synthetic)");
   await expect(page.locator("#area")).toHaveValue("43.21");
-  await expect(page.locator("#rent")).toHaveValue("");
-  await expect(page.getByText(/적용해도 매물은 게시되지 않습니다/)).toBeVisible();
+  await expect(page.locator("#title")).toHaveValue(/확인 필요/);
+  await expect(page.locator("#rent")).toHaveCount(0);
+  await expect(page.getByText(/AI가 채운 내용도 등록 전 직접 확인/)).toBeVisible();
 });
 
 test("등록: 민감정보 가림 동의 없이는 PDF를 분석하지 않는다", async ({ page }) => {

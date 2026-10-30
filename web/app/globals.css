@@ -156,3 +156,69 @@ table.spec th { width: 110px; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+
+/* Submission UI: clearer discovery, cards, navigation, and deal interactions */
+html { scroll-behavior: smooth; }
+:focus-visible { outline: 3px solid #247d62; outline-offset: 3px; }
+.topbar { flex-wrap: wrap; gap: 10px 16px; }
+.topbar nav { flex-wrap: wrap; row-gap: 7px; }
+.site-nav { align-items: center; }
+.nav-user { display: inline-block; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.container { max-width: 1160px; }
+.card { border-radius: 16px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; text-decoration: none; }
+.btn:not(:disabled):hover { box-shadow: 0 3px 12px rgba(15,108,63,.16); }
+.site-intro { border-radius: 22px; background: linear-gradient(135deg,#123c36,#14765a); color: #fff; padding: clamp(24px,4vw,48px); }
+.site-intro h1 { margin: 10px 0 14px; font-size: clamp(27px,4.5vw,46px); line-height: 1.22; letter-spacing: -.045em; }
+.site-intro p { max-width: 660px; margin: 0 0 20px; color: #e0efe8; }
+.intro-kicker, .eyebrow { font-weight: 800; font-size: 12px; letter-spacing: .12em; }
+.intro-kicker { color: #c7e5d5; }
+.intro-actions, .intro-steps { display: flex; flex-wrap: wrap; gap: 10px; }
+.intro-actions .btn { padding: 12px 17px; }
+.intro-primary { background: #fff; color: #15553c; border-color: #fff; }
+.intro-secondary { background: transparent; color: #fff; border-color: #c4e4d6; }
+.intro-steps { margin-top: 24px; color: #d8ede2; font-size: 13px; gap: 12px 24px; }
+.intro-steps b { color: #ace3c6; margin-right: 5px; }
+.search-panel { padding: 20px; scroll-margin-top: 15px; }
+.section-head, .listing-labels { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.section-head { justify-content: space-between; }
+.section-head h2 { margin: 0; font-size: clamp(20px,2.5vw,26px); }
+.pill, .listing-type, .ai-pill { border-radius: 999px; font-size: 12px; font-weight: 750; padding: 4px 10px; display: inline-flex; }
+.pill,.ai-pill { background: #e8f4ec; color: #155d3d; }
+.listing-type { background: #e9f1fb; color: #2c557b; }
+.listings-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(100%,260px),1fr)); gap: 14px; }
+.listing { min-width: 0; }
+.listing:hover { border-color: #a9cbb8; box-shadow: 0 10px 26px rgba(15,60,39,.08); }
+.listing-labels { margin: 0 0 8px; }
+.listing .photo span { padding: 10px; text-align: center; }
+.results-header { align-items: center; flex-wrap: wrap; }
+.results-header .meta { margin-left: auto; }
+.empty-state { grid-column: 1 / -1; padding: 22px; }
+.detail-photo { height: 210px; }
+.listing-detail-head h2 { margin: 8px 0; }
+.demo-note { background: #eef7f1; border-left: 3px solid #3b8e63; color: #275942; padding: 12px; border-radius: 8px; }
+.form-card { max-width: 760px; width: 100%; margin: 0 auto; padding: 22px; }
+.deal-header h2 { margin: 4px 0; }
+.deal-chat { min-width: 0; }
+.chat-tools { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.msgs { padding: 18px 6px 12px; min-height: 250px; }
+.bubble { padding: 12px 14px; line-height: 1.6; }
+.zipcard { border: 1px solid #a0cbb1; border-left: 4px solid var(--accent); padding: 14px; }
+.proposal-card { border-color: #b5d9c4; background: #fff; margin-top: 10px; }
+.proposal-card li { margin: 5px 0; }
+.proposal-card .btn { margin: 4px 4px 0 0; }
+.drawer li { margin: 10px 0; overflow-wrap: anywhere; }
+.drawer .btn { margin: 3px; }
+@media(max-width:760px) {
+ .topbar nav { width:100%; margin-left:0; justify-content:flex-start; gap:8px; }
+ .container { padding: 12px; }
+ .site-intro { border-radius: 16px; }
+ .search-panel,.form-card { padding: 15px; }
+ .results-header .meta { margin-left:0; flex: 1 1 100%; }
+ .viewtoggle { flex-wrap:wrap; }
+ .bubble { max-width:94%; }
+ .msgs { max-height: 52dvh; }
+ .drawer.open { box-shadow: 0 -14px 42px rgba(0,0,0,.2); }
+}
+@media(prefers-reduced-motion:reduce) { html { scroll-behavior: auto; } }

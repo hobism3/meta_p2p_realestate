@@ -241,6 +241,38 @@ describe("mock 분석", () => {
     assert.ok(!r.upserts.some((u) => u.name === "방문일"));
     assert.ok(r.bubble && r.bubble.includes("오후 1시 맞나요"));
   });
+  it("대화 재현: AI 임대인 오후 세시에 뵐게요를 15:00으로 기록한다", () => {
+    const when = "2026-10-30T21:25:00+09:00";
+    const r = analyzeMock({ ...T("테라스 함께 보시게 내일 오후 세시에 여유롭게 뵐게요", "demo_agent"), id: "a3" },
+      cur({ "방문일": { name: "방문일", value: "10월 31일", proposer: "demo", status: "proposed" } }), when, [
+      { id: "h3", text: "오후 3시는 괜찮나요?", author_type: "human" },
+      { id: "a2", text: "내일 오후 두시에 보러 오세요", author_type: "demo_agent" },
+    ], "월세");
+    const visit = r.upserts.find((u) => u.name === "방문일");
+    assert.equal(visit?.value, "10월 31일 오후 3시");
+    assert.equal(visit?.status, "proposed");
+    assert.equal(visit?.proposer, "demo");
+    assert.ok(r.bubble?.includes("오후 3시"));
+    assert.ok(!r.bubble?.includes("시간을 정해 주세요"));
+  });
+  it("오후 3시 괜찮나요?라는 질문만으로 자동 예약하지 않는다", () => {
+    const when = "2026-10-30T21:25:00+09:00";
+    const r = analyzeMock(T("오후 3시는 괜찮나요?"), cur({}), when, [
+      { id: "a2", text: "내일 오후 두시에 보러 오세요", author_type: "demo_agent" },
+    ], "월세");
+    assert.ok(!r.upserts.some((u) => u.name === "방문일" && u.value.includes("오후 3시")));
+  });
+  it("날짜를 생략한 답변도 방문 문맥 안에서만 제안 상태로 기록한다", () => {
+    const when = "2026-10-30T21:25:00+09:00";
+    const r = analyzeMock({ ...T("오후 3시에 뵐게요", "demo_agent"), id: "a3" }, cur({}), when, [
+      { id: "h3", text: "오후 3시는 괜찮나요?", author_type: "human" },
+      { id: "a2", text: "내일 오후 두시에 보러 오세요", author_type: "demo_agent" },
+    ], "월세");
+    const visit = r.upserts.find((u) => u.name === "방문일");
+    assert.equal(visit?.value, "10월 31일 오후 3시");
+    assert.deepEqual(visit?.evidence, ["a3", "a2"]);
+    assert.equal(visit?.status, "proposed");
+  });
   it("확인된 조건이 바뀌면 재협의를 안내한다", async () => {
     const r = analyzeMock(T("43000만원에 합시다"), cur({
       "매수 희망가": { name: "매수 희망가", value: "44,000만원", proposer: "human", status: "proposed", confirmedBy: "u1", confirmedVersion: 1 },

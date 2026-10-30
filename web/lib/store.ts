@@ -206,6 +206,7 @@ export interface RoomVisit {
   visit_date: string;
   visit_time: string;
   status: string;
+  created_at?: string;
   proposed_by: string;
   source_msg_ids: string;
   decided_by: string;

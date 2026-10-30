@@ -298,3 +298,12 @@
 - [x] 질문을 자동 확정하지 않는 단위 및 가짜 Meta API 통합 테스트.
 - [x] PC/모바일 전체 회귀 E2E 및 신규 UX 테스트 통과(54 passed, 4 skipped).
 - 세부: docs/CHAT_UX_VISIT_CONTEXT_20261030.md
+
+
+## 집톡이 중개수첩/사이드 한마디 UX (2026-10-31, Preview 후보)
+
+- [x] 사이드 반응/노트 UI, 진행 상황 3종, 다음 질문 프리필 구현.
+- [x] Mock UI 진행 상태는 확인된 데이터만 근거로 표현, 자동 전송·확정 없음.
+- [x] UX 전용 단위 테스트 및 기존 브라우저 시나리오 확장.
+- [ ] 전체 CI와 Preview 검증 후 운영 반영 여부 결정.
+- 상세: docs/ZIPTALK_BROKER_COMPANION_20261031.md

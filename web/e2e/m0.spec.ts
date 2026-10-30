@@ -121,9 +121,12 @@ test("시연방: 집톡이 제안 정리→거래 현황", async ({ page }) => {
   await expect(page).toHaveURL(/\/rooms\//);
   await page.getByPlaceholder("메시지 입력").fill("44000만원에 합시다");
   await page.getByRole("button", { name: "전송" }).click();
-  await expect(page.getByText("새로 제안됐어요").first()).toBeVisible();
-  await expect(page.getByText("집톡이").first()).toBeVisible();
-  await expect(page.getByText("합의 카드에서 동의해 주세요").first()).toBeVisible();
+  await expect(page.locator(".broker-peek")).toBeVisible();
+  await expect(page.getByRole("log", { name: "거래 대화" }).getByText("새로 제안됐어요")).toHaveCount(0);
+  await page.locator(".broker-peek").getByRole("button", { name: /제가 적은 거 볼래요/ }).click();
+  const brokerNote = page.getByRole("region", { name: "집톡이의 조건 정리" });
+  await expect(brokerNote.getByText("새로 제안됐어요").first()).toBeVisible();
+  await expect(brokerNote.getByText("합의 카드에서 동의해 주세요").first()).toBeVisible();
   await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await expect(page.getByText("44,000만원").first()).toBeVisible();
   await expect(page.getByText(/동일한 조건 버전에 양측이 동의해야/)).toBeVisible();
@@ -134,7 +137,9 @@ test("시연방: 집톡이 제안 정리→거래 현황", async ({ page }) => {
   await page.getByRole("button", { name: "거래 현황 닫기" }).click();
   await page.getByPlaceholder("메시지 입력").fill("44500만원에 합시다");
   await page.getByRole("button", { name: "전송" }).click();
-  await expect(page.getByText("변경됐어요").first()).toBeVisible();
+  await expect(page.locator(".broker-peek")).toBeVisible();
+  await page.getByRole("button", { name: "집톡이 열기" }).click();
+  await expect(page.getByRole("region", { name: "집톡이의 조건 정리" }).getByText("변경됐어요").first()).toBeVisible();
   await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await expect(finRow).toContainText("동의 대기");
   await finRow.getByRole("button", { name: "동의하기" }).click();
@@ -142,7 +147,9 @@ test("시연방: 집톡이 제안 정리→거래 현황", async ({ page }) => {
   await page.getByRole("button", { name: "거래 현황 닫기" }).click();
   await page.getByPlaceholder("메시지 입력").fill("매매가 얼마인가요?");
   await page.getByRole("button", { name: "전송" }).click();
-  await expect(page.getByText("매수 희망가는 44,500만원").first()).toBeVisible();
+  await expect(page.locator(".broker-peek")).toBeVisible();
+  await page.getByRole("button", { name: "집톡이 열기" }).click();
+  await expect(page.getByRole("region", { name: "집톡이의 조건 정리" }).getByText("매수 희망가는 44,500만원").first()).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await expect(page.getByText("44,000만원").first()).toBeVisible();
@@ -155,10 +162,15 @@ test("시연방: 방문 제안→일정 확인→변경", async ({ page }) => {
   await expect(page).toHaveURL(/\/rooms\//);
   await page.getByPlaceholder("메시지 입력").fill("38000만원에 합시다");
   await page.getByRole("button", { name: "전송" }).click();
-  await expect(page.getByText("새로 제안됐어요").first()).toBeVisible();
+  await expect(page.locator(".broker-peek")).toBeVisible();
+  await page.getByRole("button", { name: "집톡이 열기" }).click();
+  await expect(page.getByRole("region", { name: "집톡이의 조건 정리" }).getByText("새로 제안됐어요").first()).toBeVisible();
+  await page.locator(".ziptalk-close").click();
   await page.getByPlaceholder("메시지 입력").fill("내일 오후 2시에 방문하고 싶어요");
   await page.getByRole("button", { name: "전송" }).click();
-  await expect(page.getByText("거래 현황에서 확인해 주세요").first()).toBeVisible();
+  await expect(page.locator(".broker-peek")).toBeVisible();
+  await page.getByRole("button", { name: "집톡이 열기" }).click();
+  await expect(page.getByRole("region", { name: "집톡이의 조건 정리" }).getByText("거래 현황에서 확인해 주세요").first()).toBeVisible();
   await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await page.getByRole("button", { name: "일정 확인" }).click();
   await expect(page.getByText("수락됨").first()).toBeVisible();
@@ -173,8 +185,13 @@ test("시연방: 방문 제안→일정 확인→변경", async ({ page }) => {
 test("문의: 같은 매물은 기존 방으로 재입장", async ({ page }) => {
   await loginAs(page, uid("e2e-reentry"), "E2E재입장");
   await page.goto("/listings/s21");
-  if (await page.getByRole("button", { name: "문의하기" }).count() > 0) {
-    await page.getByRole("button", { name: "문의하기" }).click();
+  // Listing hydration/auth/room lookup is async. A zero count immediately
+  // after goto does not establish that this user already has a room.
+  const inquire = page.getByRole("button", { name: "문의하기" });
+  const resume = page.getByRole("link", { name: "대화 이어하기" });
+  await expect(inquire.or(resume).first()).toBeVisible();
+  if (await inquire.isVisible()) {
+    await inquire.click();
     await expect(page).toHaveURL(/\/rooms\//);
     await page.goto("/listings/s21");
   }

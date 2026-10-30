@@ -51,7 +51,7 @@ export const EMPTY_FILTERS: Filters = {
 export function filterListings(listings: Listing[], f: Filters): Listing[] {
   const q = f.query.trim().toLowerCase();
   return listings.filter((l) => {
-    if (q && !(l.title + " " + l.address + " " + l.description).toLowerCase().includes(q)) return false;
+    if (q && !(l.title + " " + l.address + " " + l.description + " " + l.options.join(" ")).toLowerCase().includes(q)) return false;
     if (f.tradeType && l.tradeType !== f.tradeType) return false;
     if (f.depositMax !== null && l.deposit > f.depositMax) return false;
     if (f.rentMax !== null && l.rent > f.rentMax) return false;

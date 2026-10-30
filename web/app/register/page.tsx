@@ -42,7 +42,14 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
 
   const set = (k: keyof typeof EMPTY, v: string) => setForm((p) => ({ ...p, [k]: v }));
   const selectedOptions = form.options.split(",").map(x => x.trim()).filter(Boolean);
-  const toggleOption = (option: string) => set("options", selectedOptions.includes(option) ? selectedOptions.filter(x => x !== option).join(", ") : [...selectedOptions, option].join(", "));
+  const toggleOption = (option: string) => {
+    if (selectedOptions.includes(option)) { set("options", selectedOptions.filter(x => x !== option).join(", ")); return; }
+    const excluded = option === "반려동물 가능" ? "반려동물 불가"
+      : option === "반려동물 불가" ? "반려동물 가능"
+      : option === "확장형" ? "비확장형"
+      : option === "비확장형" ? "확장형" : "";
+    set("options", [...selectedOptions.filter(x => x !== excluded), option].join(", "));
+  };
 
   const submit = async () => {
     if (!form.title.trim() || !form.address.trim() || !form.moveIn.trim() || !form.publisher.trim()) {

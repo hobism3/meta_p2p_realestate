@@ -277,3 +277,27 @@ test("등록: 매매 설비와 임대차 옵션 후보가 전환된다", async (
   await expect(page.getByRole("button", { name: /확장형/ }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: /침대/ })).toHaveCount(0);
 });
+
+
+test("등록: 서로 배타적인 옵션을 동시에 설정하지 않는다", async ({ page }) => {
+  await page.goto("/register");
+  await page.getByRole("button", { name: /반려동물 가능/ }).click();
+  await expect(page.getByRole("button", { name: /반려동물 가능/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: /반려동물 불가/ }).click();
+  await expect(page.getByRole("button", { name: /반려동물 가능/ })).toHaveAttribute("aria-pressed", "false");
+  await page.getByLabel("거래유형").selectOption("매매");
+  await page.getByRole("button", { name: /확장형/, exact: false }).first().click();
+  await expect(page.getByRole("button", { name: /비확장형/ })).toHaveAttribute("aria-pressed", "false");
+});
+
+test("반응형: 좁은 화면에서도 상세·지도·등록에 가로 넘침이 없다", async ({ page }) => {
+  for (const width of [320, 390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 780 });
+    for (const path of ["/", "/listings/s09", "/register"]) {
+      await page.goto(path);
+      await expect(page.locator("main")).toBeVisible();
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `${path} at ${width}px`).toBeLessThanOrEqual(1);
+    }
+  }
+});

@@ -67,6 +67,10 @@ describe("검색·필터", () => {
   it("조건이 없으면 전체를 반환한다", () => {
     assert.equal(filterListings(SEED_LISTINGS, EMPTY_FILTERS).length, SEED_LISTINGS.length);
   });
+  it("옵션과 공간 특성도 검색에 포함된다", () => {
+    assert.ok(filterListings(SEED_LISTINGS, { ...EMPTY_FILTERS, query: "시스템에어컨" }).some(x => x.tradeType === "매매"));
+    assert.ok(filterListings(SEED_LISTINGS, { ...EMPTY_FILTERS, query: "반려동물 가능" }).some(x => x.id === "s09"));
+  });
   it("없는 조건은 빈 결과를 낸다", () => {
     const r = filterListings(SEED_LISTINGS, { ...EMPTY_FILTERS, query: "존재하지않는동" });
     assert.equal(r.length, 0);

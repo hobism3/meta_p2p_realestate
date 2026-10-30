@@ -49,7 +49,7 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
       let binary = "";
-      for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...Array.from(bytes.subarray(i, i + 8192)));
       const res = await fetch("/api/listings/import-registry", {
         method: "POST",
         headers: {

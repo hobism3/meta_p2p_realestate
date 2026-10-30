@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { authHeaders } from "../../lib/client-auth";
 import type { Listing, TradeType } from "../../lib/listings";
 import { FEATURE_SUGGESTIONS } from "../../lib/listing-presentation";
+import RegistryImport from "../../components/RegistryImport";
 
 const EMPTY = {
   title: "", address: "", tradeType: "월세" as TradeType,
@@ -104,6 +105,12 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
         <span className="eyebrow">LIST YOUR SPACE</span>
         <h1>{editId ? "매물 정보 수정" : "새 매물 등록"}</h1>
         <p className="meta">거래유형에 맞게 정보를 입력해 주세요. 모든 신규 등록 매물은 시연용 합성 데이터로 취급됩니다.</p>
+        {!editId ? <RegistryImport onApply={(draft) => setForm((previous) => ({
+          ...previous,
+          title: previous.title || draft.title,
+          address: previous.address || draft.address,
+          area: previous.area || draft.area,
+        }))} /> : null}
         <div className="field"><label htmlFor="trade-type">거래유형</label>
           <select id="trade-type" value={form.tradeType} onChange={(e) => set("tradeType", e.target.value)} disabled={!!editId}>
             <option value="월세">월세</option><option value="전세">전세</option><option value="매매">매매</option>

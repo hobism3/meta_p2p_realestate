@@ -52,13 +52,13 @@ export default function SiteNav() {
   };
 
   return (
-    <nav style={{ alignItems: "center" }}>
+    <nav className="site-nav" aria-label="주요 메뉴">
       <a href="/">탐색</a>
       <a href="/register">매물 등록</a>
       {me ? (
         <>
           <a href="/rooms">내 거래방</a>
-          <span className="meta">{me.name}</span>
+          <span className="meta nav-user" title={me.name}>{me.name}</span>
           <button className="btn ghost" onClick={logout}>
             로그아웃
           </button>

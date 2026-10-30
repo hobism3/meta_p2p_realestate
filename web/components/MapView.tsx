@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Listing } from "../lib/listings";
+import { formatPrice, type Listing } from "../lib/listings";
 
 // OpenStreetMap 타일 사용 조건:
 // - 상업적 과다 호출 금지(Tile Usage Policy), attribution 표기 필수.
@@ -50,7 +50,7 @@ export default function MapView({
     holder._layer = layer;
     listings.forEach((l) => {
       const m = L.marker([l.lat, l.lng]).addTo(layer);
-      m.bindTooltip(`${l.tradeType} ${l.deposit}/${l.rent}`);
+      m.bindTooltip(formatPrice(l));
       m.on("click", () => onSelect(l.id));
       if (l.id === selectedId) m.openTooltip();
     });

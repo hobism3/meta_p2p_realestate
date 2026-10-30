@@ -58,8 +58,9 @@ export default function DetailPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="grid">
-      <section className="card">
-        <div className="photo" style={{ background: "#375f8a" }}>가상 이미지</div>
+      <section className="card listing-detail-head">
+        <div className="photo detail-photo" style={{ background: "#375f8a" }}>가상 이미지 · 실제 사진 아님</div>
+        <div className="listing-labels"><span className="listing-type">{listing.tradeType}</span>{!isCustom ? <span className="ai-pill">AI {listing.tradeType === "매매" ? "매도자" : "임대인"} 시연</span> : null}</div>
         <h2>{listing.title}</h2>
         <div className="price">{formatPrice(listing)}</div>
         <p className="meta">{listing.address}</p>
@@ -77,7 +78,12 @@ export default function DetailPage({ params }: { params: { id: string } }) {
             <tr><th>거래유형</th><td>{listing.tradeType}</td></tr>
             {listing.tradeType === "매매" ? (
               <tr><th>매매가</th><td>{listing.salePrice.toLocaleString()}만원</td></tr>
-            ) : null}
+            ) : listing.tradeType === "전세" ? (
+              <tr><th>전세보증금</th><td>{listing.deposit.toLocaleString()}만원</td></tr>
+            ) : (
+              <><tr><th>보증금</th><td>{listing.deposit.toLocaleString()}만원</td></tr>
+              <tr><th>월세</th><td>{listing.rent.toLocaleString()}만원</td></tr></>
+            )}
             <tr><th>관리비</th><td>{listing.fee}만원</td></tr>
             <tr><th>면적</th><td>{listing.area}㎡</td></tr>
             <tr><th>입주일</th><td>{listing.moveIn}</td></tr>
@@ -97,12 +103,13 @@ export default function DetailPage({ params }: { params: { id: string } }) {
             소유 확인 서류 {listing.verification.ownershipDoc ? "제출됨" : "미제출"}
           </span>
         </p>
-        <p className="meta">게시자: {listing.publisher}. 사실만 표시합니다. 안전·보증을 의미하지 않습니다.</p>
+        <p className="meta">게시자: {listing.publisher}. 제출 여부만 표시하며 실제 소유권 인증·거래 안전을 보장하지 않습니다.</p>
+        {!isCustom ? <p className="demo-note">이 매물은 합성 데이터입니다. AI 상대방과 조건 협의를 연습할 수 있으며 실제 계약·예약은 진행되지 않습니다.</p> : null}
         <p>
           {existingRid ? (
             <a className="btn ghost" href={`/rooms/${existingRid}`}>대화 이어하기</a>
           ) : (
-            <button className="btn ghost" onClick={onAsk} disabled={asking}>
+            <button className="btn" onClick={onAsk} disabled={asking}>
               {asking ? "생성 중..." : "문의하기"}
             </button>
           )}{" "}

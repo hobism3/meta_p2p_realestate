@@ -1,61 +1,33 @@
-# DirectHome v2 아키텍처
+# DirectHome — Implemented Architecture
 
-- 정본 문서: 제품은 `PRODUCT.md`, 결정은 `DECISIONS.md`, 배포는 `DEPLOYMENT.md`.
-- 이 문서는 기술 상세만 둔다. 중복 서술 금지.
+**Verified baseline:** `80a3378`. This replaces early architecture plans and does not claim the draft features were implemented.
 
-## 1. MVP 구성 가안
+```text
+Next.js React user interface (listing/search, room, chat, deal panel)
+  → authenticated API /api/rooms/[rid]/messages
+  → /agent/invoke (synthetic room only): listing+persona+history → Meta Muse Spark OR Mock
+  → persisted AI-counterparty reply
+  → /ziptalk/invoke: room evidence + trade type → separate Meta/Mock analysis
+  → server validation / typed extraction / condition history
+  → proposal generation / bilateral decision APIs
+  → versioned room_proposals, proposal_approvals → chat card + deal status
+```
 
-- 웹 프론트: 매물 검색·상세, 거래방, 체크리스트 화면.
-- 백엔드 API: 매물 CRUD, 문의·일정, 합의 로그, 체크리스트 저장.
-- AI 프록시: 서버에서만 Muse Spark 호출. 키 노출 금지.
-- 데이터: 가상 매물 시드. 실제 개인정보 없음.
-- 미확정: 프론트·백엔드 스택과 호스팅.
+## Relevant implementation
+| Concern | Code |
+| --- | --- |
+| UI, messages and proposals | `web/app/rooms/[rid]/page.tsx`, `web/lib/store.ts` |
+| Synthetic listings | `web/lib/listings.ts`, `web/lib/personas.ts` |
+| AI counterparty | `web/lib/agent-service.ts` |
+| Neutral assistant | `web/lib/ziptalk-service.ts` |
+| Trade-type parsing | `web/lib/rent.ts`, `web/lib/visit-dates.ts` |
+| Versioned approvals | `web/lib/agreement-service.ts`, `web/db/migrations/011_proposals.sql` |
+| Meta Model API | `web/lib/meta.ts`: `muse-spark-1.3` default, server key only |
+| DAL and auth | `web/lib/dal.ts`, `web/lib/auth.ts`, `web/lib/rooms.ts` |
 
-## 2. 데이터 모델 가안
+## Validation boundaries
+Room membership isolates conversations. An AI reply is *not* automatic bilateral consent. The server normalizes colloquial amounts and dates and requires source-message evidence. Proposals track source, status, version, and per-side acknowledgment; changing a proposal does not inherit stale approval.
 
-- Listing: id, 주소, 면적, 보증금, 월세, 관리비, 입주가능일, 사진, 설명, 게시자, 확인상태, 상태.
-- Inquiry: 매물, 문의자, 메시지, 방문일정, 상태.
-- DealRoom: 매물, 당사자, 합의 로그(JSON), AI 요약 버전.
-- Checklist: 거래방 연결, 항목별 완료·메모.
-- 미확정: 인증·파일 저장 방식.
+SQLite is used for isolated development/test runs; PostgreSQL is supported through DATABASE_URL. AGENT_PROVIDER defaults to mock. Actual Meta invocation requires AGENT_PROVIDER=meta and a **server-side MODEL_API_KEY**. Never expose model keys, token secrets or real personal information.
 
-## 3. Muse Spark 연결 가안
-
-- 용도 1: 거래 조건 정리. 입력은 합의 로그와 매물 정보. 출력은 조건 요약+미확인 목록 JSON.
-- 용도 2: 체크리스트 맞춤 안내. 입력은 매물·합의 상태. 출력은 남은 항목 설명.
-- 원칙: 판단·등급·특약 문구 생성 금지. 근거 표시 필수. 개인정보 마스킹.
-- 미확정: 모델, 엔드포인트, 프롬프트, 스키마, 비용.
-
-## 4. 보안·개인정보 가안
-
-- 최소 수집. 원본 파일 접근 권한 분리. 보관 기간 명시.
-- AI 전달 전 마스킹.
-- 상태: 설계 가안. 적법성 미확인(LEGAL_REVIEW 참조).
-
-## 5. 기존 코드 대비 차이
-
-- muse_test_app/server.py: 표준 라이브러리 데모. 라우팅 4개(/, /health, /hello, 404). 도메인·DB·외부 호출 없음.
-- v2 필요분: 매물·거래방·체크리스트 API, AI 프록시, 파일 업로드, DB.
-- 겹치는 부분: 없음. 테스트 분리 패턴(순수 함수+통합 테스트)만 차용한다.
-- 기존 코드 삭제·이동 없음. muse_test_app은 그대로 둔다.
-
-## 6. 백엔드 확정 사항(2026-10-27)
-
-- DAL 추상화: `lib/dal.ts`. SQLite 로컬, `DATABASE_URL`이 있으면 Postgres.
-- 마이그레이션: `db/migrations/` 버전관리. 운영 PG는 `instrumentation.ts`가 기동 시 보장.
-- 외래키: 7 테이블 재구축. 부모키는 001 이후·002 이전에 시드.
-- 트랜잭션: 풀 커넥션 단일 세션 Tx. SQLite는 단일 커넥션.
-- 인증: `lib/auth.ts`. dev는 별명+역할, `SUPABASE_JWT_SECRET`이 있으면 JWT 검증.
-- 쓰기 보호: `WRITE_TOKEN`+`x-write-token`. 진짜 인증 전까지 남용 방지용.
-- 제한: 앱 수준 rate limit+바디 상한+보안헤더. 분산 제한은 게이트웨이 과제.
-- 환경변수: `DB_PATH`(로컬), `DATABASE_URL`(운영), `WRITE_TOKEN`, `SUPABASE_JWT_SECRET`, `RATE_LIMIT_PER_MIN`, `NEXT_PUBLIC_WRITE_TOKEN`(클라이언트).
-
-## 7. 수용된 위험(재검증 확정)
-
-- 쓰기 토큰이 클라이언트 JS에 노출된다. 남용 방지용이며 인증이 아니다.
-- 해결책은 Supabase Auth 전환. 계정 확보 후 `SUPABASE_JWT_SECRET` 경로가 이미 준비됨.
-- 서버리스 다중 인스턴스에서 앱 rate limit은 근사치. 게이트웨이 제한은 유료단 과제.
-
-## 8. 미확정 사항
-
-- 지도 SDK, 파일 저장, Muse Spark 연동 상세.
+See [Verification](VERIFICATION.md) and [Demo Guide](DEMO_GUIDE.md).

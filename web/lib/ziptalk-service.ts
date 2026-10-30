@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getDal } from "./dal.ts";
 import { now } from "./db.ts";
 import { classify, extractPriceManwon, hasJudgment } from "./ziptalk.ts";
-import { parseVisitProposal, parseMonthRef, parseManwonInt, parseManwon, bareHour } from "./visit-dates.ts";
+import { parseVisitProposal, resolveVisitDateTime, parseMonthRef, parseManwonInt, parseManwon, bareHour } from "./visit-dates.ts";
 import {
   callMeta,
   META_HISTORY_LIMIT,
@@ -150,7 +150,7 @@ export function depositAmount(
   return null;
 }
 
-const VISIT_WORDS = ["방문", "보러", "구경", "보실 수 있"];
+const VISIT_WORDS = ["방문", "보러", "구경", "보실 수 있", "보고싶", "보고 싶", "뵐", "만나"];
 
 interface CandMsg {
   id: string;
@@ -394,7 +394,11 @@ export function analyzeMock(
       }
       continue;
     }
-    const v = parseVisitProposal(c.text, refISO || trigger.created_at);
+    const previous = cands.slice(cands.indexOf(c) + 1)
+      .filter((p) => p.id !== c.id)
+      .map((p) => ({ id: p.id, text: p.text }));
+    const resolved = resolveVisitDateTime(c.text, refISO || trigger.created_at, previous);
+    const v = resolved?.visit;
     if (!v) continue;
     if (!hasWord && !v.time) continue;
     // 오전/오후 없는 1~11시는 추측하지 않고 후보로 묻는다. 기록·카드 금지.
@@ -408,7 +412,7 @@ export function analyzeMock(
     const cur = current.get("방문일");
     if (cur && cur.value === v.display) break;
     const vp = c.author_type === "human" ? "human" : "demo";
-    upserts.push({ name: "방문일", value: v.display, proposer: vp, status: "proposed", evidence: [c.id] });
+    upserts.push({ name: "방문일", value: v.display, proposer: vp, status: "proposed", evidence: [c.id, ...(resolved?.evidence ?? [])] });
     bubbles.push(
       v.time
         ? `방문일로 ${v.display}가 제안됐어요. 거래 현황에서 확인해 주세요.`
@@ -796,22 +800,20 @@ export async function confirmCondition(
  */
 async function syncVisitProposal(roomId: string, trigger: TriggerMsg, proposer: "human" | "demo"): Promise<string | null> {
   const t = trigger.text;
-  const hasWord = VISIT_WORDS.some((w) => t.includes(w));
   const dal = getDal();
-  if (!hasWord) {
-    const recent = (await dal.all("SELECT text, author_type FROM messages WHERE room_id = ? ORDER BY created_at DESC LIMIT 6", [
-      roomId,
-    ])) as { text: string; author_type: string }[];
-    const ctx = recent.some(
-      (r) =>
-        (String(r.author_type ?? "") === "human" || String(r.author_type ?? "") === "demo_agent") &&
-        VISIT_WORDS.some((w) => String(r.text ?? "").includes(w)),
-    );
-    if (!ctx) return null;
-  }
-  if (isQuestionLike(t)) return null;
-  const v = parseVisitProposal(t, trigger.created_at);
-  if (!v || !v.time) return null;
+  const recent = (await dal.all(
+    "SELECT id, text, author_type, created_at FROM messages WHERE room_id = ? AND (author_type = 'human' OR author_type = 'demo_agent') ORDER BY created_at DESC LIMIT 8",
+    [roomId],
+  )) as { id: string; text: string; author_type: string; created_at: string }[];
+  const previous = recent
+    .filter((r) => String(r.id) !== trigger.id)
+    .map((r) => ({ id: String(r.id), text: String(r.text ?? ""), created_at: String(r.created_at ?? "") }));
+  const visitContext = [t, ...previous.slice(0, 6).map((r) => r.text)]
+    .some((line) => VISIT_WORDS.some((w) => line.includes(w)));
+  if (!visitContext || isQuestionLike(t)) return null;
+  const resolved = resolveVisitDateTime(t, trigger.created_at, previous);
+  const v = resolved?.visit;
+  if (!v?.time) return null;
   const dup = await dal.get(
     "SELECT id FROM visits WHERE room_id = ? AND visit_date = ? AND visit_time = ? AND status IN ('제안됨','수락됨')",
     [roomId, v.date, v.time],
@@ -821,7 +823,7 @@ async function syncVisitProposal(roomId: string, trigger: TriggerMsg, proposer: 
   const id = randomUUID();
   await dal.run(
     "INSERT INTO visits (id,listing_id,visit_date,visit_time,status,room_id,created_at,proposed_by,source_msg_ids,decided_by,decided_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-    [id, room ? room.listing_id : "", v.date, v.time, "제안됨", roomId, now(), proposer, JSON.stringify([trigger.id]), "", ""],
+    [id, room ? room.listing_id : "", v.date, v.time, "제안됨", roomId, now(), proposer, JSON.stringify([trigger.id, ...(resolved?.evidence ?? [])]), "", ""],
   );
   return id;
 }
@@ -1113,6 +1115,33 @@ async function executeZiptalk(
         recent.map((r) => ({ id: String(r.id), text: String(r.text ?? ""), author_type: String(r.author_type ?? "") })),
         tradeType,
       );
+    }
+    // Deterministic evidence-backed visit correction for Meta that omitted a spoken hour.
+    // Never interpret a question as agreement; never mark a visit confirmed.
+    if (provider === "meta" && !isQuestionLike(trigger.text)) {
+      const ctx = (await getDal().all(
+        "SELECT id, text, created_at FROM messages WHERE room_id = ? AND (author_type = 'human' OR author_type = 'demo_agent') ORDER BY created_at DESC LIMIT 8",
+        [roomId],
+      )) as Array<{ id: string; text: string; created_at: string }>;
+      const previous = ctx.filter((m) => String(m.id) !== trigger.id)
+        .map((m) => ({ id: String(m.id), text: String(m.text), created_at: String(m.created_at) }));
+      const intent = [trigger.text, ...previous.slice(0, 6).map((m) => m.text)]
+        .some((t) => VISIT_WORDS.some((w) => t.includes(w)));
+      const resolved = intent ? resolveVisitDateTime(trigger.text, trigger.created_at, previous) : null;
+      const visit = resolved?.visit;
+      if (visit?.time && current.get("방문일")?.value !== visit.display) {
+        const visitChange: ConditionUpsert = {
+          name: "방문일", value: visit.display,
+          proposer: trigger.author_type === "human" ? "human" : "demo",
+          status: "proposed", evidence: [trigger.id, ...(resolved?.evidence ?? [])],
+        };
+        outcome.upserts = [...outcome.upserts.filter((u) => u.name !== "방문일"), visitChange];
+        const genericDateClaim = /방문일로[^.。\n]*?(시간을 정해 주세요|시간을 정해|이야기가 나왔어요)/;
+        const bubble = (outcome.bubble ?? "").replace(genericDateClaim, "").trim();
+        const grounded = `방문 일정은 ${visit.display}로 제안됐어요. 거래 현황에서 확인해 주세요.`;
+        outcome.bubble = `${bubble ? bubble + " " : ""}${grounded}`.slice(0, ZIPTALK_BUBBLE_LIMIT);
+        outcome.intervene = true;
+      }
     }
     const applied = await applyOutcome(roomId, outcome);
     // 방문 행을 먼저 맞춰야 제안 카드에 visit_id가 연결된다.

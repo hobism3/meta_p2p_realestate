@@ -586,3 +586,253 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
   .wizard-content{animation:none}
   .wizard-step,.wizard-trade-card,.wizard-manual-cta,.wizard-preview-progress span{transition:none}
 }
+
+/* ───────── DirectHome conversation studio ───────── */
+.deal-page{max-width:1280px;margin:0 auto;gap:16px;padding-bottom:80px}
+.deal-page .deal-hero{
+  border:1px solid #dfe9f7;border-radius:23px;padding:27px clamp(22px,3.5vw,40px);
+  background:linear-gradient(120deg,#fff 18%,#eff6ff 100%);
+  display:flex;justify-content:space-between;gap:16px;align-items:center;overflow:hidden;position:relative;
+  box-shadow:0 12px 35px rgba(26,67,123,.035);
+}
+.deal-hero::before{content:"";position:absolute;right:-88px;top:-144px;width:350px;height:350px;border-radius:50%;background:radial-gradient(circle,#d7e8ff96,transparent 66%);pointer-events:none}
+.deal-hero-main{position:relative;z-index:1;min-width:0}
+.deal-room-kicker{display:inline-flex;align-items:center;gap:9px;font-size:10px;letter-spacing:.16em;font-weight:850;color:#4079c5}
+.deal-live-dot{width:8px;height:8px;border-radius:50%;background:#55cba5;box-shadow:0 0 0 4px #ddf8ef;display:inline-block}
+.deal-hero h1{font-size:clamp(23px,2.7vw,34px);margin:13px 0 10px;letter-spacing:-.045em;color:#172f52;line-height:1.3;overflow-wrap:anywhere}
+.deal-hero-tags{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.deal-room-type{font-size:11px;font-weight:850;padding:6px 10px;border-radius:999px;white-space:nowrap}
+.deal-room-type.is-demo{color:#2d65b8;background:#e5f0ff;border:1px solid #cce0fe}
+.deal-room-type.is-live{color:#187b66;background:#e9f9f3;border:1px solid #cef2e4}
+.deal-hero-trade{font-size:11px;border:1px solid #e1e8f4;border-radius:999px;background:#fff;padding:6px 11px;color:#5e7491;font-weight:750}
+.deal-hero-price{font-size:14px;color:#254b7e;margin-left:5px;white-space:nowrap}
+.deal-hero p{color:#7184a0;font-size:13px;line-height:1.7;max-width:630px;margin:0}
+.deal-hero-symbol{position:relative;display:grid;place-items:center;width:116px;height:116px;border-radius:33px;background:linear-gradient(150deg,#d6e9ff,#fff);border:1px solid #d5e5f9;flex:0 0 116px;transform:rotate(8deg);box-shadow:inset 0 0 30px #fff8}
+.deal-hero-house{font-size:95px;font-family:Georgia,serif;line-height:1;color:#74a4e5;transform:rotate(-8deg) translateY(-4px)}
+.deal-hero-sparkle{position:absolute;right:-6px;top:-19px;color:#2773e7;font-size:24px}
+.deal-page .deal-layout{gap:17px;align-items:start}
+.deal-page .deal-chat{
+  display:flex;flex-direction:column;background:#fff;border:1px solid #e2eaf6;border-radius:24px;
+  overflow:hidden;min-width:0;padding:0;box-shadow:0 18px 50px rgba(31,67,113,.06);
+}
+.conversation-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:19px 23px;border-bottom:1px solid #ecf0f6}
+.conversation-identity{display:flex;align-items:center;gap:12px;min-width:0}
+.conversation-avatar{display:grid;place-items:center;width:48px;height:48px;border-radius:15px;flex:0 0 48px;color:#2d79df;background:linear-gradient(150deg,#f1f8ff,#d4e8ff);font-size:32px;font-family:Georgia,serif}
+.conversation-identity strong{display:block;color:#223a59;font-size:16px;letter-spacing:-.04em}
+.conversation-status{display:flex;align-items:center;gap:7px;margin-top:4px;color:#91a0b1;font-size:11px;line-height:1.4}
+.conversation-status i{width:6px;height:6px;border-radius:50%;background:#68c7a6;flex:0 0 6px}
+.conversation-head-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px}
+.conversation-tools-button{min-height:39px;border:1px solid #e3eaf6;background:#f8fafd;color:#49617f;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:800;white-space:nowrap;transition:background .16s,border-color .16s}
+.conversation-tools-button:hover{background:#eff5ff;border-color:#b9d3fb}
+.conversation-tools-button.is-accent{background:#edf5ff;color:#2269ca;border-color:#d9e9ff}
+.conversation-tools-button:disabled{opacity:.58;cursor:default}
+.conversation-tools-button span{font-size:15px;margin-right:5px}
+.deal-page .conversation-feed{
+  flex:1;min-height:350px;height:clamp(390px,54vh,630px);max-height:65vh;overflow-y:auto;
+  padding:26px clamp(16px,2.5vw,29px) 17px;
+  background:radial-gradient(ellipse at 10% 3%,rgba(230,242,255,.68),transparent 55%),linear-gradient(180deg,#fbfdff,#fff);
+  scroll-padding-bottom:24px;overscroll-behavior:contain;
+}
+.conversation-day-label{text-align:center;margin:0 0 25px}
+.conversation-day-label span{display:inline-block;background:#edf2f8;color:#889bb1;font-weight:750;font-size:10px;padding:6px 15px;border-radius:999px;letter-spacing:.04em}
+.conversation-row{display:flex;align-items:flex-end;gap:9px;margin:0 0 18px;width:100%;min-width:0}
+.conversation-row.is-mine{justify-content:flex-end}
+.conversation-small-avatar{display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;border-radius:11px;background:#ebf4ff;color:#3b80d9;font-family:Georgia,serif;font-size:25px;margin-bottom:20px}
+.conversation-message{display:flex;flex-direction:column;align-items:flex-start;max-width:min(82%,630px);min-width:0}
+.is-mine .conversation-message{align-items:flex-end}
+.conversation-author{font-size:11px;font-weight:800;color:#778eaa;margin:0 0 7px 8px}
+.deal-page .conversation-message .bubble{
+  width:fit-content;max-width:100%;min-width:0;margin:0;padding:13px 17px;border-radius:17px;
+  line-height:1.7;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere;
+}
+.deal-page .conversation-message .bubble.theirs{background:#fff;border:1px solid #e2eaf4;color:#2c415d;border-bottom-left-radius:5px;box-shadow:0 5px 18px rgba(28,68,123,.04)}
+.deal-page .conversation-message .bubble.mine{background:linear-gradient(135deg,#3486ef,#2565db);border:1px solid #2573df;color:#fff;border-bottom-right-radius:5px;box-shadow:0 5px 17px rgba(27,105,214,.13)}
+.conversation-time{font-size:10px;color:#a0adba;margin:5px 8px 0;white-space:nowrap;font-variant-numeric:tabular-nums}
+.conversation-typing{display:flex;align-items:center;gap:5px;min-width:70px;min-height:49px}
+.conversation-typing i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#97b4d6;animation:chat-dot 1.2s ease-in-out infinite}
+.conversation-typing i:nth-child(2){animation-delay:.2s}
+.conversation-typing i:nth-child(3){animation-delay:.4s}
+@keyframes chat-dot{0%,70%,100%{opacity:.4;transform:translateY(0)}35%{opacity:1;transform:translateY(-4px)}}
+.conversation-inline-error{margin:10px 21px;color:#a83d53;background:#fff3f4;border:1px solid #ffd9dd;padding:11px;border-radius:10px;font-size:12px}
+.conversation-suggestions{padding:13px 23px 5px;border-top:1px solid #eef2f7;background:#fff}
+.conversation-suggestions>span{display:block;color:#9babbd;font-size:11px;font-weight:750;margin-bottom:9px}
+.conversation-suggestions .quickrow{gap:7px}
+.conversation-suggestions .quickrow button{border:1px solid #e5ebf4;border-radius:999px;background:#f8fbff;color:#4e709d;font-size:12px;font-weight:750;padding:10px 13px;min-height:39px;transition:border-color .15s,transform .15s}
+.conversation-suggestions .quickrow button:hover{border-color:#90bdfb;transform:translateY(-1px);background:#f2f8ff}
+.deal-page .conversation-composer{padding:15px 22px;border-top:1px solid #ebf0f6;position:static;gap:11px;align-items:flex-end}
+.conversation-composer .field{flex:1;min-width:0}
+.conversation-composer label{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:12px;color:#566e8d;margin-bottom:8px}
+.conversation-composer label span{color:#a5b2c0;font-size:10px;font-weight:500}
+.deal-page .conversation-composer textarea{border:1px solid #dce5f1;border-radius:13px;background:#f9fbfe;min-height:53px;max-height:145px;padding:13px 15px;font-size:14px;resize:vertical}
+.deal-page .conversation-composer textarea:focus{border-color:#78a9f1;background:#fff;box-shadow:0 0 0 4px #e5f1ff}
+.conversation-send{border:0;background:linear-gradient(145deg,#3b8cf1,#246ce2);color:#fff;font-size:13px;font-weight:850;min-width:92px;min-height:53px;border-radius:13px;padding:12px;box-shadow:0 8px 18px #286de83b;white-space:nowrap}
+.conversation-send span{font-size:16px;margin-left:5px}
+.conversation-send:disabled{opacity:.45;cursor:default;box-shadow:none}
+.conversation-send:not(:disabled):hover{filter:brightness(1.04)}
+.conversation-privacy{font-size:10px;color:#a0adbe;text-align:center;padding:0 13px 13px;line-height:1.5;margin:0}
+.deal-page .drawer.open{border:1px solid #e1e9f5;border-radius:20px;box-shadow:0 12px 32px rgba(29,60,111,.055);background:#fff}
+
+/* Ziptalk: floating companion, completely separate from the conversation log. */
+.ziptalk-companion{position:fixed;right:clamp(13px,3vw,45px);bottom:clamp(14px,3vh,30px);z-index:750;display:flex;flex-direction:column;align-items:flex-end;gap:12px;max-width:calc(100vw - 26px);font-family:inherit}
+.ziptalk-dock-button{position:relative;display:flex;gap:12px;align-items:center;min-width:180px;padding:9px 15px 9px 9px;border-radius:999px;color:#294868;background:linear-gradient(155deg,#fff,#f1f8ff);border:1px solid #cddffa;box-shadow:0 12px 36px rgba(29,67,124,.2),0 1px 4px rgba(26,71,131,.05);transition:transform .18s,box-shadow .18s}
+.ziptalk-dock-button:hover{transform:translateY(-3px);box-shadow:0 15px 40px rgba(30,70,130,.24)}
+.ziptalk-dock-caption{text-align:left;display:flex;flex-direction:column;gap:2px}
+.ziptalk-dock-caption strong{font-size:13px;font-weight:900;color:#284b77}
+.ziptalk-dock-caption small{font-size:10px;color:#8298b2;white-space:nowrap}
+.ziptalk-dock-chevron{margin-left:auto;font-size:18px;color:#6796d0}
+.ziptalk-unread{position:absolute;right:6px;top:3px;width:10px;height:10px;background:#ff796e;border:2px solid white;border-radius:50%;box-shadow:0 0 0 1px #ffc8c1}
+.ziptalk-mascot{position:relative;display:inline-block;width:51px;height:51px;flex:0 0 51px;filter:drop-shadow(0 3px 3px rgba(54,116,179,.16));transition:transform .18s}
+.ziptalk-dock-button:hover .ziptalk-mascot{transform:rotate(-7deg)}
+.ziptalk-mascot-roof{position:absolute;z-index:2;left:7px;top:2px;width:36px;height:36px;background:#619df1;border:3px solid #fff;box-shadow:0 0 0 1px #397dd5;border-radius:8px;transform:rotate(45deg)}
+.ziptalk-mascot-face{position:absolute;z-index:3;left:5px;bottom:3px;width:41px;height:35px;border-radius:10px 10px 12px 12px;background:#e3f2ff;border:2px solid #65a7f0;box-shadow:inset 0 -5px 0 #bedcff;display:flex;gap:11px;align-items:center;justify-content:center}
+.ziptalk-mascot-face i{width:4px;height:6px;background:#325780;border-radius:50%;display:inline-block;transform:translateY(1px)}
+.ziptalk-mascot-face b{position:absolute;width:8px;height:5px;border:2px solid #35668c;border-top:0;border-radius:0 0 8px 8px;bottom:7px;left:15px}
+.ziptalk-mascot-face:before,.ziptalk-mascot-face:after{content:"";position:absolute;width:8px;height:4px;bottom:9px;background:#f6a6b5a1;border-radius:50%}
+.ziptalk-mascot-face:before{left:4px}.ziptalk-mascot-face:after{right:4px}
+.ziptalk-mascot-star{position:absolute;z-index:4;top:-8px;right:-3px;font-size:16px;color:#ffcb71;text-shadow:0 1px 1px #fff}
+.ziptalk-mascot.is-small{transform:scale(.82);transform-origin:center;width:44px;height:44px;flex-basis:44px}
+.ziptalk-popover{
+  width:min(392px,calc(100vw - 26px));max-height:min(72dvh,635px);min-height:180px;display:flex;flex-direction:column;
+  overflow:hidden;background:#fff;border:1px solid #d7e6fc;border-radius:23px;
+  box-shadow:0 24px 70px rgba(19,54,97,.23),0 6px 20px rgba(30,65,110,.06);
+  animation:ziptalk-enter .3s cubic-bezier(.14,.82,.28,1.22) both;transform-origin:bottom right;
+}
+@keyframes ziptalk-enter{from{opacity:0;transform:translateY(22px) scale(.93)}to{opacity:1;transform:translateY(0) scale(1)}}
+.ziptalk-popover-header{display:flex;align-items:center;gap:9px;flex:0 0 auto;padding:15px 14px 12px;background:linear-gradient(115deg,#f0f7ff,#fff);border-bottom:1px solid #e5eefb}
+.ziptalk-popover-identity{flex:1;min-width:0}
+.ziptalk-popover-identity strong{font-size:16px;font-weight:900;color:#2f5888;display:block;letter-spacing:-.03em}
+.ziptalk-popover-identity strong span{font-size:13px;color:#f3b44b}
+.ziptalk-popover-identity small{font-size:10px;color:#8399b1;display:block;margin-top:4px}
+.ziptalk-close{width:33px;height:33px;flex:0 0 33px;border-radius:10px;background:#fff;border:1px solid #e0e8f4;color:#718aaa;font-size:22px;line-height:25px;display:grid;place-items:center}
+.ziptalk-close:hover{background:#e7f2ff;color:#2868bf}
+.ziptalk-popover-content{padding:17px 16px;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:13px;min-height:60px;scroll-padding-bottom:18px}
+.ziptalk-note{border:1px solid #e3eaf5;border-radius:17px 17px 17px 5px;background:#f8fbff;padding:15px 15px 14px;overflow-wrap:anywhere}
+.ziptalk-note-label{font-size:10px;font-weight:850;color:#4786d1;letter-spacing:.055em}
+.ziptalk-note p{font-size:13px;line-height:1.75;color:#335471;margin:7px 0 0;white-space:pre-wrap;word-break:keep-all}
+.ziptalk-note-link{display:inline-flex;margin-top:9px;font-size:11px;font-weight:800;color:#2675d9;border:0;background:#e6f2ff;border-radius:7px;padding:8px 10px}
+.ziptalk-note .proposal-card{margin:12px 0 0;box-shadow:none;padding:12px 10px}
+.ziptalk-note .proposal-card .btn{white-space:normal}
+.ziptalk-empty{text-align:center;padding:16px 10px 20px}
+.ziptalk-empty strong{color:#3c658e;font-size:13px}
+.ziptalk-empty p{color:#8298ac;font-size:12px;line-height:1.75;margin:8px 0}
+.ziptalk-thinking{display:flex;align-items:center;gap:8px;border:1px dashed #bfdaf8;background:#eff7ff;color:#497db7;padding:13px;border-radius:12px;font-size:12px;font-weight:750}
+.ziptalk-thinking-sparkles{animation:ziptalk-pulse .95s ease-in-out infinite;color:#65a5f3}
+@keyframes ziptalk-pulse{0%,100%{opacity:.5;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+.ziptalk-error{padding:10px 13px;border-radius:10px;background:#fff3f3;color:#b34b54;border:1px solid #ffe1e3;font-size:12px}
+.ziptalk-status-note{padding:10px 13px;border-radius:10px;background:#f1f7ff;color:#58799c;border:1px solid #d7e8ff;font-size:11px;line-height:1.6}
+.ziptalk-popover-footer{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:11px 14px;background:#fff;border-top:1px solid #edf1f7;flex:0 0 auto}
+.ziptalk-popover-footer span{font-size:10px;color:#9aabc0;line-height:1.5}
+.ziptalk-popover-footer button{white-space:nowrap;font-size:11px;font-weight:850;color:#3974d0;background:#edf5ff;border:1px solid #d7e9ff;border-radius:8px;padding:8px 10px}
+
+@media(max-width:900px){
+ .deal-hero-symbol{width:75px;height:75px;flex-basis:75px;border-radius:24px}
+ .deal-hero-house{font-size:72px}
+ .deal-page .drawer.open{z-index:790}
+ .ziptalk-companion{z-index:810}
+}
+@media(max-width:650px){
+ .deal-page .deal-hero{padding:20px 18px;border-radius:19px}
+ .deal-hero h1{font-size:23px;margin:10px 0}
+ .deal-hero-symbol{display:none}
+ .deal-hero p{font-size:12px}
+ .deal-hero-price{margin-left:0}
+ .deal-page .deal-chat{border-radius:16px}
+ .conversation-head{padding:13px 14px;gap:11px;align-items:flex-start}
+ .conversation-avatar{height:39px;width:39px;flex-basis:39px;border-radius:12px;font-size:26px}
+ .conversation-identity{gap:9px}
+ .conversation-identity strong{font-size:14px}
+ .conversation-status{font-size:10px}
+ .conversation-head-actions{gap:5px}
+ .conversation-tools-button{font-size:0;min-height:35px;min-width:36px;padding:7px 9px}
+ .conversation-tools-button span{font-size:17px;margin:0}
+ .deal-page .conversation-feed{height:min(53dvh,500px);max-height:55dvh;min-height:350px;padding:17px 13px}
+ .conversation-row{gap:5px;margin-bottom:16px}
+ .conversation-message{max-width:83%}
+ .conversation-small-avatar{height:26px;width:26px;flex-basis:26px;font-size:20px;border-radius:9px}
+ .deal-page .conversation-message .bubble{font-size:13px;padding:11px 13px}
+ .deal-page .conversation-composer{padding:12px 12px;gap:8px}
+ .conversation-composer label span{display:none}
+ .conversation-send{min-width:68px;padding:10px 8px;min-height:50px}
+ .conversation-send span{display:none}
+ .conversation-suggestions{padding:11px 13px 5px}
+ .conversation-suggestions .quickrow button{padding:8px 10px;font-size:11px}
+ .ziptalk-companion{right:12px;bottom:max(14px,env(safe-area-inset-bottom));width:auto}
+ .ziptalk-popover{width:min(372px,calc(100vw - 24px));max-height:min(72dvh,630px);border-radius:19px}
+ .ziptalk-dock-button{min-width:0;padding:6px 12px 6px 6px;gap:8px}
+ .ziptalk-mascot{transform:scale(.85);width:45px;height:45px;flex-basis:45px}
+ .ziptalk-dock-caption small{display:none}
+ .ziptalk-dock-chevron{display:none}
+}
+@media(max-width:365px){
+ .ziptalk-dock-caption{display:none}
+ .ziptalk-dock-button{padding:4px 8px}
+ .conversation-status{max-width:125px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .conversation-tools-button{padding:7px 6px}
+}
+@media(prefers-reduced-motion:reduce){
+ .ziptalk-popover,.ziptalk-thinking-sparkles,.conversation-typing i{animation:none}
+ .ziptalk-dock-button,.ziptalk-mascot,.conversation-tools-button{transition:none}
+}
+
+/* Conversation inbox. Scoped to /rooms (list), not the chat detail. */
+.rooms-hub{max-width:1050px;margin:0 auto;padding:5px 0 35px}
+.rooms-hub-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;padding:26px 5px 25px}
+.rooms-hub-head .eyebrow{font-size:11px;color:#4c84cc;letter-spacing:.17em}
+.rooms-hub-head h1{font-size:clamp(29px,4vw,43px);margin:14px 0 10px;color:#1a3252;letter-spacing:-.06em}
+.rooms-hub-head h1 span{display:inline-grid;place-items:center;vertical-align:middle;font-size:16px;color:#2a72d7;background:#e7f2ff;border:1px solid #cfe3ff;min-width:30px;height:30px;padding:2px 8px;border-radius:999px;letter-spacing:0}
+.rooms-hub-head p{font-size:13px;color:#8495aa;line-height:1.8;margin:0}
+.rooms-explore-link{white-space:nowrap;display:inline-flex;align-items:center;gap:10px;font-size:12px;font-weight:850;color:#2c72d3;background:#eaf4ff;border:1px solid #d2e7ff;border-radius:11px;padding:13px 17px;text-decoration:none}
+.rooms-explore-link:hover{background:#dceeff}
+.rooms-hub-body{background:#fff;border:1px solid #e3eaf5;box-shadow:0 15px 45px rgba(33,67,113,.04);border-radius:22px;overflow:hidden;min-height:230px}
+.rooms-hub-toolbar{display:flex;gap:17px;justify-content:space-between;align-items:center;padding:19px 20px;border-bottom:1px solid #edf1f7}
+.rooms-tabs{display:flex;align-items:center;gap:7px}
+.rooms-tabs button{border:1px solid transparent;background:transparent;border-radius:10px;font-size:12px;font-weight:800;color:#8494aa;min-height:38px;padding:9px 12px;white-space:nowrap}
+.rooms-tabs button span{font-size:10px;background:#edf1f7;border-radius:999px;padding:3px 6px;margin-left:4px}
+.rooms-tabs button.is-active{background:#edf5ff;border-color:#cee4ff;color:#276ccc}
+.rooms-tabs button.is-active span{background:#d9eaff}
+.rooms-tabs button:hover:not(.is-active){background:#f6f9fe}
+.rooms-search{display:flex;align-items:center;gap:9px;background:#f9fbfe;border:1px solid #e0e8f4;border-radius:11px;min-width:0;padding:0 13px;max-width:280px;flex:0 1 280px}
+.rooms-search>span{font-size:19px;color:#8ba0ba}
+.rooms-search input{width:100%;min-width:0;border:0;background:transparent;outline:0;min-height:41px;font-size:12px;color:#345170}
+.rooms-search:focus-within{border-color:#75aff0;box-shadow:0 0 0 3px #e7f2ff}
+.rooms-inbox-list{display:grid}
+.rooms-entry{display:flex;align-items:center;gap:17px;text-decoration:none;color:inherit;border-bottom:1px solid #f0f3f8;padding:21px 24px;transition:background .16s}
+.rooms-entry:last-child{border-bottom:0}
+.rooms-entry:hover{background:#f8fbff}
+.rooms-entry:focus-visible{outline:3px solid #8bbcff;outline-offset:-3px}
+.rooms-entry-avatar{position:relative;width:60px;height:60px;flex:0 0 60px;border-radius:19px;display:grid;place-items:center;background:linear-gradient(140deg,#d6eaff,#f4faff);color:#4783d6;font-family:Georgia,serif;font-size:45px;line-height:1}
+.rooms-entry-avatar.is-real{background:linear-gradient(140deg,#e5f7f1,#f5fffa);color:#4cb08b;font-size:22px}
+.rooms-entry-avatar i{position:absolute;right:-4px;top:-8px;color:#ebba55;font-size:18px;font-family:inherit;font-style:normal}
+.rooms-entry-copy{display:flex;flex-direction:column;gap:7px;min-width:0;flex:1}
+.rooms-entry-copy>strong{color:#243c59;font-size:16px;line-height:1.4;letter-spacing:-.025em;overflow-wrap:anywhere}
+.rooms-entry-subtitle{color:#8192a6;font-size:12px;line-height:1.5}
+.rooms-entry-badges{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.rooms-entry-badges small{padding:5px 9px;background:#f5f7fa;color:#8d9dad;border-radius:999px;font-size:10px;font-weight:650}
+.rooms-entry-badges small.is-ai{color:#3977c9;background:#edf5ff}
+.rooms-entry-badges small.is-real{color:#21866b;background:#ebfaf3}
+.rooms-entry-arrow{color:#79a1ce;display:grid;place-items:center;font-size:22px;width:35px;height:35px;border-radius:50%;background:#f5f9ff}
+.rooms-entry:hover .rooms-entry-arrow{background:#e4f1ff;color:#286dce}
+.rooms-empty-state,.rooms-empty,.rooms-loading{display:grid;justify-items:center;align-content:center;text-align:center;min-height:260px;padding:45px 20px}
+.rooms-empty{margin:30px auto;max-width:670px;min-height:370px;background:linear-gradient(145deg,#f1f8ff,#fff);border:1px solid #e0eaf6;border-radius:24px}
+.rooms-empty>span,.rooms-empty-state>span{font-size:42px;color:#86b5e9;font-family:Georgia,serif}
+.rooms-empty h1,.rooms-empty-state strong{font-size:22px;color:#2d4664;margin:14px 0 7px}
+.rooms-empty p,.rooms-empty-state p,.rooms-loading{color:#8a9caf;font-size:13px;line-height:1.7}
+.rooms-empty .btn,.rooms-empty-state .btn{margin-top:15px}
+.rooms-empty-state button{margin-top:12px;border:1px solid #c4daf6;background:#ecf5ff;color:#2972d7;padding:10px 14px;border-radius:11px;font-size:12px;font-weight:850}
+.rooms-hub-error{padding:15px 20px;background:#fff2f4;color:#b34858;font-size:13px}
+.rooms-hub-disclosure{text-align:center;font-size:11px;color:#9faabd;margin:20px}
+@media(max-width:700px){
+ .rooms-hub-head{display:block;padding:9px 3px 19px}
+ .rooms-hub-head h1{font-size:30px}
+ .rooms-explore-link{margin-top:14px}
+ .rooms-hub-toolbar{flex-direction:column;align-items:stretch;padding:13px;gap:10px}
+ .rooms-tabs{gap:4px}
+ .rooms-tabs button{flex:1;padding:8px 6px}
+ .rooms-search{max-width:none;flex:1}
+ .rooms-entry{padding:17px 13px;gap:11px}
+ .rooms-entry-avatar{height:46px;width:46px;flex-basis:46px;font-size:35px;border-radius:15px}
+ .rooms-entry-copy>strong{font-size:14px}
+ .rooms-entry-subtitle{font-size:11px}
+ .rooms-entry-arrow{width:27px;height:27px;font-size:17px}
+}
+.deal-route-skeleton{max-width:900px;margin:28px auto;min-height:280px;border:1px solid #e4eaf4;border-radius:22px;background:linear-gradient(115deg,#f3f8ff,#fff);color:#8095ad;display:grid;place-items:center;font-size:13px}

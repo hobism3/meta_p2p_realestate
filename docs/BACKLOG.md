@@ -288,3 +288,13 @@
 - [x] CI fast 및 Meta stub 통합 테스트 검증 완료.
 - [x] 사용자 승인 후 PR #8 병합.
 - 상세: docs/ZIPTALK_META_LENGTH_RECOVERY.md
+
+
+## 대화/집톡이 UX + 방문시각 인식 개선 (2026-10-30)
+
+- [x] 기존 매물 등록 Wizard·집톡이 length 복구 PR #7/#8 main 반영 완료.
+- [x] 집톡이 채팅 분리, 메신저형 UI, 캐릭터 팝업, 내 거래방 필터·검색.
+- [x] 한글 시각과 날짜 분리 문맥, Meta 시간 누락 보정 구현.
+- [x] 질문을 자동 확정하지 않는 단위 및 가짜 Meta API 통합 테스트.
+- [x] PC/모바일 전체 회귀 E2E 및 신규 UX 테스트 통과(54 passed, 4 skipped).
+- 세부: docs/CHAT_UX_VISIT_CONTEXT_20261030.md

@@ -51,17 +51,23 @@ function shift(base: { y: number; m: number; d: number }, days: number): { y: nu
   return { y: k.getUTCFullYear(), m: k.getUTCMonth() + 1, d: k.getUTCDate() };
 }
 
-function parseTime(t: string): string | null {
+const KOREAN_HOURS: Record<string, number> = {
+  한: 1, 두: 2, 세: 3, 네: 4, 다섯: 5, 여섯: 6,
+  일곱: 7, 여덟: 8, 아홉: 9, 열: 10, 열한: 11, 열두: 12,
+};
+
+/** 한글 숫자 시각도 지원. '세시'의 '세'를 날짜 숫자로 착각하지 않는다. */
+export function parseVisitTime(text: string): string | null {
+  const t = text.replace(/\s+/g, "");
   const hm = t.match(/(\d{1,2}):(\d{2})/);
   if (hm) {
-    const h = parseInt(hm[1], 10);
-    const mi = hm[2];
-    if (h > 23 || (mi !== "00" && mi !== "30")) return null;
-    return `${pad(h)}:${mi}`;
+    const h = Number(hm[1]), minute = Number(hm[2]);
+    if (h > 23 || minute > 59) return null;
+    return `${pad(h)}:${pad(minute)}`;
   }
-  const m = t.match(/(오전|오후|낮|밤|저녁)?\s*(\d{1,2})시(?:\s*(반))?/);
+  const m = t.match(/(오전|오후|낮|밤|저녁)?(\d{1,2}|열두|열한|다섯|여섯|일곱|여덟|아홉|한|두|세|네|열)시(반)?/);
   if (!m) return null;
-  const raw = parseInt(m[2], 10);
+  const raw = /^[0-9]+$/.test(m[2]) ? Number(m[2]) : KOREAN_HOURS[m[2]];
   const min = m[3] ? "30" : "00";
   const mark = m[1] ?? "";
   if (!mark) {
@@ -73,8 +79,31 @@ function parseTime(t: string): string | null {
   if (mark === "오전") h = raw % 12;
   else if (mark === "오후") h = raw % 12 + 12;
   else if (mark === "밤" || mark === "저녁") h = raw === 12 ? 12 : raw + 12;
-  if (h === 24) h = 12;
   return `${pad(h)}:${min}`;
+}
+
+/**
+ * 시간만 재언급한 경우 가장 가까운 이전 메시지의 명시적인 방문 날짜와 결합.
+ * 먼저 발화자 확인·방문 문맥 검사를 해야 하며, 자동 수락/확정은 절대 하지 않는다.
+ */
+export function resolveVisitDateTime(
+  text: string,
+  refISO: string,
+  newestPrevious: Array<{ id: string; text: string; created_at?: string }> = [],
+): { visit: VisitDateTime; evidence: string[] } | null {
+  const direct = parseVisitProposal(text, refISO);
+  if (direct?.time) return { visit: direct, evidence: [] };
+  if (direct) return { visit: direct, evidence: [] };
+  const time = parseVisitTime(text);
+  if (!time) return null;
+  for (const prior of newestPrevious.slice(0, 6)) {
+    const anchor = parseVisitProposal(prior.text, prior.created_at ?? refISO);
+    if (anchor && anchor.date) {
+      const date = anchor.date;
+      return { visit: { date, time, display: fmt(date, time) }, evidence: [prior.id] };
+    }
+  }
+  return null;
 }
 
 /**
@@ -93,7 +122,7 @@ export function bareHour(text: string): number | null {
   if (/(오전|오후|낮|밤|저녁|새벽|아침|자정|정오)/.test(t)) return null;
   const m = t.match(/(\d{1,2})\s*시/);
   if (!m) return null;
-  const h = parseInt(m[1], 10);
+  const h = /^[0-9]+$/.test(m[1]) ? Number(m[1]) : KOREAN_HOURS[m[1]];
   if (h < 1 || h > 11) return null;
   return h;
 }
@@ -189,7 +218,7 @@ export function parseVisitProposal(text: string, refISO: string): VisitDateTime 
   }
   if (!ymd) return null;
   if (ymd < iso(base.y, base.m, base.d)) return null;
-  const time = parseTime(text);
+  const time = parseVisitTime(text);
   return { date: ymd, time, display: fmt(ymd, time) };
 }
 

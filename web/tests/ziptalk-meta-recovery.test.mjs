@@ -1,6 +1,7 @@
 import { before, after, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
+import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -59,10 +60,13 @@ before(async () => {
     for await (const chunk of req) raw += chunk;
     lastRequest = JSON.parse(raw);
     const finish_reason = mode === "length" ? "length" : "stop";
+    const content = mode === "valid-silent"
+      ? JSON.stringify({ conditions: [], intervene: false, bubble: null })
+      : null;
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({
       id: "synthetic-completion",
-      choices: [{ finish_reason, message: { role: "assistant", content: null, refusal: null } }],
+      choices: [{ finish_reason, message: { role: "assistant", content, refusal: null } }],
       usage: { prompt_tokens: 850, completion_tokens: mode === "length" ? 1536 : 0 },
     }));
   });
@@ -164,4 +168,33 @@ describe("Meta 응답 길이 초과: 안전한 집톡이 복구", () => {
     assert.doesNotMatch(r.body.error, /keys:|choices:|content:null|finish:/);
     assert.equal(calls, 2);
   });
+  it("모델이 방문 시간을 누락해도 원문 '내일 오후 세시'로 15:00 제안과 visits 행을 생성한다", async () => {
+    mode = "valid-silent";
+    const request = await say("오후 3시는 괜찮나요?");
+    const q = await analyze(request);
+    assert.equal(q.status, 200, JSON.stringify(q.body));
+    const before = await api("/api/rooms/" + roomId + "/visits");
+    assert.ok(before.body.every((x) => x.visit_time !== "15:00"), "질문만으로 제안 생성 금지");
+
+    const id = randomUUID();
+    const database = new DatabaseSync(DB);
+    try {
+      database.prepare("INSERT INTO messages (id,listing_id,author,role,user_id,author_type,room_id,text,created_at) VALUES (?,?,?,?,?,?,?,?,?)").run(
+        id, "s16", "AI 임대인", "", "agent:synthetic", "demo_agent", roomId,
+        "테라스 함께 보시게 내일 오후 세시에 여유롭게 뵐게요", new Date().toISOString(),
+      );
+    } finally { database.close(); }
+    const r = await analyze(id);
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    assert.equal(r.body.provider, "meta");
+    const c = await api("/api/rooms/" + roomId + "/conditions");
+    const visit = c.body.conditions.find((x) => x.name === "방문일");
+    assert.ok(visit);
+    assert.match(visit.value, /오후 3시/);
+    assert.equal(visit.status, "proposed");
+    assert.ok(JSON.parse(visit.source_msg_ids).includes(id));
+    const visits = await api("/api/rooms/" + roomId + "/visits");
+    assert.ok(visits.body.some((v) => v.visit_time === "15:00" && v.status === "제안됨"));
+  });
+
 });

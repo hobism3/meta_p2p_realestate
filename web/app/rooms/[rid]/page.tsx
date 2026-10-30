@@ -216,7 +216,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const [meta, setMeta] = useState<RoomMeta | null>(null);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
-  const [authed, setAuthed] = useState(false);
+  const [authed, setAuthed] = useState<boolean | null>(null);
   const [sending, setSending] = useState(false);
   const [aiPending, setAiPending] = useState(false);
   const [aiError, setAiError] = useState("");
@@ -229,6 +229,11 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const [zipPending, setZipPending] = useState(false);
   const [zipError, setZipError] = useState("");
   const [zipNotice, setZipNotice] = useState("");
+  const [zipOpen, setZipOpen] = useState(false);
+  const [zipUnread, setZipUnread] = useState(false);
+  const lastZipId = useRef<string | null>(null);
+  const zipInitialLoad = useRef(false);
+  const zipPanelRef = useRef<HTMLDivElement | null>(null);
   const [me] = useState(() => myId());
   const [propData, setPropData] = useState<ProposalsData | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
@@ -238,6 +243,15 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const refresh = useCallback(async () => {
     try {
       const m = await loadRoomMessages(params.rid);
+      const latest = m.filter((x) => x.author_type === "assistant").slice(-1)[0]?.id ?? null;
+      if (!zipInitialLoad.current) {
+        zipInitialLoad.current = true;
+        lastZipId.current = latest;
+      } else if (latest && latest !== lastZipId.current) {
+        lastZipId.current = latest;
+        setZipOpen(true);
+        setZipUnread(true);
+      }
       setMessages(m);
       setError("");
     } catch (e) {
@@ -271,6 +285,14 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, aiPending]);
 
+  useEffect(() => {
+    if (zipOpen && zipPanelRef.current) {
+      zipPanelRef.current.scrollTop = zipPanelRef.current.scrollHeight;
+      setZipUnread(false);
+    }
+  }, [zipOpen, messages]);
+
+  if (authed === null) return <div className="deal-route-skeleton" role="status">거래방을 준비하는 중...</div>;
   if (!authed) {
     return (
       <div className="card">
@@ -297,21 +319,24 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   };
 
   // 집톡이 분석은 매도자 응답과 분리 실행한다. 조용하면 말풍선을 남기지 않는다.
-  const callZiptalk = async (triggerId?: string) => {
+  const callZiptalk = async (triggerId?: string, openOnRequest = false) => {
     if (zipBusy.current) return;
     zipBusy.current = true;
     setZipPending(true);
+    if (openOnRequest) setZipOpen(true);
     setZipError("");
     setZipNotice("");
     try {
       const result = await invokeZiptalk(params.rid, triggerId);
       if (result.fallback === "meta_truncated") {
         setZipNotice("모델 응답이 길이 제한에 걸려 기본 규칙으로 분석했습니다. 대화 근거와 거래 현황을 확인해 주세요.");
+        setZipOpen(true);
       }
       await refresh();
       // 채팅 카드(ProposalCard)도 제안 목록에 의존하므로 패널이 닫혀 있어도 갱신한다.
       await refreshConditions();
     } catch (e) {
+      setZipOpen(true);
       setZipError(`집톡이 분석 실패(${e instanceof Error ? e.message : "오류"})`);
     } finally {
       setZipPending(false);
@@ -357,10 +382,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const onTogglePanel = async () => {
     const next = !panelOpen;
     setPanelOpen(next);
+    if (next) setZipOpen(false);
     if (next) await refreshConditions();
   };
 
   const openPanel = async () => {
+    setZipOpen(false);
     setPanelOpen(true);
     await refreshConditions();
   };
@@ -427,6 +454,16 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     setMsg(q);
     document.getElementById("room-input")?.focus();
   };
+
+  const chatMessages = messages.filter((item) => item.author_type !== "assistant");
+  const zipMessages = messages.filter((item) => item.author_type === "assistant");
+  const lastZip = zipMessages[zipMessages.length - 1] ?? null;
+  const chatLabel = meta?.demo ? aiName(meta.listing?.tradeType) : "거래 상대방";
+  const listing = meta?.listing;
+  const priceLabel = !listing ? "" : listing.tradeType === "매매"
+    ? "매매 " + listing.salePrice.toLocaleString() + "만원"
+    : listing.tradeType === "전세" ? "전세 " + listing.deposit.toLocaleString() + "만원"
+    : listing.deposit.toLocaleString() + " / " + listing.rent.toLocaleString() + "만원";
 
   return (
     <div className="grid deal-page">

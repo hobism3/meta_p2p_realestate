@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { authHeaders } from "../../lib/client-auth";
 import type { Listing, TradeType } from "../../lib/listings";
+import { FEATURE_SUGGESTIONS } from "../../lib/listing-presentation";
 
 const EMPTY = {
   title: "", address: "", tradeType: "월세" as TradeType,
@@ -40,6 +41,8 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
   }, [editId]);
 
   const set = (k: keyof typeof EMPTY, v: string) => setForm((p) => ({ ...p, [k]: v }));
+  const selectedOptions = form.options.split(",").map(x => x.trim()).filter(Boolean);
+  const toggleOption = (option: string) => set("options", selectedOptions.includes(option) ? selectedOptions.filter(x => x !== option).join(", ") : [...selectedOptions, option].join(", "));
 
   const submit = async () => {
     if (!form.title.trim() || !form.address.trim() || !form.moveIn.trim() || !form.publisher.trim()) {
@@ -91,8 +94,9 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
   return (
     <div className="grid">
       <section className="card form-card">
-        <h2>{editId ? "매물 수정" : "매물 등록"}</h2>
-        <p className="meta">서버에 저장됩니다(시연용). 합성 데이터로 취급됩니다.</p>
+        <span className="eyebrow">LIST YOUR SPACE</span>
+        <h1>{editId ? "매물 정보 수정" : "새 매물 등록"}</h1>
+        <p className="meta">거래유형에 맞게 정보를 입력해 주세요. 모든 신규 등록 매물은 시연용 합성 데이터로 취급됩니다.</p>
         <div className="field"><label htmlFor="trade-type">거래유형</label>
           <select id="trade-type" value={form.tradeType} onChange={(e) => set("tradeType", e.target.value)} disabled={!!editId}>
             <option value="월세">월세</option><option value="전세">전세</option><option value="매매">매매</option>
@@ -108,7 +112,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
           ["fee", "관리비(만원)", "예: 8"],
           ["area", "면적(㎡) *", "예: 23"],
           ["moveIn", "입주 가능일 *", "예: 2026-11-10 또는 즉시 입주"],
-          ["options", "옵션(쉼표 구분)", "예: 에어컨, 냉장고"],
+          ["options", "옵션 및 주거 특성(쉼표 구분)", "예: 에어컨, 냉장고, 반려동물 가능"],
           ["description", "설명", "예: 남향이라 밝습니다"],
           ["publisher", "게시자명 *", "예: 홍길동"],
         ].filter(([k]) => !(
@@ -121,8 +125,19 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
             <input id={k} value={(form as any)[k]} placeholder={ph} onChange={(e) => set(k as any, e.target.value)} />
           </div>
         ))}
+        <div className="feature-picker">
+          <h2>{form.tradeType === "매매" ? "설비 · 공간 특성" : "가전 · 옵션 · 생활 조건"}</h2>
+          <p className="meta">해당 매물에 실제로 제공되는 항목만 선택하세요. 반려동물 허용 여부는 가격이 아닌 생활 조건입니다.</p>
+          <div className="feature-picker-chips">
+            {FEATURE_SUGGESTIONS[form.tradeType].map((option) => (
+              <button type="button" key={option} aria-pressed={selectedOptions.includes(option)} className={selectedOptions.includes(option) ? "feature-chip is-selected" : "feature-chip"} onClick={() => toggleOption(option)}>
+                {selectedOptions.includes(option) ? "✓ " : "+ "}{option}
+              </button>
+            ))}
+          </div>
+        </div>
         {error && <p className="error">{error}</p>}
-        <button className="btn" onClick={submit}>{editId ? "수정 저장" : "등록하기"}</button>
+        <button className="btn form-submit" onClick={submit}>{editId ? "변경사항 저장하기" : "매물 등록하기"} ↗</button>
         {doneId && <p>저장됐습니다. <a href={`/listings/${doneId}`}>상세 보기</a></p>}
       </section>
     </div>

@@ -134,7 +134,7 @@ export async function loadMyRooms(): Promise<MyRoom[]> {
 
 export interface RoomMeta {
   room: RoomInfo;
-  listing: { id: string; title: string; tradeType: string; salePrice: number; deposit: number; rent: number } | null;
+  listing: { id: string; title: string; tradeType: string; salePrice: number; deposit: number; rent: number; options: string[] } | null;
   demo: boolean;
 }
 

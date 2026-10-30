@@ -18,16 +18,16 @@ export async function GET(req: Request, { params }: { params: { rid: string } })
   if (seed) {
     return ok({
       room,
-      listing: { id: seed.id, title: seed.title, tradeType: seed.tradeType, salePrice: seed.salePrice, deposit: seed.deposit, rent: seed.rent },
+      listing: { id: seed.id, title: seed.title, tradeType: seed.tradeType, salePrice: seed.salePrice, deposit: seed.deposit, rent: seed.rent, options: seed.options },
       demo: true,
     });
   }
   const row = await getDal().get("SELECT * FROM custom_listings WHERE id = ?", [room.listing_id]);
   if (!row) return ok({ room, listing: null, demo: true });
-  const custom = rowToListing(row) as { title: string; tradeType: string; salePrice: number; deposit: number; rent: number; ownerId: string };
+  const custom = rowToListing(row) as { title: string; tradeType: string; salePrice: number; deposit: number; rent: number; options: string[]; ownerId: string };
   return ok({
     room,
-    listing: { id: room.listing_id, title: custom.title, tradeType: custom.tradeType, salePrice: custom.salePrice, deposit: custom.deposit, rent: custom.rent },
+    listing: { id: room.listing_id, title: custom.title, tradeType: custom.tradeType, salePrice: custom.salePrice, deposit: custom.deposit, rent: custom.rent, options: custom.options },
     demo: !custom.ownerId,
   });
 }

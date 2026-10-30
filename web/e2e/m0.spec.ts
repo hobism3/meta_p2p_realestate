@@ -252,3 +252,28 @@ test("방: 문의→생성→채팅→새로고침 유지, 타인은 차단된�
   await other.goto(roomUrl);
   await expect(other.locator("p.error")).toContainText(/권한/);
 });
+
+
+test("사진: 매물·지도·상세에 생성 시연 이미지를 표시한다", async ({ page }) => {
+  await page.goto("/");
+  const cover = page.locator(".listing-photo img").first();
+  await expect(cover).toBeVisible();
+  await expect(cover).toHaveAttribute("src", /\/images\/demo-living-/);
+  await expect.poll(() => cover.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  await page.getByRole("button", { name: "지도형" }).click();
+  const marker = page.locator(".leaflet-marker-icon").first();
+  await expect(marker).toBeVisible({ timeout: 20000 });
+  await marker.dispatchEvent("click");
+  await expect(page.locator(".map-selection-photo")).toBeVisible();
+  await page.goto("/listings/s09");
+  await expect(page.locator(".detail-primary-photo img")).toBeVisible();
+  await expect(page.getByText("반려동물 가능", { exact: true }).first()).toBeVisible();
+});
+
+test("등록: 매매 설비와 임대차 옵션 후보가 전환된다", async ({ page }) => {
+  await page.goto("/register");
+  await expect(page.getByRole("button", { name: /침대/ })).toBeVisible();
+  await page.getByLabel("거래유형").selectOption("매매");
+  await expect(page.getByRole("button", { name: /확장형/ }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /침대/ })).toHaveCount(0);
+});

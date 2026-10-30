@@ -75,7 +75,7 @@ export default function DetailPage({ params }: { params: { id: string } }) {
           <div className="detail-price">{formatPrice(listing)}</div>
           <div className="detail-highlights"><span><b>{listing.area}㎡</b><small>전용 면적(입력값)</small></span><span><b>{listing.fee.toLocaleString()}만원</b><small>월 관리비</small></span><span><b>{listing.moveIn}</b><small>입주 가능 정보</small></span></div>
           <p className="demo-note">{isCustom ? "사용자 등록 매물입니다. 실제 계약 전 소유권과 조건을 반드시 확인하세요." : "24개 합성 시연 매물 중 하나입니다. AI 상대방과 대화를 체험할 수 있으며 실제 계약·예약은 진행되지 않습니다."}</p>
-          {existingRid ? <a className="btn detail-cta" href={`/rooms/${existingRid}`}>대화 이어하기 ↗</a> : <button className="btn detail-cta" onClick={onAsk} disabled={asking}>{asking ? "거래방 여는 중..." : `${isCustom ? "문의하기" : "AI와 문의하기"} ↗`}</button>}
+          {existingRid ? <a className="btn detail-cta" href={`/rooms/${existingRid}`}>대화 이어하기 ↗</a> : <button className="btn detail-cta" aria-label="문의하기" onClick={onAsk} disabled={asking}>{asking ? "거래방 여는 중..." : `${isCustom ? "문의하기" : "AI와 문의하기"} ↗`}</button>}
           {askError ? <p className="error">{askError}</p> : null}
         </div>
       </section>

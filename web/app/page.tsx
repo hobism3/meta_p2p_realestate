@@ -63,7 +63,7 @@ export default function HomePage() {
         </div>
       </section>
       <section className="card search-panel" id="properties">
-        <div className="section-head"><div><span className="eyebrow">FIND YOUR SPACE</span><h2>내게 맞는 집 둘러보기</h2></div><span className="pill">시연용 합성 매물</span></div>
+        <div className="section-head"><div><span className="eyebrow">FIND YOUR SPACE</span><h2>관악구 신림동에서 내게 맞는 집 둘러보기</h2></div><span className="pill">시연용 합성 매물</span></div>
         <p className="meta">
           합성 데이터 {all.length}건(기본 {seedCount()}건 포함)입니다. 실매물·소유자 인증이 아닙니다.
         </p>

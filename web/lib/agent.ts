@@ -99,6 +99,14 @@ export function draftReply(
       };
     }
   }
+  // 반려동물 허용 여부는 가격이 아니라 등록 옵션/생활 조건에서만 답한다.
+  if (mentions(t, "반려동물", "반려견", "강아지", "고양이", "소형견")) {
+    const options = scenario.facts["옵션"] ?? "";
+    const detail = scenario.facts["설명"] ?? "";
+    if (/반려동물 불가/.test(options)) return { text: "반려동물은 허용되지 않는 조건입니다.", proposal: null, needsHuman: false };
+    if (/반려동물 가능/.test(options) || /소형견.{0,10}가능/.test(detail)) return { text: "등록된 생활 조건에는 반려동물 가능으로 표시되어 있습니다. 세부 조건은 추가로 확인해 주세요.", proposal: null, needsHuman: false };
+    return { text: "반려동물 허용 여부는 등록 정보에 없어 확인이 필요합니다.", proposal: null, needsHuman: true };
+  }
   if (mentions(t, "얼마", "가격", "보증금", "월세", "매매가")) {
     const field = mentions(t, "월세") ? "월세" : mentions(t, "보증금") ? "보증금" : "가격";
     const fact = scenario.facts[field] ?? scenario.facts["가격"];

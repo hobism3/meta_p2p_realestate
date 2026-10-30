@@ -4,16 +4,9 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { EMPTY_FILTERS, filterListings, formatPrice, type Filters, type Listing } from "../lib/listings";
 import { loadAllListings, seedCount } from "../lib/store";
+import { listingPhoto, listingPhotoAlt, groupListingFeatures } from "../lib/listing-presentation";
 
 const MapView = dynamic(() => import("../components/MapView"), { ssr: false });
-
-const PHOTO_COLORS = ["#2e6b4f", "#375f8a", "#7a5c38", "#5d4a7a"];
-
-function photoColor(id: string): string {
-  let h = 0;
-  for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 997;
-  return PHOTO_COLORS[h % PHOTO_COLORS.length];
-}
 
 export default function HomePage() {
   const [all, setAll] = useState<Listing[]>([]);
@@ -51,19 +44,26 @@ export default function HomePage() {
   return (
     <div className="grid home-page">
       <section className="site-intro">
-        <span className="intro-kicker">DIRECTHOME · AI 직거래 시연</span>
-        <h1>집을 찾는 순간부터,<br />조건을 확인하는 순간까지</h1>
-        <p>매물 탐색, 자연스러운 거래 대화, 집톡이의 조건 정리와 양측 동의까지 하나의 흐름으로 경험하세요.</p>
-        <div className="intro-actions">
-          <a className="btn intro-primary" href="#properties">매물 둘러보기</a>
-          <a className="btn intro-secondary" href="/rooms">내 거래방</a>
+        <div className="intro-copy">
+          <span className="intro-kicker"><span aria-hidden="true">✦</span> DirectHome · AI 거래 도우미</span>
+          <h1>집을 찾는 일부터,<br /><em>조건을 확인하는 일</em>까지.</h1>
+          <p>찾고, 묻고, 합의하는 부동산 직거래.<br />AI 임대인·매도자와 대화하고, 집톡이와 거래 조건을 한눈에 정리하세요.</p>
+          <div className="intro-actions">
+            <a className="btn intro-primary" href="#properties">매물 둘러보기 <span aria-hidden="true">↗</span></a>
+            <a className="btn intro-secondary" href="/rooms">내 거래방</a>
+          </div>
+          <div className="intro-steps" aria-label="이용 순서">
+            <span><b>01</b> 관심 매물 찾기</span><span><b>02</b> AI와 조건 협상</span><span><b>03</b> 집톡이로 합의 확인</span>
+          </div>
         </div>
-        <div className="intro-steps" aria-label="이용 순서">
-          <span><b>01</b> 매물 선택</span><span><b>02</b> AI 상담·협상</span><span><b>03</b> 집톡이 조건 확인</span>
+        <div className="intro-visual" aria-hidden="true">
+          <img src="/images/demo-living-skyline.webp" alt="" />
+          <div className="intro-floating-card"><span className="intro-floating-icon">✦</span><span><b>집톡이 AI</b><small>대화 속 조건을 정확하게 정리</small></span></div>
+          <span className="intro-photo-label">AI 생성 시연 이미지</span>
         </div>
       </section>
       <section className="card search-panel" id="properties">
-        <div className="section-head"><h2>관악구 신림동 가상 매물 탐색</h2><span className="pill">시연용 합성 매물</span></div>
+        <div className="section-head"><div><span className="eyebrow">FIND YOUR SPACE</span><h2>관악구 신림동에서 내게 맞는 집 둘러보기</h2></div><span className="pill">시연용 합성 매물</span></div>
         <p className="meta">
           합성 데이터 {all.length}건(기본 {seedCount()}건 포함)입니다. 실매물·소유자 인증이 아닙니다.
         </p>
@@ -129,19 +129,20 @@ export default function HomePage() {
       <div className="viewtoggle results-header" aria-label="결과 보기 방식">
         <button className={view === "list" ? "btn" : "btn ghost"} aria-pressed={view === "list"} onClick={() => setView("list")}>리스트형</button>
         <button className={view === "map" ? "btn" : "btn ghost"} aria-pressed={view === "map"} onClick={() => setView("map")}>지도형</button>
-        <span className="meta" style={{ alignSelf: "center" }}>검색 결과 {results.length}건</span>
+        <span className="meta" style={{ alignSelf: "center" }}>조건에 맞는 매물 <b>{results.length}건</b></span>
       </div>
 
       {view === "list" ? (
         <section className="listings-grid" aria-label="검색된 매물">
           {results.map((l) => (
             <a key={l.id} className="card listing" href={`/listings/${l.id}`}>
-              <div className="photo" style={{ background: photoColor(l.id) }}><span>가상 이미지 · 합성 매물</span></div>
+              <div className="photo listing-photo"><img src={listingPhoto(l)} alt={listingPhotoAlt()} loading="lazy" /><span className="photo-stamp">AI 생성 시연 이미지</span></div>
               <div className="listing-labels"><span className="listing-type">{l.tradeType}</span>{!l.editable ? <span className="ai-pill">AI {l.tradeType === "매매" ? "매도자" : "임대인"} 상담</span> : null}</div>
               <h3>{l.title}</h3>
               <div className="price">{formatPrice(l)}</div>
-              <div className="meta">{l.address} · {l.area}㎡ · 관리비 {l.fee}만원</div>
-              <div><span className="synth">합성 데이터</span></div>
+              <div className="listing-specs"><span>{l.area}㎡</span><span>관리비 {l.fee}만원</span><span>{l.moveIn}</span></div>
+              <div className="meta">{l.address}</div>
+              <div className="listing-feature-preview">{groupListingFeatures(l.options).lifestyle.slice(0,1).concat(l.options.filter(x => !groupListingFeatures(l.options).lifestyle.includes(x)).slice(0,2)).map(x => <span key={x}>{x}</span>)}</div>
             </a>
           ))}
           {results.length === 0 && <div className="card empty-state">조건에 맞는 매물이 없습니다. <button className="btn ghost" onClick={resetFilters}>필터 초기화</button></div>}
@@ -159,6 +160,7 @@ export default function HomePage() {
                 onMouseEnter={() => setSelected(l.id)}
                 onFocus={() => setSelected(l.id)}
               >
+                <div className="map-listing-thumbnail"><img src={listingPhoto(l)} alt={listingPhotoAlt()} loading="lazy" /></div>
                 <span className="listing-type">{l.tradeType}</span>
                 <h3>{l.title}</h3>
                 <div className="price">{formatPrice(l)}</div>

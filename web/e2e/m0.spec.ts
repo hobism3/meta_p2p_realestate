@@ -106,7 +106,7 @@ test("시연방: 집톡이 제안 정리→거래 현황", async ({ page }) => {
   await expect(page.getByText("합의 카드에서 동의해 주세요").first()).toBeVisible();
   await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await expect(page.getByText("44,000만원").first()).toBeVisible();
-  await expect(page.getByText("제안은 양측이 모두 동의해야 확정됩니다.")).toBeVisible();
+  await expect(page.getByText(/동일한 조건 버전에 양측이 동의해야/)).toBeVisible();
   await expect(page.getByText("45,000만원").first()).toBeVisible();
   const finRow = page.locator("li", { hasText: "최종 매매가" }).first();
   await finRow.getByRole("button", { name: "동의하기" }).click();
@@ -251,4 +251,53 @@ test("방: 문의→생성→채팅→새로고침 유지, 타인은 차단된�
   await loginAs(other, uid("e2e-stranger"), "E2E타인");
   await other.goto(roomUrl);
   await expect(other.locator("p.error")).toContainText(/권한/);
+});
+
+
+test("사진: 매물·지도·상세에 생성 시연 이미지를 표시한다", async ({ page }) => {
+  await page.goto("/");
+  const cover = page.locator(".listing-photo img").first();
+  await expect(cover).toBeVisible();
+  await expect(cover).toHaveAttribute("src", /\/images\/demo-living-/);
+  await expect.poll(() => cover.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  await page.getByRole("button", { name: "지도형" }).click();
+  const marker = page.locator(".leaflet-marker-icon").first();
+  await expect(marker).toBeVisible({ timeout: 20000 });
+  await marker.dispatchEvent("click");
+  await expect(page.locator(".map-selection-photo")).toBeVisible();
+  await page.goto("/listings/s09");
+  await expect(page.locator(".detail-primary-photo img")).toBeVisible();
+  await expect(page.getByText("반려동물 가능", { exact: true }).first()).toBeVisible();
+});
+
+test("등록: 매매 설비와 임대차 옵션 후보가 전환된다", async ({ page }) => {
+  await page.goto("/register");
+  await expect(page.getByRole("button", { name: /침대/ })).toBeVisible();
+  await page.getByLabel("거래유형").selectOption("매매");
+  await expect(page.getByRole("button", { name: /확장형/ }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /침대/ })).toHaveCount(0);
+});
+
+
+test("등록: 서로 배타적인 옵션을 동시에 설정하지 않는다", async ({ page }) => {
+  await page.goto("/register");
+  await page.getByRole("button", { name: /반려동물 가능/ }).click();
+  await expect(page.getByRole("button", { name: /반려동물 가능/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: /반려동물 불가/ }).click();
+  await expect(page.getByRole("button", { name: /반려동물 가능/ })).toHaveAttribute("aria-pressed", "false");
+  await page.getByLabel("거래유형").selectOption("매매");
+  await page.getByRole("button", { name: /확장형/, exact: false }).first().click();
+  await expect(page.getByRole("button", { name: /비확장형/ })).toHaveAttribute("aria-pressed", "false");
+});
+
+test("반응형: 좁은 화면에서도 상세·지도·등록에 가로 넘침이 없다", async ({ page }) => {
+  for (const width of [320, 390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 780 });
+    for (const path of ["/", "/listings/s09", "/register"]) {
+      await page.goto(path);
+      await expect(page.locator("main")).toBeVisible();
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `${path} at ${width}px`).toBeLessThanOrEqual(1);
+    }
+  }
 });

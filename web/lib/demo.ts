@@ -70,7 +70,7 @@ export function isDemoListing(l: DemoListing | null): boolean {
 export function priceText(l: DemoListing): string {
   if (l.tradeType === "매매") return `매매 ${l.salePrice.toLocaleString()}만원`;
   if (l.tradeType === "전세") return `전세 ${l.deposit.toLocaleString()}만원`;
-  return `${l.deposit.toLocaleString()}/${l.rent.toLocaleString()}만원`;
+  return `보증금 ${l.deposit.toLocaleString()}만원 / 월세 ${l.rent.toLocaleString()}만원`;
 }
 
 export function scenarioFor(l: DemoListing): Scenario {

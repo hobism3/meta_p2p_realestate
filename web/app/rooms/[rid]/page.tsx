@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../../../lib/client-auth";
 import { hasNewProposalCue } from "../../../lib/agent";
+import { groupListingFeatures, initialTerms } from "../../../lib/listing-presentation";
 import {
   invokeAgent,
   invokeZiptalk,
@@ -537,10 +538,14 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               <button className="btn ghost" onClick={() => setPanelOpen(false)}>닫기</button>
             </div>
             <h3>거래 현황</h3>
-            <p className="meta">제안은 양측이 모두 동의해야 확정됩니다. AI 시연 동의는 실제 계약이 아닙니다.</p>
-            <h4>가격</h4>
+            <p className="meta">등록 조건과 협상 조건을 구분합니다. 동일한 조건 버전에 양측이 동의해야 시연 합의로 표시됩니다.</p>
+            <h4>{meta?.listing?.tradeType === "매매" ? "매매 가격" : meta?.listing?.tradeType === "전세" ? "전세 조건" : "월세 조건"}</h4>
+            {meta?.listing ? <div className="deal-terms-baseline" aria-label="매물 등록 조건">
+              {initialTerms(meta.listing as { tradeType: "매매" | "전세" | "월세"; salePrice: number; deposit: number; rent: number }).map(term => (
+                <div key={term.label} className="deal-terms-field"><small>{term.label}</small><strong>{term.value}</strong></div>
+              ))}
+            </div> : null}
             <ul>
-              <HistoryRow name="최초가" cond={findC("최초가")} onEvidence={scrollToEvidence} />
               {(meta?.listing?.tradeType ?? "매매") === "매매" ? (
                 <>
                   <HistoryRow name="매수 희망가" cond={findC("매수 희망가")} onEvidence={scrollToEvidence} />
@@ -577,7 +582,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
                 </p>
               );
             })()}
-            <h4>일정</h4>
+            <h4>일정 · 방문</h4>
             {visits.length === 0 ? (
               <ul>
                 <AgreementRow name="방문일" cond={findC("방문일")} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
@@ -607,11 +612,19 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
                 <AgreementRow key={n} name={n} cond={findC(n)} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
               ))}
             </ul>
-            <h4>조건</h4>
+            <h4>{meta?.listing?.tradeType === "매매" ? "설비 · 공간 특성" : "옵션 · 생활 조건"}</h4>
+            {meta?.listing?.options?.length ? (() => {
+              const groups = groupListingFeatures(meta.listing.options);
+              return <div className="deal-options-summary">
+                {groups.facilities.length ? <div><small>가전·설비</small><div className="feature-chips">{groups.facilities.map(v => <span key={v}>{v}</span>)}</div></div> : null}
+                {groups.structure.length ? <div><small>시설·공간</small><div className="feature-chips">{groups.structure.map(v => <span key={v}>{v}</span>)}</div></div> : null}
+                {groups.lifestyle.length ? <div><small>생활 조건</small><div className="feature-chips">{groups.lifestyle.map(v => <span key={v}>{v}</span>)}</div></div> : null}
+              </div>;
+            })() : <p className="meta">등록된 옵션이 없습니다.</p>}
+            <p className="meta">아래는 대화 중에 새로 협의한 옵션이며, 매물의 기본 옵션과 구별됩니다.</p>
             <ul>
-              {["옵션", "수리 요청"].map((n) => (
-                <AgreementRow key={n} name={n} cond={findC(n)} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
-              ))}
+              <AgreementRow name="옵션" cond={findC("옵션")} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
+              <AgreementRow name="수리 요청" cond={findC("수리 요청")} propData={propData} me={me} onDecide={onDecide} onEvidence={scrollToEvidence} />
             </ul>
             {unconfirmed.length > 0 ? (
               <>

@@ -51,7 +51,7 @@ export const EMPTY_FILTERS: Filters = {
 export function filterListings(listings: Listing[], f: Filters): Listing[] {
   const q = f.query.trim().toLowerCase();
   return listings.filter((l) => {
-    if (q && !(l.title + " " + l.address + " " + l.description).toLowerCase().includes(q)) return false;
+    if (q && !(l.title + " " + l.address + " " + l.description + " " + l.options.join(" ")).toLowerCase().includes(q)) return false;
     if (f.tradeType && l.tradeType !== f.tradeType) return false;
     if (f.depositMax !== null && l.deposit > f.depositMax) return false;
     if (f.rentMax !== null && l.rent > f.rentMax) return false;
@@ -64,7 +64,7 @@ export function filterListings(listings: Listing[], f: Filters): Listing[] {
 export function formatPrice(l: Listing): string {
   if (l.tradeType === "매매") return `매매 ${l.salePrice.toLocaleString()}만원`;
   if (l.tradeType === "전세") return `전세 ${l.deposit.toLocaleString()}만원`;
-  return `${l.deposit.toLocaleString()}/${l.rent.toLocaleString()}만원`;
+  return `보증금 ${l.deposit.toLocaleString()}만원 / 월세 ${l.rent.toLocaleString()}만원`;
 }
 
 const V = (identity: boolean, ownershipDoc: boolean): Verification => ({ identity, ownershipDoc });
@@ -89,7 +89,7 @@ export const SEED_LISTINGS: Listing[] = [
   L("s06", "초역세권 소형 투룸", "서울 관악구 신림로 110 (가상)", 37.4848, 126.9295, "월세", 3000, 95, 0, 11, 45, "2026-12-10", ["에어컨", "냉장고", "세탁기", "엘리베이터", "주차"], "출퇴근 편한 위치가 장점입니다.", "강남아님", V(true, true)),
   L("s07", "가성비 원룸", "서울 관악구 난곡로 40 (가상)", 37.4810, 126.9250, "월세", 300, 55, 0, 5, 19, "즉시 입주", ["냉장고"], "옵션은 적지만 가격이 저렴합니다.", "가성비", V(false, false)),
   L("s08", "신혼부부 추천 쓰리룸", "서울 관악구 호암로 80 (가상)", 37.4805, 126.9285, "전세", 25000, 0, 0, 10, 66, "2027-01-05", ["에어컨", "냉장고", "세탁기", "주차", "베란다"], "넓은 거실이 장점입니다.", "신혼집", V(true, true)),
-  L("s09", "반려동물 가능 원룸", "서울 관악구 신림로 130 (가상)", 37.4835, 126.9320, "월세", 1000, 72, 0, 8, 24, "2026-11-25", ["에어컨", "냉장고", "세탁기"], "소형견 1마리까지 가능합니다.", "펫홈", V(true, false)),
+  L("s09", "반려동물 가능 원룸", "서울 관악구 신림로 130 (가상)", 37.4835, 126.9320, "월세", 1000, 72, 0, 8, 24, "2026-11-25", ["에어컨", "냉장고", "세탁기", "반려동물 가능"], "소형견 1마리까지 가능합니다.", "펫홈", V(true, false)),
   L("s10", "고층 전망 투룸", "서울 관악구 신림로 150 (가상)", 37.4870, 126.9275, "월세", 5000, 110, 0, 15, 50, "2026-12-20", ["에어컨", "냉장고", "세탁기", "건조기", "엘리베이터"], "고층이라 뻥 뚫립니다.", "전망좋", V(true, true)),
   L("s11", "단기 가능 원룸", "서울 관악구 난곡로 55 (가상)", 37.4815, 126.9260, "월세", 800, 68, 0, 7, 22, "협의 가능", ["에어컨", "냉장고"], "6개월 단기 계약 가능합니다.", "단기집", V(false, false)),
   L("s12", "역 앞 오피스텔형", "서울 관악구 신림로 105 (가상)", 37.4845, 126.9298, "월세", 2000, 90, 0, 13, 28, "2026-11-30", ["에어컨", "냉장고", "세탁기", "엘리베이터"], "보안과 관리가 잘 됩니다.", "오피스", V(true, false)),
@@ -103,8 +103,8 @@ export const SEED_LISTINGS: Listing[] = [
   L("s20", "넓은 1.5룸", "서울 관악구 호암로 65 (가상)", 37.4828, 126.9275, "월세", 1600, 74, 0, 9, 33, "2026-12-01", ["에어컨", "냉장고"], "짐 많은 분께 좋습니다.", "넓은집", V(false, false)),
   L("s21", "신림역 초역세권 매매 투룸", "서울 관악구 신림로 108 (가상)", 37.4846, 126.9293, "매매", 0, 0, 45000, 11, 45, "협의 가능", ["에어컨", "냉장고", "세탁기", "엘리베이터"], "역세권 실거주용입니다. 합성 시연 매물입니다.", "매매집", V(false, false)),
   L("s22", "남향 매매 원룸", "서울 관악구 난곡로 60 (가상)", 37.4813, 126.9258, "매매", 0, 0, 28000, 7, 24, "2026-12-01", ["에어컨", "냉장고"], "첫 집 마련용으로 적당합니다. 합성 시연 매물입니다.", "첫집", V(false, false)),
-  L("s23", "신축급 매매 쓰리룸", "서울 관악구 호암로 85 (가상)", 37.4802, 126.9288, "매매", 0, 0, 72000, 12, 68, "2027-01-10", ["에어컨", "냉장고", "세탁기", "주차", "베란다"], "가족 실거주용입니다. 합성 시연 매물입니다.", "내집", V(false, false)),
-  L("s24", "급매 매매 투룸", "서울 관악구 신림로 125 (가상)", 37.4838, 126.9315, "매매", 0, 0, 39000, 9, 47, "협의 가능", ["에어컨", "세탁기"], "가격 협의 가능합니다. 합성 시연 매물입니다.", "급매", V(false, false)),
+  L("s23", "신축급 매매 쓰리룸", "서울 관악구 호암로 85 (가상)", 37.4802, 126.9288, "매매", 0, 0, 72000, 12, 68, "2027-01-10", ["시스템에어컨", "확장형", "주차", "베란다"], "가족 실거주용입니다. 합성 시연 매물입니다.", "내집", V(false, false)),
+  L("s24", "급매 매매 투룸", "서울 관악구 신림로 125 (가상)", 37.4838, 126.9315, "매매", 0, 0, 39000, 9, 47, "협의 가능", ["시스템에어컨", "비확장형", "세탁기"], "가격 협의 가능합니다. 합성 시연 매물입니다.", "급매", V(false, false)),
 ];
 
 export interface DealMessage {

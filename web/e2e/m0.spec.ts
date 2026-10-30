@@ -215,6 +215,18 @@ test("지도: 마커 클릭 시 매물과 연동된다", async ({ page }) => {
   await expect(page.locator(".leaflet-tooltip").first()).toBeVisible();
 });
 
+test("지도: 선택 마커와 매물 상세 링크가 연결되고 합성 좌표가 안내된다", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "지도형" }).click();
+  await expect(page.getByText(/실제 주소·건물 위치가 아닙니다/)).toBeVisible();
+  const marker = page.locator(".leaflet-marker-icon").first();
+  await expect(marker).toBeVisible({ timeout: 20000 });
+  await marker.dispatchEvent("click");
+  const card = page.locator(".map-selection");
+  await expect(card).toBeVisible();
+  await expect(card).toHaveAttribute("href", /\/listings\//);
+});
+
 test("지도: 리스트 클릭 시 상세로 이동한다", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "지도형" }).click();

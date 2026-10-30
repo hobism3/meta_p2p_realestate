@@ -301,3 +301,41 @@ test("반응형: 좁은 화면에서도 상세·지도·등록에 가로 넘침�
     }
   }
 });
+
+
+test("등록: 가상 등기 PDF를 AI 초안으로 불러오고 등록 전 검토한다", async ({ page }) => {
+  await loginAs(page, uid("e2e-registry-draft"), "등기시연");
+  const synthetic = await page.request.get("/api/listings/import-registry/sample");
+  expect(synthetic.status()).toBe(200);
+  const pdf = await synthetic.body();
+  expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  await page.goto("/register");
+  await expect(page.getByRole("heading", { name: "등기 문서로 등록 초안 만들기" })).toBeVisible();
+  await page.locator("#registry-pdf").setInputFiles({ name: "synthetic.pdf", mimeType: "application/pdf", buffer: pdf });
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "AI로 매물 정보 추출하기" }).click();
+  await expect(page.getByText("가상 샘플 Mock")).toBeVisible();
+  await expect(page.getByText("43.21", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "비어 있는 등록 항목에 반영하기" }).click();
+  await expect(page.locator("#address")).toHaveValue("100 Sillim-ro, Gwanak-gu, Seoul (synthetic)");
+  await expect(page.locator("#area")).toHaveValue("43.21");
+  await expect(page.locator("#rent")).toHaveValue("");
+  await expect(page.getByText(/적용해도 매물은 게시되지 않습니다/)).toBeVisible();
+});
+
+test("등록: 민감정보 가림 동의 없이는 PDF를 분석하지 않는다", async ({ page }) => {
+  await page.goto("/register");
+  const synthetic = await page.request.get("/api/listings/import-registry/sample");
+  await page.locator("#registry-pdf").setInputFiles({ name: "synthetic.pdf", mimeType: "application/pdf", buffer: await synthetic.body() });
+  await expect(page.getByRole("button", { name: "AI로 매물 정보 추출하기" })).toBeDisabled();
+});
+
+
+test("등록: 현재 제공자는 Mock이라고 명시하고 실모델 추출을 주장하지 않는다", async ({ page }) => {
+  const response = await page.request.get("/api/listings/import-registry");
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toMatchObject({ provider: "mock", enabled: true, sampleOnly: true });
+  await page.goto("/register");
+  await expect(page.getByText(/오프라인 Mock 시연/)).toBeVisible();
+  await expect(page.getByText(/실제 Meta 모델 추출이 아닙니다/)).toBeVisible();
+});

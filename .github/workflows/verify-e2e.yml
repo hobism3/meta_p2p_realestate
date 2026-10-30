@@ -19,6 +19,9 @@ jobs:
       SUPABASE_JWT_SECRET: test-e2e-secret
       RATE_LIMIT_PER_MIN: "1000"
       ALLOW_DEV_AUTH: "true"
+      # Public educational normal.pdf acceptance; enabled only in PR #4.
+      # Main and all other PRs are independent of the external sample URL.
+      REGISTRY_PUBLIC_SAMPLE_E2E: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 4 && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

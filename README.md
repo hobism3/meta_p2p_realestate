@@ -31,6 +31,12 @@ AI landlord: "네, 보증금 5,000만원과 월세 65만원으로 조정 가능�
 
 **Important:** The AI counterpart is synthetic; demo consent is not a legally binding signature or a real-life reservation. Actual Meta outputs can vary. The dialogue above is illustrative, not a guarantee of identical model responses.
 
+## Seller-side convenience: Meta-assisted listing draft
+
+Owners and landlords can now open **매물 등록** and try the optional **등기 PDF → AI 등록 초안** experience. Muse Spark can extract document-supported address and explicitly identified unit area to an editable preview; the user must still provide prices, management fee, move-in and options and press the final listing-submit button. A completely fictional PDF is downloadable for a no-credit Mock demonstration.
+
+**Privacy and integrity:** The demo warns against uploading real unredacted title records. The actual Meta PDF path requires server configuration and explicit user consent; no PDF is stored by the app. Extraction is **not** ownership verification or automatic publication. See [Document-to-Listing technical guide](docs/REGISTRY_AI_IMPORT.md).
+
 ## Why two AI roles?
 
 | Component | Responsibility |
@@ -67,6 +73,7 @@ Start with the Mock provider; real Meta calls require server-only `AGENT_PROVIDE
 - [Architecture and Meta model integration](docs/ARCHITECTURE.md)
 - [Tests, limitations and live-model proof](docs/VERIFICATION.md)
 - [Submission-ready copy](docs/SUBMISSION_TEXT.md)
+- [Meta-assisted document-to-listing draft (seller flow)](docs/REGISTRY_AI_IMPORT.md)
 
 Historical roadmap and initial product specs are retained for project history; use these linked documents for the current state.
 

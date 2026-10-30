@@ -59,6 +59,8 @@ export function brokerSnapshot(input: {
   const finalPrice = byName.get(finalName);
   const offers = trade === "매매" ? ["매수 희망가", "매도 제안가"]
     : ["임차 희망 조건", "임대 제안 조건"];
+  const wishText = byName.get(offers[0])?.value ?? "";
+  const offeredText = byName.get(offers[1])?.value ?? "";
   const hasPriceTalk = offers.some((name) => !!byName.get(name)?.value);
   const priceStatus: BrokerState = confirmed(finalPrice) ? "checked"
     : finalPrice?.value ? "pending" : hasPriceTalk ? "talking" : "not-started";
@@ -111,10 +113,16 @@ export function brokerSnapshot(input: {
       category = "price";
       quip = priceStatus === "checked"
         ? "어머, 금액 조건은 확인됐네요! 남은 일정도 제가 챙겨볼게요."
-        : "양쪽에서 금액 이야기가 오갔네요. 제가 메모했어요! 아직 합의됐다고 보긴 이르죠.";
+        : wishText && offeredText
+          ? "어머, 원하신 건 " + wishText + ", 상대 제안은 " + offeredText + "이네요! 아직 합의 전이니 같이 조율해 봐요."
+          : wishText || offeredText
+            ? "어머, " + (wishText || offeredText) + " 이야기가 나왔네요! 아직 상대방 확인이 남아 있어요."
+            : "양쪽에서 금액 이야기가 오갔네요. 제가 메모했어요! 아직 합의됐다고 보긴 이르죠.";
     } else if (/옵션|반려|고양이|강아지|입주|관리비|수리/.test(spoken)) {
       category = "living";
-      quip = "이런 생활 조건이 은근 중요하거든요! 나중에 놓치지 않게 같이 챙겨봐요.";
+      quip = hasPetQuestion
+        ? "어머, 반려동물 이야기도 나왔네요! 허용 여부뿐 아니라 세부 조건도 같이 확인해 두면 좋아요."
+        : "이런 생활 조건이 은근 중요하거든요! 나중에 놓치지 않게 같이 챙겨봐요.";
     } else {
       category = "general";
       quip = "아유, 중요한 얘기는 제가 잘 적어두고 있어요. 지금 정리한 메모를 같이 볼까요?";

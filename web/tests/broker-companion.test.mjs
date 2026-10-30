@@ -43,7 +43,9 @@ describe("동네 부동산 친구 집톡이", () => {
     });
     assert.equal(s.category, "price");
     assert.equal(s.checkpoints[0].status, "talking");
-    assert.match(s.quip, /아직 합의됐다고/);
+    assert.match(s.quip, /보증금 3,000만원\/월세 60만원/);
+    assert.match(s.quip, /보증금 3,000만원\/월세 72만원/);
+    assert.match(s.quip, /아직 합의 전/);
     assert.match(s.nextStep.prompt, /가격 조건/);
   });
   it("10월 31일 오후 3시 방문 제안: 시간과 미확정 상태를 정확히 말한다", () => {

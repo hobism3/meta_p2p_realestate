@@ -78,6 +78,8 @@ describe("가격 표기", () => {
     const jeonse = SEED_LISTINGS.find((l) => l.tradeType === "전세");
     const wolse = SEED_LISTINGS.find((l) => l.tradeType === "월세");
     assert.ok(formatPrice(jeonse).startsWith("전세"));
+    assert.ok(formatPrice(wolse).includes("보증금"));
+    assert.ok(formatPrice(wolse).includes("월세"));
     assert.ok(formatPrice(wolse).includes("/"));
   });
   it("매매는 매매가로 표기한다", () => {

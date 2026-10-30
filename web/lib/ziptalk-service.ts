@@ -511,14 +511,14 @@ export function analyzeMock(
       if ((!w || !w.value) && (!o || !o.value) && (!fin || !fin.value)) {
         const f0 = current.get("최초가");
         if (f0 && f0.value) {
-          return { upserts: [], intervene: true, bubble: `최초가는 ${f0.value}입니다.` };
+          return { upserts: [], intervene: true, bubble: `${tradeType === "월세" ? "기존 보증금과 월세" : tradeType === "전세" ? "기존 전세보증금" : "등록 매매가"}는 ${f0.value}입니다.` };
         }
         // 가격 질문은 조건을 만들지 않고 안내만 한다. 제안이 나와야 기록된다.
         return { upserts: [], intervene: true, bubble: "가격은 아직 확인되지 않았어요. 희망 조건을 말씀해 보세요." };
       }
       const bits: string[] = [];
       const f = current.get("최초가");
-      if (f && f.value) bits.push(`최초가는 ${f.value}`);
+      if (f && f.value) bits.push(`${tradeType === "월세" ? "기존 보증금과 월세" : tradeType === "전세" ? "기존 전세보증금" : "등록 매매가"}는 ${f.value}`);
       if (tradeType === "매매") {
         if (w && w.value) bits.push(`매수 희망가는 ${w.value}`);
         if (o && o.value) bits.push(`매도 제안은 ${o.value}`);
@@ -701,6 +701,9 @@ export function buildZiptalkInput(
     `[지금까지 조건]${prevLines.length > 0 ? "" : " 없음"}`,
     ...prevLines,
     "[규칙]",
+    "- 최초가는 과거 저장용 필드명이다. 월세에서는 사용자에게 기존 보증금·기존 월세로, 전세는 기존 전세보증금으로, 매매는 등록 매매가로 설명한다. 응답에서 최초가라는 단어를 쓰지 마.",
+    "- 반려동물(가능/불가)은 옵션·생활 조건이며 가격 또는 최초가가 아니다. 에어컨·침대·가전은 제공 옵션, 시스템에어컨·확장/비확장은 설비/공간 특성이다. 질문만으로 허용 여부를 사실로 단정하지 마.",
+    "- [매물] 제공옵션과 이미 정리된 값을 우선 사용하되, 매물 기본 옵션은 새로운 협상 합의 카드로 중복 생성하지 마.",
     tradeType === "매매"
       ? "- 조건 이름은 최초가·매수 희망가·매도 제안가·최종 매매가·계약금·입주일·방문일·계약일·잔금일·인도일·옵션·수리 요청·관리비만 쓴다. 매물 정가는 최초가, 사람의 희망은 매수 희망가, AI의 제안은 매도 제안가로 나눈다. 양측이 같은 값으로 맞췄을 때만 최종 매매가를 낸다. 희망·제안에는 동의 버튼이 없으며 최종 매매가에만 있다."
       : tradeType === "전세"
@@ -1037,6 +1040,7 @@ async function executeZiptalk(
         매물명: listing.title,
         입주일: listing.moveIn || "협의 가능",
         면적: `${listing.area}㎡`,
+        제공옵션: listing.options?.join(", ") || "미기재",
       };
       if (tradeType === "매매") facts["가격"] = `${listing.salePrice.toLocaleString()}만원`;
       else if (tradeType === "전세") facts["전세보증금"] = `${listing.deposit.toLocaleString()}만원`;

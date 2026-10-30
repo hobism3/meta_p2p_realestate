@@ -3,7 +3,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildAgentInput, formatDealState, resolveModel, resolveProvider } from "../lib/agent-service.ts";
-import { hasNewProposalCue } from "../lib/agent.ts";
+import { hasNewProposalCue, draftReply } from "../lib/agent.ts";
+import { scenarioFor } from "../lib/demo.ts";
 import {
   callMeta,
   META_DEFAULT_MODEL,
@@ -267,5 +268,21 @@ describe("페르소나 프롬프트", () => {
       { author_type: "ziptalk", author: "집톡이", text: "정리" },
     ]);
     assert.deepEqual(input.messages[1], { role: "assistant", content: "[집톡이] 정리" });
+  });
+});
+
+
+describe("옵션 기반 반려동물 문의", () => {
+  it("시연 매물의 반려동물 옵션을 가격과 구분해 답한다", () => {
+    const pet = SEED_LISTINGS.find((l) => l.id === "s09");
+    const nonPet = SEED_LISTINGS.find((l) => l.id === "s01");
+    assert.ok(pet && nonPet);
+    const mk = (listing) => ({ ...listing, ownerId: "" });
+    const ok = draftReply(scenarioFor(mk(pet)), "반려동물 가능한가요?");
+    assert.match(ok.text, /반려동물 가능/);
+    assert.equal(ok.proposal, null);
+    const unconfirmed = draftReply(scenarioFor(mk(nonPet)), "강아지 키워도 되나요?");
+    assert.match(unconfirmed.text, /확인이 필요/);
+    assert.equal(unconfirmed.proposal, null);
   });
 });

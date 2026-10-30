@@ -331,3 +331,11 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
 
 .registry-mode-note { margin:12px 0; padding:11px 13px; color:#2c587d; background:#eaf4ff; border:1px solid #cfdef3; border-radius:10px; font-size:12px; line-height:1.6; }
 .registry-mode-note strong { color:#20529a; }
+
+
+.registry-progress{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:16px 0;padding:13px 15px;background:#eaf4ff;border:1px solid #bfd8fb;border-radius:12px;color:#22599a;font-size:13px}
+.registry-progress span:last-of-type{margin-left:auto;font-variant-numeric:tabular-nums}
+.registry-progress p{flex-basis:100%;margin:0;color:#66758b;font-size:12px}
+.registry-spinner{height:16px;width:16px;border:2px solid #b4d1fb;border-top-color:#246bf4;border-radius:50%;animation:registry-spin .8s linear infinite}
+@keyframes registry-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.registry-spinner{animation:none}}

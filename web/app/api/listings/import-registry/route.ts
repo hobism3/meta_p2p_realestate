@@ -65,7 +65,7 @@ export function GET(): Response {
  * Ephemeral document extraction only; no storage, no publish, no ownership assertion.
  * Deliberately separate from 256 KiB guardWrite because an inline PDF needs ~2 MiB.
  */
-export async function POST(req: Request): Promise<Response> {
+async function processImport(req: Request): Promise<Response> {
   if (process.env.READ_ONLY === "true") return json({ error: "읽기 전용 모드" }, 403);
   const token = process.env.WRITE_TOKEN;
   if (token && req.headers.get("x-write-token") !== token) return json({ error: "인증 필요" }, 401);
@@ -126,4 +126,48 @@ export async function POST(req: Request): Promise<Response> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Opt-in progress stream. JSON consumers retain their original response contract. */
+export async function POST(req: Request): Promise<Response> {
+  if (!req.headers.get("accept")?.includes("application/x-ndjson")) return processImport(req);
+  const encoder = new TextEncoder();
+  let finished = false;
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  const started = Date.now();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const emit = (event: Record<string, unknown>) => {
+        if (!finished) controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+      };
+      emit({ type: "status", message: "서버 연결 완료 · 문서 검증 중" });
+      heartbeat = setInterval(() => {
+        emit({ type: "status", message: "AI 문서 분석 진행 중", elapsedSeconds: Math.round((Date.now() - started) / 1000) });
+      }, 5000);
+      try {
+        const response = await processImport(req);
+        const body = await response.json();
+        emit({ type: "result", status: response.status, body });
+      } catch (error) {
+        console.error("[registry-import] unexpected:", error instanceof Error ? error.name : "unknown");
+        emit({ type: "result", status: 500, body: { error: "문서 분석 중 서버 오류가 발생했습니다." } });
+      } finally {
+        finished = true;
+        if (heartbeat) clearInterval(heartbeat);
+        controller.close();
+      }
+    },
+    cancel() {
+      finished = true;
+      if (heartbeat) clearInterval(heartbeat);
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store, no-transform",
+      "X-Accel-Buffering": "no",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
 }

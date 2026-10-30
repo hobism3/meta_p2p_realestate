@@ -16,6 +16,8 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
   const [file, setFile] = useState<File | null>(null);
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState("");
+  const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState("");
   const [result, setResult] = useState<DraftResponse | null>(null);
   const [applied, setApplied] = useState(false);
@@ -49,28 +51,73 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
       return;
     }
     setBusy(true);
+    setProgress("PDF 읽는 중");
+    setElapsed(0);
+    const started = Date.now();
+    const clock = window.setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
     setError("");
     setResult(null);
     setApplied(false);
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      let binary = "";
-      for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...Array.from(bytes.subarray(i, i + 8192)));
+      const parts: string[] = [];
+      for (let i = 0; i < bytes.length; i += 8192) parts.push(String.fromCharCode(...Array.from(bytes.subarray(i, i + 8192))));
+      setProgress("서버로 전송 중");
       const res = await fetch("/api/listings/import-registry", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/x-ndjson",
           ...(process.env.NEXT_PUBLIC_WRITE_TOKEN ? { "x-write-token": process.env.NEXT_PUBLIC_WRITE_TOKEN } : {}),
           ...authHeaders(),
         },
-        body: JSON.stringify({ filename: file.name, pdf_base64: btoa(binary), consent }),
+        body: JSON.stringify({ filename: file.name, pdf_base64: btoa(parts.join("")), consent }),
       });
-      const body = await res.json() as DraftResponse;
-      if (!res.ok || !body.draft) throw new Error(body.error ?? "문서 분석에 실패했습니다.");
-      setResult(body);
+      if (!res.ok || !res.body || !res.headers.get("content-type")?.includes("application/x-ndjson")) {
+        const fallback = await res.json().catch(() => null) as DraftResponse | null;
+        if (!res.ok || !fallback?.draft) throw new Error(fallback?.error ?? "문서 분석 서버가 정상 응답하지 않았습니다.");
+        setResult(fallback);
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let pending = "";
+      let completed = false;
+      const handle = (line: string) => {
+        if (!line.trim()) return;
+        const event = JSON.parse(line) as { type: string; message?: string; body?: DraftResponse; status?: number };
+        if (event.type === "status" && event.message) setProgress(event.message);
+        if (event.type === "result") {
+          completed = true;
+          if ((event.status ?? 500) >= 400 || !event.body?.draft) throw new Error(event.body?.error ?? "문서 분석에 실패했습니다.");
+          setResult(event.body);
+          setProgress("분석 완료 · 추출 결과 확인");
+        }
+      };
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          pending += decoder.decode(value, { stream: true });
+          let index: number;
+          while ((index = pending.indexOf("\n")) >= 0) {
+            handle(pending.slice(0, index));
+            pending = pending.slice(index + 1);
+          }
+        }
+        pending += decoder.decode();
+        if (pending.trim()) handle(pending);
+        if (!completed) throw new Error("서버 연결이 분석 도중 종료되었습니다. 다시 시도해 주세요.");
+      } finally {
+        reader.releaseLock();
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "문서 분석에 실패했습니다.");
+      const message = e instanceof Error ? e.message : "";
+      setError(/Failed to fetch|Load failed|NetworkError|fetch failed/i.test(message)
+        ? "서버와 연결할 수 없습니다. 네트워크 상태를 확인해 주세요. 유료 분석이 중복될 수 있어 자동 재시도하지 않습니다."
+        : (message || "문서 분석에 실패했습니다."));
     } finally {
+      window.clearInterval(clock);
       setBusy(false);
     }
   };
@@ -125,6 +172,7 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
         <span>민감정보를 가린 시연 문서이며, Meta 모드에서는 분석을 위해 PDF가 Meta Model API로 1회 전송됨을 이해하고 동의합니다. 분석 결과는 사람이 확인합니다.</span>
       </label>
       <button className="btn" onClick={analyze} disabled={busy || !file || !consent}>{busy ? (capability?.sampleOnly ? "가상 PDF 확인 중..." : "Meta AI 문서 분석 중...") : "AI로 매물 정보 추출하기"}</button>
+      {busy ? <div className="registry-progress" role="status" aria-live="polite"><span className="registry-spinner" aria-hidden="true" /><strong>{progress || "문서 분석 중"}</strong><span>{elapsed}초 경과</span><p>Meta 분석에는 수십 초가 걸릴 수 있습니다. 페이지를 닫지 마세요.</p></div> : null}
       {error ? <p className="error" role="alert">{error}</p> : null}
       {draft ? <div className="registry-review">
         <div className="registry-review-head"><h3>추출 결과 미리보기</h3><span className="pill">{result?.provider === "meta" ? "Meta Muse Spark" : "가상 샘플 Mock"}</span></div>

@@ -20,6 +20,7 @@ export default function MapView({
   const markersRef = useRef<Map<string, any>>(new Map());
   const [ready, setReady] = useState(false);
   const selected = useMemo(() => listings.find((l) => l.id === selectedId), [listings, selectedId]);
+  const unlocatedCount = listings.filter((l) => l.editable).length;
 
   useEffect(() => {
     let disposed = false;
@@ -52,7 +53,9 @@ export default function MapView({
     const { L, map } = mapRef.current;
     layerRef.current.clearLayers();
     markersRef.current.clear();
-    const valid = listings.filter((l) => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Math.abs(l.lat) <= 90 && Math.abs(l.lng) <= 180);
+    // Custom listings currently have only a DB default center coordinate, not an address-geocoded location.
+    // Exclude them from the map to avoid presenting unrelated addresses as one physical building.
+    const valid = listings.filter((l) => !l.editable && Number.isFinite(l.lat) && Number.isFinite(l.lng) && Math.abs(l.lat) <= 90 && Math.abs(l.lng) <= 180);
     for (const l of valid) {
       const marker = L.marker([l.lat, l.lng]).addTo(layerRef.current);
       marker.bindTooltip(formatPrice(l), { direction: "top", offset: [0, -9] });
@@ -79,10 +82,10 @@ export default function MapView({
     <div className="map-shell">
       <div className="map-caption">
         <span className="map-caption-dot" aria-hidden="true" />
-        <span>가상 좌표로 표시된 시연 매물입니다. 실제 주소·건물 위치가 아닙니다.</span>
+        <span>시연 매물은 근사 좌표이며 실제 주소·건물 위치가 아닙니다.{unlocatedCount > 0 ? ` 위치 확인이 안 된 등록 매물 ${unlocatedCount}건은 목록에서 확인하세요.` : ""}</span>
       </div>
       <div ref={node} className="mapbox" role="application" aria-label="가상 매물 위치 지도" />
-      {selected ? (
+      {selected && !selected.editable ? (
         <a href={`/listings/${selected.id}`} className="map-selection">
           <span className="listing-type">{selected.tradeType}</span>
           <strong>{selected.title}</strong>

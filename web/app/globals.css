@@ -222,3 +222,67 @@ html { scroll-behavior: smooth; }
  .drawer.open { box-shadow: 0 -14px 42px rgba(0,0,0,.2); }
 }
 @media(prefers-reduced-motion:reduce) { html { scroll-behavior: auto; } }
+
+
+/* Final polish: fluid type, controlled widths, consistent map/detail layout. */
+:root { --bg: #f7f8f7; --ink: #23352e; --muted: #65746e; --line: #e4eae6; --accent: #165f49; --warn: #a76737; }
+body { overflow-x: clip; letter-spacing: -.012em; }
+h1,h2,h3,h4 { text-wrap: balance; overflow-wrap: break-word; letter-spacing: -.035em; }
+p,li,td,th,button,a,span { overflow-wrap: break-word; }
+a { text-underline-offset: 3px; }
+.price { font-size: clamp(17px, 2vw, 21px); letter-spacing: -.04em; }
+.card { box-shadow: 0 1px 2px rgba(17,50,34,.025); }
+.search-panel .searchbar select,.search-panel .searchbar input { min-width: 0; }
+.search-panel .viewtoggle button { flex: 1 1 150px; }
+.listings-grid .listing { display: flex; flex-direction: column; gap: 5px; }
+.listings-grid .listing h3 { line-height: 1.42; }
+.listings-grid .listing .photo { height: 154px; flex: none; }
+.listings-grid .listing .meta { font-size: 13px; line-height: 1.55; }
+.layout > *, .deal-layout > *, .side, .deal-chat, .drawer { min-width: 0; }
+.layout .side .listing { padding: 15px; }
+.layout .side .listing:focus-visible { outline-offset: 1px; }
+.map-shell { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: #f0f5f1; }
+.map-shell .mapbox,.map-shell .leaflet-container { height: min(62vh, 620px); min-height: 380px; border: 0; border-radius: 0; }
+.map-caption { display: flex; align-items: center; gap: 9px; padding: 11px 14px; color: #475c51; background: #fff; font-size: 12px; line-height: 1.5; position: relative; z-index: 1; }
+.map-caption-dot { width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; background: #d8a466; }
+.map-selection { position: absolute; z-index: 510; bottom: 14px; left: 14px; right: 14px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; background: rgba(255,255,255,.98); border: 1px solid #dbe6de; box-shadow: 0 8px 28px rgba(17,50,34,.18); border-radius: 14px; padding: 14px; color: var(--ink); text-decoration: none; }
+.map-selection strong { flex: 1 1 200px; font-size: 15px; }
+.map-selection > span:nth-last-child(2) { font-weight: 800; }
+.map-selection-cta { width: 100%; text-align: right; color: var(--accent); font-weight: 700; font-size: 12px; }
+.map-selection:hover,.map-selection:focus-visible { border-color: var(--accent); }
+.map-tip { position: absolute; bottom: 12px; left: 14px; right: 14px; z-index: 500; background: rgba(255,255,255,.93); padding: 8px 12px; border-radius: 10px; color: var(--muted); font-size: 12px; text-align: center; pointer-events: none; }
+.map-shell .leaflet-tooltip { border: 1px solid #b9d2c5; border-radius: 9px; font-weight: 700; color: #1a5b44; padding: 7px 11px; }
+.deal-header { padding: 22px; }
+.deal-header .eyebrow { color: #46745f; }
+.deal-chat { padding: clamp(12px, 2vw, 20px); }
+.deal-chat .msgs { overscroll-behavior: contain; scroll-padding-bottom: 16px; }
+.composer { border-top: 1px solid var(--line); padding-top: 12px; }
+.composer textarea { line-height: 1.5; }
+.proposal-card .btn,.drawer .btn { white-space: normal; max-width: 100%; }
+.proposal-card { max-width: 100%; }
+.deal-layout.open { grid-template-columns: minmax(0,1fr) minmax(290px,340px); }
+@media(max-width:899px) {
+ .deal-layout.open { grid-template-columns: minmax(0,1fr); }
+ .map-shell .mapbox,.map-shell .leaflet-container { height: min(53vh, 480px); min-height: 310px; }
+}
+@media(max-width:600px) {
+ .topbar { gap: 8px; padding: 12px; }
+ .topbar .brand { font-size: 18px; }
+ .topbar .tag { font-size: 10px; line-height: 1.3; }
+ .site-nav { justify-content: space-between !important; }
+ .site-nav a,.site-nav .btn { font-size: 12px; padding: 5px 7px; min-height: 34px; }
+ .nav-user { max-width: 84px; font-size: 11px; }
+ .site-intro h1 { font-size: clamp(25px, 7vw, 34px); }
+ .intro-steps { gap: 7px; }
+ .intro-steps span { flex: 1 1 100%; }
+ .intro-actions .btn { flex: 1 1 120px; }
+ .search-panel .searchbar > * { flex: 1 1 100%; }
+ .listings-grid { grid-template-columns: minmax(0,1fr); }
+ .map-selection { bottom: 8px; left: 8px; right: 8px; padding: 10px; }
+ .map-selection strong { flex-basis: 145px; }
+ .deal-header { padding: 15px; }
+ .deal-chat { padding: 11px; }
+ .bubble { max-width: 96%; }
+ .composer { padding-bottom: max(5px, env(safe-area-inset-bottom)); }
+ .drawer.open { padding-bottom: max(18px, env(safe-area-inset-bottom)); }
+}

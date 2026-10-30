@@ -45,6 +45,7 @@ export default function HomePage() {
   const results = useMemo(() => filterListings(all, f).filter((l) => market === "sale" ? l.tradeType === "매매" : l.tradeType !== "매매"), [all, f, market]);
 
   const set = (patch: Partial<Filters>) => setF((prev) => ({ ...prev, ...patch }));
+  const resetFilters = () => setF({ ...EMPTY_FILTERS, tradeType: market === "sale" ? "매매" : "" });
   const buying = market === "sale";
 
   return (
@@ -143,7 +144,7 @@ export default function HomePage() {
               <div><span className="synth">합성 데이터</span></div>
             </a>
           ))}
-          {results.length === 0 && <div className="card empty-state">조건에 맞는 매물이 없습니다. <button className="btn ghost" onClick={() => { setF(EMPTY_FILTERS); }}>필터 초기화</button></div>}
+          {results.length === 0 && <div className="card empty-state">조건에 맞는 매물이 없습니다. <button className="btn ghost" onClick={resetFilters}>필터 초기화</button></div>}
         </section>
       ) : (
         <div className="layout">
@@ -156,13 +157,15 @@ export default function HomePage() {
                 href={`/listings/${l.id}`}
                 style={l.id === selected ? { borderColor: "#0f6c3f", borderWidth: 2 } : undefined}
                 onMouseEnter={() => setSelected(l.id)}
+                onFocus={() => setSelected(l.id)}
               >
+                <span className="listing-type">{l.tradeType}</span>
                 <h3>{l.title}</h3>
                 <div className="price">{formatPrice(l)}</div>
                 <div className="meta">{l.address} · {l.area}㎡</div>
               </a>
             ))}
-            {results.length === 0 && <div className="card empty-state">조건에 맞는 매물이 없습니다. <button className="btn ghost" onClick={() => { setF(EMPTY_FILTERS); }}>필터 초기화</button></div>}
+            {results.length === 0 && <div className="card empty-state">조건에 맞는 매물이 없습니다. <button className="btn ghost" onClick={resetFilters}>필터 초기화</button></div>}
           </div>
         </div>
       )}

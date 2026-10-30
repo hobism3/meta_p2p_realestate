@@ -165,6 +165,7 @@ export interface ZiptalkInvokeResult {
   applied: number;
   provider: string;
   model: string;
+  fallback?: "meta_truncated" | null;
 }
 
 export async function invokeZiptalk(rid: string, triggerMessageId?: string): Promise<ZiptalkInvokeResult> {

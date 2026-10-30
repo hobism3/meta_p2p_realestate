@@ -6,7 +6,6 @@ import { parseVisitProposal, parseMonthRef, parseManwonInt, parseManwon, bareHou
 import {
   callMeta,
   META_HISTORY_LIMIT,
-  META_MAX_TOKENS,
   META_TIMEOUT_MS,
   META_DEFAULT_MODEL,
   type ChatMessage,
@@ -42,6 +41,11 @@ import { resolveProvider, type DemoProvider } from "./agent-service.ts";
 export const ZIPTALK_VERSION = "ziptalk-v1";
 export const ZIPTALK_AUTHOR = "집톡이";
 export const ZIPTALK_BUBBLE_LIMIT = 200;
+// Ziptalk needs a compact recent context and some headroom for structured JSON.
+// On truncation we do NOT make another paid request: use the existing grounded
+// deterministic analyzer and disclose it instead.
+export const ZIPTALK_META_MAX_TOKENS = 1536;
+export const ZIPTALK_META_HISTORY_LIMIT = 8;
 
 export type ConditionStatus = "proposed" | "unconfirmed" | "confirmed";
 
@@ -871,6 +875,7 @@ export interface ZiptalkOk {
   applied: number;
   provider: DemoProvider;
   model: string;
+  fallback?: "meta_truncated";
 }
 
 export interface ZiptalkErr {
@@ -997,6 +1002,8 @@ export async function runZiptalk(opts: {
         bubbleMessageId: String(existing.message_id ?? "") || null,
         applied: 0, provider: (String(existing.provider ?? "") === "meta" ? "meta" : "mock") as DemoProvider,
         model: String(existing.model ?? model),
+        fallback: String(existing.usage_json ?? "").includes('"fallback":"meta_truncated"')
+          ? "meta_truncated" : undefined,
       };
     }
     if (st === "failed") {
@@ -1030,6 +1037,9 @@ async function executeZiptalk(
   try {
     let outcome: AnalysisOutcome;
     let usageJson = "{}";
+    let actualProvider = provider;
+    let actualModel = model;
+    let fallback: "meta_truncated" | undefined;
     const tradeType: TradeType = listing.tradeType === "전세" || listing.tradeType === "월세" ? listing.tradeType : "매매";
     if (provider === "meta") {
       const history = (await getDal().all(
@@ -1049,30 +1059,48 @@ async function executeZiptalk(
         facts["월세"] = `${listing.rent.toLocaleString()}만원`;
       }
       const prev = Array.from(current.values());
-      const input = buildZiptalkInput(listing.title, facts, prev, history.slice(-15), tradeType);
+      const input = buildZiptalkInput(listing.title, facts, prev, history.slice(-ZIPTALK_META_HISTORY_LIMIT), tradeType);
       const r = await callMeta(
-        { system: input.system, messages: input.messages, maxTokens: META_MAX_TOKENS, timeoutMs: META_TIMEOUT_MS },
+        { system: input.system, messages: input.messages, maxTokens: ZIPTALK_META_MAX_TOKENS, timeoutMs: META_TIMEOUT_MS },
       );
-      if (!r.ok) {
-        if (r.kind === "no_key") return fail("모델 키 없음. 서버에 MODEL_API_KEY를 설정하세요.", 503, r.kind);
-        if (r.kind === "timeout") return fail("모델 응답 시간 초과.", 502, r.kind);
-        if (r.kind === "http") {
-          return fail(`모델 오류(상태 ${r.status ?? "?"}${r.detail ? `: ${r.detail}` : ""}).`, 502, `${r.kind}:${r.status ?? "?"}`);
+      if (!r.ok && r.kind === "truncated") {
+        // A response cut off at the token limit has no trustworthy JSON to
+        // apply. Never use partial output or make an invisible paid retry.
+        const recent = history
+          .filter((m) => m.author_type === "human" || m.author_type === "demo_agent")
+          .slice(-6).reverse()
+          .map((m) => ({ id: String(m.id), author_type: String(m.author_type), text: String(m.text ?? "") }));
+        outcome = analyzeMock(trigger, current, trigger.created_at, recent, tradeType);
+        actualProvider = "mock";
+        actualModel = ZIPTALK_VERSION;
+        fallback = "meta_truncated";
+        usageJson = JSON.stringify({
+          fallback, metaInputTokens: r.usage?.inputTokens ?? 0, metaOutputTokens: r.usage?.outputTokens ?? 0,
+        });
+        console.warn("[ziptalk] Meta output exhausted; used grounded deterministic fallback (no retry)");
+      } else {
+        if (!r.ok) {
+          if (r.kind === "no_key") return fail("모델 키 없음. 서버에 MODEL_API_KEY를 설정하세요.", 503, r.kind);
+          if (r.kind === "timeout") return fail("모델 응답 시간 초과.", 502, r.kind);
+          if (r.kind === "http") {
+            return fail(`모델 오류(상태 ${r.status ?? "?"}${r.detail ? `: ${r.detail}` : ""}).`, 502, `${r.kind}:${r.status ?? "?"}`);
+          }
+          if (r.kind === "network") return fail("모델 연결 실패.", 502, r.kind);
+          // Never print raw provider response keys or partial text to end users.
+          return fail("모델 분석 응답 형식 오류. 다시 시도해 주세요.", 502, r.kind);
         }
-        if (r.kind === "network") return fail("모델 연결 실패.", 502, r.kind);
-        return fail(r.detail ? `모델 응답 오류: ${r.detail}.` : "모델 호출 실패.", 502, r.kind);
+        let parsed: unknown = null;
+        try {
+          parsed = JSON.parse(r.text);
+        } catch {
+          parsed = null;
+        }
+        const ev = new Map(history.map((m) => [String(m.id), { author_type: String(m.author_type ?? ""), text: String(m.text ?? "") }]));
+        const validated = validateZiptalkOutput(parsed, ev, tradeType);
+        if (!validated) return fail("분석 결과 형식 오류.", 502, "bad_shape");
+        outcome = { upserts: validated.conditions, intervene: validated.intervene, bubble: validated.bubble };
+        usageJson = JSON.stringify({ inputTokens: r.usage.inputTokens, outputTokens: r.usage.outputTokens });
       }
-      let parsed: unknown = null;
-      try {
-        parsed = JSON.parse(r.text);
-      } catch {
-        parsed = null;
-      }
-      const ev = new Map(history.map((m) => [String(m.id), { author_type: String(m.author_type ?? ""), text: String(m.text ?? "") }]));
-      const validated = validateZiptalkOutput(parsed, ev, tradeType);
-      if (!validated) return fail("분석 결과 형식 오류.", 502, "bad_shape");
-      outcome = { upserts: validated.conditions, intervene: validated.intervene, bubble: validated.bubble };
-      usageJson = JSON.stringify({ inputTokens: r.usage.inputTokens, outputTokens: r.usage.outputTokens });
     } else {
       const recent = (await getDal().all(
         "SELECT id, author_type, text FROM messages WHERE room_id = ? AND (author_type = 'human' OR author_type = 'demo_agent') ORDER BY created_at DESC LIMIT 6",
@@ -1148,16 +1176,17 @@ async function executeZiptalk(
         for (const c of fresh) {
           await getDal().run("UPDATE room_proposals SET card_msg_id = ? WHERE id = ? AND (card_msg_id IS NULL OR card_msg_id = '')", [cardMsgId, c.id]);
         }
-        if (!applied.bubbleMessageId) {
-          return { ok: true, created: true, bubbleMessageId: cardMsgId, applied: applied.applied, provider, model };
-        }
+        if (!applied.bubbleMessageId) applied.bubbleMessageId = cardMsgId;
       }
     }
     await getDal().run(
-      "UPDATE agent_runs SET status = 'done', latency_ms = ?, usage_json = ?, message_id = ?, summary = ? WHERE id = ?",
-      [Date.now() - started, usageJson, applied.bubbleMessageId ?? "", (outcome.bubble ?? "").slice(0, 120), runId],
+      "UPDATE agent_runs SET status = 'done', provider = ?, model = ?, latency_ms = ?, usage_json = ?, message_id = ?, summary = ? WHERE id = ?",
+      [actualProvider, actualModel, Date.now() - started, usageJson, applied.bubbleMessageId ?? "", (outcome.bubble ?? "").slice(0, 120), runId],
     );
-    return { ok: true, created: applied.bubbleMessageId !== null, bubbleMessageId: applied.bubbleMessageId, applied: applied.applied, provider, model };
+    return {
+      ok: true, created: applied.bubbleMessageId !== null, bubbleMessageId: applied.bubbleMessageId,
+      applied: applied.applied, provider: actualProvider, model: actualModel, fallback,
+    };
   } catch (e) {
     return fail(e instanceof Error ? `실행 오류: ${e.message}`.slice(0, 200) : "실행 오류.", 502, "exception");
   }

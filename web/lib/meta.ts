@@ -23,7 +23,7 @@ export interface MetaUsage {
 
 export type MetaResult =
   | { ok: true; text: string; usage: MetaUsage; latencyMs: number }
-  | { ok: false; kind: "no_key" | "timeout" | "http" | "network" | "bad_response"; status?: number; detail?: string; latencyMs: number };
+  | { ok: false; kind: "no_key" | "timeout" | "http" | "network" | "bad_response" | "truncated"; status?: number; detail?: string; usage?: MetaUsage; latencyMs: number };
 
 type FetchImpl = (
   url: string,
@@ -143,6 +143,18 @@ export async function callMeta(input: MetaCallInput, opts: MetaCallOptions = {})
       return { ok: false, kind: "http", status: r.status, detail, latencyMs };
     }
     const raw = (await r.json().catch(() => null)) as unknown;
+    // Muse can spend its output budget without producing visible content
+    // (finish_reason=length, message.content=null). This is NOT a valid completion.
+    const finish = (raw as { choices?: { finish_reason?: unknown; finishReason?: unknown }[] } | null)?.choices?.[0];
+    const finishReason = finish?.finish_reason ?? finish?.finishReason;
+    if (finishReason === "length") {
+      const usage = (raw as { usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } })?.usage;
+      return {
+        ok: false, kind: "truncated", status: r.status, latencyMs,
+        detail: "completion_length",
+        usage: { inputTokens: num(usage?.prompt_tokens), outputTokens: num(usage?.completion_tokens) },
+      };
+    }
     const parsed = parseChatResponse(raw);
     if (!parsed) {
       return { ok: false, kind: "bad_response", status: r.status, detail: responseAnomaly(raw), latencyMs };

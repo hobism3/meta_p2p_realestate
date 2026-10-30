@@ -126,6 +126,7 @@ async function processImport(req: Request): Promise<Response> {
   } finally {
     clearTimeout(timer);
   }
+}
 
 /** Opt-in progress stream. JSON consumers retain their original response contract. */
 export async function POST(req: Request): Promise<Response> {
@@ -169,5 +170,4 @@ export async function POST(req: Request): Promise<Response> {
       "X-Content-Type-Options": "nosniff",
     },
   });
-}
 }

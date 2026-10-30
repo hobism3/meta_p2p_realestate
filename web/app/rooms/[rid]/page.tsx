@@ -228,6 +228,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const [visits, setVisits] = useState<RoomVisit[]>([]);
   const [zipPending, setZipPending] = useState(false);
   const [zipError, setZipError] = useState("");
+  const [zipNotice, setZipNotice] = useState("");
   const [me] = useState(() => myId());
   const [propData, setPropData] = useState<ProposalsData | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
@@ -301,8 +302,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     zipBusy.current = true;
     setZipPending(true);
     setZipError("");
+    setZipNotice("");
     try {
-      await invokeZiptalk(params.rid, triggerId);
+      const result = await invokeZiptalk(params.rid, triggerId);
+      if (result.fallback === "meta_truncated") {
+        setZipNotice("모델 응답이 길이 제한에 걸려 기본 규칙으로 분석했습니다. 대화 근거와 거래 현황을 확인해 주세요.");
+      }
       await refresh();
       // 채팅 카드(ProposalCard)도 제안 목록에 의존하므로 패널이 닫혀 있어도 갱신한다.
       await refreshConditions();
@@ -464,6 +469,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             ) : null}
           </div>
           {zipError ? <p className="error">{zipError}</p> : null}
+          {zipNotice ? <p className="meta" role="status">{zipNotice}</p> : null}
           {error ? <p className="error">{error}</p> : null}
           <div className="msgs" ref={msgsRef} role="log" aria-label="거래 대화" aria-relevant="additions text">
             {messages.map((m) => (

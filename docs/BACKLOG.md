@@ -269,3 +269,14 @@
 - [x] 검증: node 166/166 + E2E 22/22(desktop·mobile). 제안 기록·변경 이력·중복 방지·무관 대화 침묵·미확인·방 격리·AI무반응·제삼자/실거래 403. 수정 3건: 라우트 인증 컨벤션(x-user 미사용)·마이그레이션 목록·Map spread(ES5 target).
 - [ ] 실측 한계: Meta 집톡이 분석 품질·토큰은 키 보유 환경에서 별도 측정(BLOCKED). mock은 수 ms.
 - 다음 VS-3B: 거래 현황 상세화·사용자 확인·조건별 변경 이력 관리.
+
+
+## 집톡이 Meta 출력 길이 초과 복구 (2026-10-30, 리뷰용)
+
+- [x] Meta length+null 응답 분류 및 코드 수정.
+- [x] 유료 재시도 없는 근거 기반 mock 대체, API/UI 표시, DB 기록.
+- [x] 집톡이 모델 한도 1536 + 최근 대화 8건 적용.
+- [x] 카드 단독 생성 시 agent_runs running 잔류 경로 수정.
+- [ ] CI fast 및 Meta stub 통합 테스트 최종 검증.
+- [ ] 사용자 승인 전 운영 배포/병합 안 함.
+- 상세: docs/ZIPTALK_META_LENGTH_RECOVERY.md

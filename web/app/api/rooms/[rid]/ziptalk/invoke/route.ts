@@ -31,6 +31,7 @@ export async function POST(req: Request, { params }: { params: { rid: string } }
       created: r.created,
       provider: r.provider,
       model: r.model,
+      fallback: r.fallback ?? null,
     },
     r.created ? 201 : 200,
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice, type Listing } from "../lib/listings";
+import { listingPhoto, listingPhotoAlt } from "../lib/listing-presentation";
 
 // Seed listings have synthetic addresses and APPROXIMATE coordinates.
 // A marker is a demo placement, never verified property geolocation.
@@ -87,10 +88,13 @@ export default function MapView({
       <div ref={node} className="mapbox" role="application" aria-label="가상 매물 위치 지도" />
       {selected && !selected.editable ? (
         <a href={`/listings/${selected.id}`} className="map-selection">
-          <span className="listing-type">{selected.tradeType}</span>
-          <strong>{selected.title}</strong>
-          <span>{formatPrice(selected)}</span>
-          <span className="map-selection-cta">매물 상세 보기 →</span>
+          <img className="map-selection-photo" src={listingPhoto(selected)} alt={listingPhotoAlt()} loading="lazy" />
+          <span className="map-selection-content">
+            <span className="listing-type">{selected.tradeType}</span>
+            <strong>{selected.title}</strong>
+            <span className="map-selection-price">{formatPrice(selected)}</span>
+            <small className="map-selection-cta">자세히 보기 ↗</small>
+          </span>
         </a>
       ) : <p className="map-tip">지도 마커 또는 옆의 매물을 선택해 상세 정보를 확인하세요.</p>}
     </div>

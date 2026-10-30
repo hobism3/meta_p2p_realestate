@@ -178,7 +178,7 @@ function ProposalCard({ p, approvals, sides, demo, me, onDecide, onSuggest, onHo
   const badge = p.status === "agreed" ? "양측 동의" : p.status === "refused" ? "거절됨" : "동의 대기";
   const isFinal = p.name === "최종 매매가" || p.name === "최종 전세보증금" || p.name === "월세 조건";
   return (
-    <div className="card">
+    <div className="card proposal-card">
       <div>
         {isFinal ? <strong>{p.value} 조건에 동의할까요?</strong> : <><strong>{p.name}</strong>: {p.value}</>}{" "}
         <span className={p.status === "agreed" ? "badge ok" : "badge no"}>{badge}</span>
@@ -423,8 +423,9 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   };
 
   return (
-    <div className="grid">
-      <section className="card">
+    <div className="grid deal-page">
+      <section className="card deal-header">
+        <span className="eyebrow">PRIVATE DEAL ROOM</span>
         <h2>{meta?.listing ? meta.listing.title : "독립 거래방"}</h2>
         <p className="meta">
           <span className={meta?.demo ? "badge no" : "badge ok"}>{meta?.demo ? "시연 거래방" : "실거래방"}</span>{" "}
@@ -452,8 +453,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
         ) : null}
       </section>
       <div className={panelOpen ? "deal-layout open" : "deal-layout"}>
-        <section className="card">
-          <div>
+        <section className="card deal-chat">
+          <div className="chat-tools">
             <button className="btn ghost" onClick={onTogglePanel}>{panelOpen ? "거래 현황 닫기" : "거래 현황"}</button>{" "}
             {meta?.demo ? (
               <button className="btn ghost" onClick={() => callZiptalk()} disabled={zipPending}>
@@ -463,7 +464,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           </div>
           {zipError ? <p className="error">{zipError}</p> : null}
           {error ? <p className="error">{error}</p> : null}
-          <div className="msgs" ref={msgsRef}>
+          <div className="msgs" ref={msgsRef} role="log" aria-label="거래 대화" aria-relevant="additions text">
             {messages.map((m) => (
               <div
                 key={m.id}
@@ -531,7 +532,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           </div>
         </section>
         {panelOpen ? (
-          <aside className="card drawer open">
+          <aside className="card drawer open" aria-label="거래 현황 상세">
             <div>
               <button className="btn ghost" onClick={() => setPanelOpen(false)}>닫기</button>
             </div>

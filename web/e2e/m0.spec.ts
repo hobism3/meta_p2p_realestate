@@ -17,6 +17,30 @@ async function loginAs(page: Page, sub: string, name: string, role = "tenant"): 
   }, token);
 }
 
+test("메인: 임대와 매매 모드가 정확히 분리된다", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".listing").first()).toBeVisible();
+  const rentTypes = await page.locator(".listing-type").allTextContents();
+  expect(rentTypes.length).toBeGreaterThan(0);
+  expect(rentTypes.every((t) => t === "월세" || t === "전세")).toBe(true);
+  await page.getByRole("button", { name: "집 사기" }).click();
+  const saleTypes = await page.locator(".listing-type").allTextContents();
+  expect(saleTypes.length).toBeGreaterThan(0);
+  expect(saleTypes.every((t) => t === "매매")).toBe(true);
+});
+
+test("등록: 거래유형별 필요한 가격 필드만 표시된다", async ({ page }) => {
+  await page.goto("/register");
+  await expect(page.getByPlaceholder("예: 1000")).toBeVisible();
+  await expect(page.getByPlaceholder("예: 65")).toBeVisible();
+  await page.getByLabel("거래유형").selectOption("전세");
+  await expect(page.getByPlaceholder("예: 1000")).toBeVisible();
+  await expect(page.getByPlaceholder("예: 65")).toHaveCount(0);
+  await page.getByLabel("거래유형").selectOption("매매");
+  await expect(page.getByPlaceholder("예: 85000")).toBeVisible();
+  await expect(page.getByPlaceholder("예: 1000")).toHaveCount(0);
+});
+
 test("메인: 매물 목록이 보인다", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /관악구 신림동/ })).toBeVisible();

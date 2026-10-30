@@ -3,24 +3,13 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 import { authHeaders } from "../lib/client-auth";
 import type { RegistryDraft } from "../lib/registry-draft";
+import { registryDraftTitle } from "../lib/registry-title";
 
 interface DraftResponse {
   provider?: "meta" | "mock";
   model?: string;
   draft?: RegistryDraft;
   error?: string;
-}
-
-function chooseTitle(d: RegistryDraft): string {
-  const normalized = (value: string, suffix: "동" | "층" | "호"): string => {
-    const digits = value.replace(/^제/, "").replace(new RegExp(suffix + "$"), "").trim();
-    return /^\\d{1,4}$/.test(digits) ? `${Number(digits)}${suffix}` : "";
-  };
-  const name = d.buildingName.value || d.buildingType.value;
-  const dong = normalized(d.buildingDong.value, "동");
-  const unitOrFloor = normalized(d.unit.value, "호") || normalized(d.floor.value, "층");
-  const pieces = [name, dong, unitOrFloor].filter(Boolean);
-  return pieces.length ? `${pieces.join(" ")} (확인 필요)` : "";
 }
 
 export default function RegistryImport({ onApply }: { onApply: (suggestion: { title: string; address: string; area: string }) => void }) {
@@ -151,7 +140,7 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
         {draft.cautions.map((warning) => <p className="registry-caution" key={warning}>{warning}</p>)}
         <button type="button" className="btn" disabled={!canApply || applied} onClick={() => {
           if (!draft) return;
-          onApply({ title: chooseTitle(draft), address: draft.address.value, area: draft.exclusiveAreaSqm.value });
+          onApply({ title: registryDraftTitle(draft), address: draft.address.value, area: draft.exclusiveAreaSqm.value });
           setApplied(true);
         }}>{applied ? "초안이 입력됐습니다" : "비어 있는 등록 항목에 반영하기"}</button>
         <p className="meta">적용해도 매물은 게시되지 않습니다. 거래가격·관리비·입주일·옵션을 추가하고 최종 등록 버튼을 눌러야 합니다.</p>

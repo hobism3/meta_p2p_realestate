@@ -1,4 +1,5 @@
 import { describe, it } from "node:test";
+import { registryDraftTitle } from "../lib/registry-title.ts";
 import assert from "node:assert/strict";
 import { 
   REGISTRY_MAX_PDF_BYTES, REGISTRY_SCHEMA, REGISTRY_PROMPT_VERSION,
@@ -17,6 +18,30 @@ const data = () => ({
 });
 
 describe("등기 문서 AI 등록 초안", () => {
+  it("전유부분 추출값으로 올바른 건물명·동·호 제목을 만든다", () => {
+    const korean = {
+      buildingName: pair("당당아파트", "당당아파트"),
+      buildingType: pair("아파트", "아파트"),
+      buildingDong: pair("105", "제105동"),
+      floor: pair("5", "제5층 제501호"),
+      unit: pair("501", "제5층 제501호"),
+    };
+    assert.equal(registryDraftTitle(korean), "당당아파트 105동 501호 (확인 필요)");
+    const withoutUnit = { ...korean, unit: pair("", "") };
+    assert.equal(registryDraftTitle(withoutUnit), "당당아파트 105동 5층 (확인 필요)");
+    const leadingZero = { ...korean, unit: pair("0501", "제0501호") };
+    assert.equal(registryDraftTitle(leadingZero), "당당아파트 105동 0501호 (확인 필요)");
+  });
+  it("식별할 수 없는 층·호는 제목에 포함하지 않는다", () => {
+    const invalid = {
+      buildingName: pair("", ""),
+      buildingType: pair("집합건물", "건물 종류"),
+      buildingDong: pair("12A", "제12A동"),
+      floor: pair("지하1", "지하1층"),
+      unit: pair("?", ""),
+    };
+    assert.equal(registryDraftTitle(invalid), "집합건물 (확인 필요)");
+  });
   it("가상 PDF는 구조가 유효하며 실제 등기라고 주장하지 않는다", () => {
     const pdf = makeSampleRegistryPdf();
     assert.equal(isPlausiblePdf(pdf), true);

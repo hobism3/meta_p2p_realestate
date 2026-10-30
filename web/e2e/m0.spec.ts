@@ -106,7 +106,7 @@ test("시연방: 집톡이 제안 정리→거래 현황", async ({ page }) => {
   await expect(page.getByText("합의 카드에서 동의해 주세요").first()).toBeVisible();
   await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await expect(page.getByText("44,000만원").first()).toBeVisible();
-  await expect(page.getByText("제안은 양측이 모두 동의해야 확정됩니다.")).toBeVisible();
+  await expect(page.getByText(/동일한 조건 버전에 양측이 동의해야/)).toBeVisible();
   await expect(page.getByText("45,000만원").first()).toBeVisible();
   const finRow = page.locator("li", { hasText: "최종 매매가" }).first();
   await finRow.getByRole("button", { name: "동의하기" }).click();

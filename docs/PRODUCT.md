@@ -1,31 +1,35 @@
-# DirectHome 제품 정의
+# DirectHome — Current Product Overview
 
-## 목표
+**Baseline:** `80a3378`, 2026-10-30. This replaces outdated VS-2 planning text.
 
-- 중개보수 부담을 줄이고 싶은 이용자의 부동산 직거래 플랫폼.
-- 지도·매물·거래방과 AI 거래 도우미 집톡이를 제공한다.
-- 해커톤 MVP 이후 실제 창업을 목표로 한다.
+## Goal
+DirectHome turns Korean real-estate direct-deal conversations into **source-linked, versioned terms requiring explicit acknowledgment from both sides**. Finding a listing is only the first step; the central challenge is distinguishing a question, a wish, a counteroffer, and a mutually acknowledged condition.
 
-## 사용자
+## Core user experience
+1. Explore 24 **synthetic listings** using map/list views and filters.
+2. Open an authenticated, listing-specific private room.
+3. Converse with a simulated AI seller for sales or AI landlord for rental/jeonse; human-owned rooms use human chat.
+4. Neutral agent **집톡이** extracts condition changes, supporting messages, and ambiguity.
+5. When a specific final-condition candidate emerges, the app creates a versioned proposal card.
+6. Each party acknowledges the **same proposal version**. Changes never automatically reuse old approvals.
+7. Review pending/agreed/revised terms and evidence in the deal-status panel.
 
-- 소형 월세 직거래의 개인 임대인·임차인. 초기 특정 지역 집중.
+## Transaction-specific agreements
 
-## 기능(현재·계획)
+| Type | Roles | Final financial proposal |
+| --- | --- | --- |
+| 매매 / Sale | Buyer and seller | **One final sale price** |
+| 전세 / Jeonse | Tenant and landlord | **One final jeonse deposit** |
+| 월세 / Monthly rental | Tenant and landlord | **One atomic deposit + monthly rent bundle** |
 
-- 매물 등록·검색·상세(지도/리스트 동기화, 필터). 완료.
-- 매매: sale_price 별도 필드, 집 사기 모드, 시드 매매 4건. 완료(VS-2A).
-- 독립 거래방(/rooms): 문의→방 생성→메시지, 내 방 목록, 5초 자동 갱신. 구 공용 거래방은 폐쇄(410), 데이터만 보존. 완료(VS-2B).
-- AI 시연 상대방: 소유자 없는 매물 문의 시 AI 매도자/임대인 자동 연결. 사람 1건당 AI 최대 1건. 실거래방과 분리. 완료(VS-2B).
-- AI 실행 구조(VS-2C): 공통 Agent Service 단일화. 사람 저장은 메시지 POST, AI 생성은 agent/invoke 별도 단계. mock/meta 동일 계약.
-- AI 제공자: mock 기본, meta는 서버 설정 때만. 키(MODEL_API_KEY)는 서버 전용, 클라이언트 노출 없음. 실제 호출 검증 BLOCKED(키 미보유).
-- AI 중복 방지: agent_runs 유일키(방·트리거·에이전트)+상태 관리. 재호출은 기존 결과 반환. 실패는 mock으로 속이지 않고 안내한다.
-- AI 페르소나(VS-2D): 24개 시드 고정. 매매=AI 매도자, 전월세=AI 임대인. 한 문장 단답. 협상 3종 정책(none/undecided/ranged).
-- AI 경량화(VS-2D): muse-spark-1.3 + reasoning_effort minimal, 대화 8건, 예산 1024 유지. 새 env 없음.
-- 집톡이(AI 조건 정리·충돌·미확인 안내). 스펙만 있음. 미구현(VS-3A 예정).
-- 상세 기준은 `docs/PRODUCT_PRD.md`, 사업 기준은 `docs/BUSINESS_MODEL.md`를 본다. 이 문서는 방향만 정한다.
+Wishes and counteroffers are negotiation history, not independent agreement cards. For example, a change from 2,000/85 to 5,000/65 (만원) must not become two unrelated sale-price proposals.
 
-## 하지 않는 것
+## Two separate AI roles
+- **Simulated counterparty:** The seller/landlord has a listing-specific persona and replies naturally. This is not an actual verified owner.
+- **Neutral 집톡이:** Interprets Korean dialogue, tracks evidence, organizes and requests acknowledgment; it cannot approve on behalf of a human.
+- **Participants:** Human approvals require authorization and the exact condition version. Simulated AI acknowledgment is labeled **demo**.
 
-- 유료 알선, 자동 특약 확정, 계약금 보관.
-- 법률 자문 행세 금지. AI는 정리·안내만.
-- 근거는 `docs/LEGAL_REVIEW.md`.
+## Limits
+This is a hackathon prototype, **not** ownership verification, a legal contract, real reservation, payment/escrow, licensed brokerage, or legal advice. Synthetic data and AI-demo responses must not be confused with real commitments. CI uses Mock mode; live Meta-model extraction quality needs independent verification.
+
+Further reading: [Overview in Korean](PROJECT_OVERVIEW_KO.md) · [Architecture](ARCHITECTURE.md) · [Verification](VERIFICATION.md).

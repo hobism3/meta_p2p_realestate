@@ -292,6 +292,7 @@ async function executeRun(
         if (r.kind === "http") {
           return fail(`모델 오류(상태 ${r.status ?? "?"}${r.detail ? `: ${r.detail}` : ""}).`, 502, `${r.kind}:${r.status ?? "?"}`);
         }
+        if (r.kind === "truncated") return fail("모델 응답이 길이 제한에 걸렸습니다. 다시 시도해 주세요.", 502, r.kind);
         if (r.kind === "network") return fail("모델 연결 실패.", 502, r.kind);
         return fail(r.detail ? `모델 응답 오류: ${r.detail}.` : "모델 호출 실패.", 502, r.kind);
       }

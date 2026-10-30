@@ -273,8 +273,18 @@
 
 ## UX Refresh - 단계형 매물 등록 (2026-10-30, 후보)
 
-- [ ] IMPLEMENTED: 5단계 시작/공간/거래/생활/검토 Wizard.
-- [ ] IMPLEMENTED: PDF AI 초안 반영 후 공간 정보로 연결, POST/PATCH 계약 유지.
-- [ ] IMPLEMENTED: 모바일 반응형, 실시간 PC 요약, 단계 검증, 탭 단위 임시보관.
-- [ ] QA: 빌드, Wizard 단위, desktop/mobile Playwright, 기존 PDF 및 등록 동작.
-- [ ] 승인 없이 main 병합/운영 배포 금지. 상세: docs/REGISTER_WIZARD_UX.md.
+- [x] IMPLEMENTED: 5단계 시작/공간/거래/생활/검토 Wizard.
+- [x] IMPLEMENTED: PDF AI 초안 반영 후 공간 정보로 연결, POST/PATCH 계약 유지.
+- [x] IMPLEMENTED: 모바일 반응형, 실시간 PC 요약, 단계 검증, 탭 단위 임시보관.
+- [x] QA: 빌드, Wizard 단위, desktop/mobile Playwright, 기존 PDF 및 등록 동작.
+- [x] PR #7 병합 완료. 상세: docs/REGISTER_WIZARD_UX.md.
+
+## 집톡이 Meta 출력 길이 초과 복구 (2026-10-30, 검증 완료)
+
+- [x] Meta length+null 응답 분류 및 코드 수정.
+- [x] 유료 재시도 없는 근거 기반 mock 대체, API/UI 표시, DB 기록.
+- [x] 집톡이 모델 한도 1536 + 최근 대화 8건 적용.
+- [x] 카드 단독 생성 시 agent_runs running 잔류 경로 수정.
+- [x] CI fast 및 Meta stub 통합 테스트 검증 완료.
+- [x] 사용자 승인 후 PR #8 병합.
+- 상세: docs/ZIPTALK_META_LENGTH_RECOVERY.md

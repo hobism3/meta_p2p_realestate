@@ -185,6 +185,50 @@ describe("meta 호출", () => {
     assert.equal(r.kind, "bad_response");
     assert.equal(r.detail, "keys:id,choices choices:0");
   });
+  it("모델의 length 종료는 content:null이어도 원인을 정확히 분류하고 1회만 호출한다", async () => {
+    let calls = 0;
+    const r = await callMeta(
+      { system: "집톡이: JSON만 출력", messages: [{ role: "user", content: "보증금 3천 월세 60" }], maxTokens: 1536, timeoutMs: 1000 },
+      {
+        key: "synthetic-key",
+        fetchImpl: (async (_url, init) => {
+          calls++;
+          assert.equal(JSON.parse(init.body).max_tokens, 1536);
+          return { ok: true, status: 200, json: async () => ({
+            choices: [{ finish_reason: "length", message: { role: "assistant", content: null, refusal: null } }],
+            usage: { prompt_tokens: 920, completion_tokens: 1536 },
+          }) };
+        }),
+      },
+    );
+    assert.equal(calls, 1);
+    assert.equal(r.ok, false);
+    assert.equal(r.kind, "truncated");
+    assert.equal(r.detail, "completion_length");
+    assert.deepEqual(r.usage, { inputTokens: 920, outputTokens: 1536 });
+  });
+  it("length 종료의 불완전한 본문도 성공으로 사용하지 않는다", async () => {
+    const r = await callMeta(
+      { system: "s", messages: [], maxTokens: 100, timeoutMs: 1000 },
+      { key: "synthetic-key", fetchImpl: (async () => ({
+        ok: true, status: 200,
+        json: async () => ({ choices: [{ finish_reason: "length", message: { content: '{"conditions":[' } }] }),
+      })) },
+    );
+    assert.equal(r.ok, false);
+    assert.equal(r.kind, "truncated");
+  });
+  it("일반적인 빈 본문은 length 복구와 구분한다", async () => {
+    const r = await callMeta(
+      { system: "s", messages: [], maxTokens: 100, timeoutMs: 1000 },
+      { key: "synthetic-key", fetchImpl: (async () => ({
+        ok: true, status: 200,
+        json: async () => ({ choices: [{ finish_reason: "stop", message: { content: null } }] }),
+      })) },
+    );
+    assert.equal(r.kind, "bad_response");
+  });
+
   it("빈 본문은 empty로 남긴다", async () => {
     const r = await callMeta(
       { system: "s", messages: [], maxTokens: 10, timeoutMs: 1000 },

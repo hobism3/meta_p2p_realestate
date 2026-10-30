@@ -12,8 +12,15 @@ interface DraftResponse {
 }
 
 function chooseTitle(d: RegistryDraft): string {
-  const pieces = [d.buildingType.value, d.floor.value ? `${d.floor.value}층` : "", d.unit.value ? `${d.unit.value}호` : ""].filter(Boolean);
-  return pieces.length ? `${pieces.join(" ")} 매물 (확인 필요)` : "";
+  const normalized = (value: string, suffix: "동" | "층" | "호"): string => {
+    const digits = value.replace(/^제/, "").replace(new RegExp(suffix + "$"), "").trim();
+    return /^\\d{1,4}$/.test(digits) ? `${Number(digits)}${suffix}` : "";
+  };
+  const name = d.buildingName.value || d.buildingType.value;
+  const dong = normalized(d.buildingDong.value, "동");
+  const unitOrFloor = normalized(d.unit.value, "호") || normalized(d.floor.value, "층");
+  const pieces = [name, dong, unitOrFloor].filter(Boolean);
+  return pieces.length ? `${pieces.join(" ")} (확인 필요)` : "";
 }
 
 export default function RegistryImport({ onApply }: { onApply: (suggestion: { title: string; address: string; area: string }) => void }) {
@@ -84,6 +91,8 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
     { title: "주소", field: draft.address },
     { title: "전유부분 면적", field: draft.exclusiveAreaSqm },
     { title: "건물 유형", field: draft.buildingType },
+    { title: "건물명", field: draft.buildingName },
+    { title: "동", field: draft.buildingDong },
     { title: "층", field: draft.floor },
     { title: "호수", field: draft.unit },
   ] : [];

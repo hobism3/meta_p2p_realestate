@@ -100,6 +100,7 @@ test.describe("Public Korean registry acceptance (real PDF bytes, offline Mock)"
     await expect(page.getByText("5", { exact: true })).toBeVisible();
     await expect(page.getByText("501", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "비어 있는 등록 항목에 반영하기" }).click();
+    await expect(page.locator("#title")).toHaveValue("당당아파트 105동 501호 (확인 필요)");
     await expect(page.locator("#address")).toHaveValue("서울특별시 가상구 샘플로 10길 101");
     await expect(page.locator("#area")).toHaveValue("59.84");
     await expect(page.locator("#rent")).toHaveValue("");

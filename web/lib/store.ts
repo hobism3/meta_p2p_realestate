@@ -175,6 +175,14 @@ export async function invokeZiptalk(rid: string, triggerMessageId?: string): Pro
   })) as ZiptalkInvokeResult;
 }
 
+/** Explicit one-time, no-paid-model reconciliation of earlier demo chat. */
+export async function reconcileZiptalk(rid: string): Promise<ZiptalkInvokeResult> {
+  return (await req(`/api/rooms/${rid}/ziptalk/reconcile`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  })) as ZiptalkInvokeResult;
+}
+
 export interface RoomCondition {
   name: string;
   value: string;

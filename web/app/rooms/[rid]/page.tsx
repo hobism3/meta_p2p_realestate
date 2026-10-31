@@ -8,6 +8,7 @@ import { groupListingFeatures, initialTerms } from "../../../lib/listing-present
 import {
   invokeAgent,
   invokeZiptalk,
+  reconcileZiptalk,
   decideProposal,
   loadConditions,
   loadProposals,
@@ -321,6 +322,27 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     }
   };
 
+  const onReconcile = async () => {
+    if (zipBusy.current || !meta?.demo) return;
+    zipBusy.current = true;
+    setZipPending(true);
+    setZipError("");
+    setZipNotice("");
+    try {
+      const result = await reconcileZiptalk(params.rid);
+      await refresh();
+      await refreshConditions();
+      setZipNotice(result.applied > 0
+        ? "이전 대화에서 조건을 복구했어요. 아직 합의되지 않은 내용은 아래 카드에서 각자 확인해 주세요."
+        : "이전 대화에 새로운 제안 근거가 없거나 이미 정리돼 있어요.");
+    } catch (e) {
+      setZipError(`이전 대화 재정리 실패(${e instanceof Error ? e.message : "오류"})`);
+    } finally {
+      setZipPending(false);
+      zipBusy.current = false;
+    }
+  };
+
   const onSend = async () => {
     if (!msg.trim() || sending) return;
     // 실거래방은 사람 채팅만 한다. AI 호출은 시연방 전용이다.
@@ -406,6 +428,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     try {
       await decideProposal(params.rid, pid, decision, version);
       await refreshConditions();
+      await refresh();
     } catch (e) {
       setZipError(`합의 실패(${e instanceof Error ? e.message : "오류"})`);
       await refreshConditions();
@@ -488,16 +511,20 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             {meta?.demo ? (
               <section className="jiptok-progress" aria-label="집톡이 진행 현황">
                 <strong>✦ 집톡이가 챙기는 거래 진행</strong>
-                <div className="jiptok-progress-grid">
-                  {broker.checkpoints.map((point) => (
-                    <div key={point.key} className={"jiptok-checkpoint is-" + point.status}>
-                      <strong>{point.label}</strong>
-                      <span>{point.status === "checked" ? "✓ 양측 확인" : point.status === "pending" ? "동의 대기" : point.status === "talking" ? "확인 필요" : "미정"}</span>
-                      <small>{point.description}</small>
+                <p className="jiptok-journey-overview">양측이 실제로 확인한 사항만 완료로 표시합니다. {broker.journey.filter((step) => step.status === "checked").length} / 6단계 확인됨</p>
+                <div className="jiptok-journey" aria-label="거래 진행 단계">
+                  {broker.journey.map((step, index) => (
+                    <div key={step.key} className={"jiptok-journey-step is-" + step.status} title={step.detail}>
+                      <span className="jiptok-stage-number">{step.status === "checked" ? "✓" : index + 1}</span>
+                      <span>{step.label}</span>
+                      <small>{step.status === "checked" ? "완료" : step.status === "pending" ? "동의 대기" : step.status === "talking" ? "확인 중" : "예정"}</small>
                     </div>
                   ))}
                 </div>
-                <p>다음 확인: {broker.nextStep.title} · {broker.nextStep.note}</p>
+                <p className="jiptok-next"><strong>집톡이의 다음 확인</strong> · {broker.nextStep.title} — {broker.nextStep.note}</p>
+                <button type="button" className="jiptok-reconcile" onClick={() => void onReconcile()} disabled={zipPending}>
+                  {zipPending ? "집톡이가 확인 중" : "↻ 기존 대화에서 빠진 조건 다시 정리"}
+                </button>
               </section>
             ) : null}
             {messages.map((m) => {

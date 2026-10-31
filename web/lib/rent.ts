@@ -74,8 +74,28 @@ function toAmount(num: string, unit: string | undefined): number | null {
  * 보증금·월세 필드를 문맥과 함께 뽑는다. 필드 단서(보증금·월세)가 있어야 하며
  * 서로 다른 두 금액을 한 가격으로 합치지 않는다. 파싱 실패는 null 필드다.
  */
+/**
+ * Spoken Korean price words are normalized only when the field itself is explicit.
+ * "삼천에 육십팔" without a price cue is deliberately not inferred as a contract.
+ */
+export function normalizeRentSpeech(text: string): string {
+  const digit: Record<string, number> = {영:0,일:1,이:2,삼:3,사:4,오:5,육:6,칠:7,팔:8,구:9};
+  function koreanNumber(raw: string): number | null {
+    if (raw === "천") return 1000;
+    if (/^[일이삼사오육칠팔구]천$/.test(raw)) return (digit[raw[0]] ?? 0)*1000;
+    let value=0, remaining=raw;
+    for(const [unit,scale] of [["백",100],["십",10]] as const){
+      const m=remaining.match(new RegExp("^([일이삼사오육칠팔구]?)"+unit));
+      if(m){value+=(m[1]?digit[m[1]]:1)*scale;remaining=remaining.slice(m[0].length);}
+    }
+    if(remaining){if(remaining.length!==1||digit[remaining]===undefined)return null;value+=digit[remaining];}
+    return value>0?value:null;
+  }
+  return text.replace(/(보증금|월세)\s*([일이삼사오육칠팔구영십백천]+)(?=\s|에|으로|이면|이면|만|[,.!?]|$)/g,
+    (full,field:string,num:string)=>{const parsed=koreanNumber(num);return parsed===null?full:field+" "+parsed+"만원";});
+}
 export function parseRentFields(text: string): RentFields {
-  const t = text.replace(/,/g, "");
+  const t = normalizeRentSpeech(text).replace(/,/g, "");
   let deposit: number | null = null;
   const comp = t.match(/(전세보증금|보증금|전세)[^\d\n]{0,10}(\d+(?:\.\d+)?)\s*억\s*(\d+(?:\.\d+)?)?\s*(천만|천|만)?/);
   if (comp) {
@@ -167,7 +187,7 @@ export function rentValueSupported(value: string, evidenceText: string): boolean
   return depOk && numberNear(ev, "월세", b.monthlyRent);
 }
 
-const RENT_ACCEPT_CUES = /(가능합니다|좋습니다|그러시죠|알겠습니다|동의합니다|받겠습니다)/;
+const RENT_ACCEPT_CUES = /(가능합니다|좋습니다|그러시죠|알겠습니다|동의합니다|받겠습니다|좋겠어요|좋겠네요|진행해요|진행하죠|괜찮아요)/;
 const RENT_REFUSE_CUES = /(어렵습니다|어렵다|안 됩니다|안됩니다|불가합니다|거절합니다)/;
 
 function fieldsCover(parsed: RentFields, deposit: number, monthlyRent: number | null): boolean {
@@ -186,7 +206,7 @@ export function aiAcceptsRentBundle(
   monthlyRent: number | null,
 ): boolean {
   return (aiDated ?? []).some(
-    (d) => RENT_ACCEPT_CUES.test(d.text) && fieldsCover(parseRentFields(d.text), deposit, monthlyRent),
+    (d) => !d.text.trim().endsWith("?") && RENT_ACCEPT_CUES.test(d.text) && fieldsCover(parseRentFields(d.text), deposit, monthlyRent),
   );
 }
 

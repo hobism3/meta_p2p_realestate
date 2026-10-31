@@ -12,7 +12,9 @@ export interface BrokerNextStep {
   note: string;
   prompt: string;
 }
+export interface DealStage { key: string; label: string; status: BrokerState; detail: string }
 export interface BrokerSnapshot {
+  journey: DealStage[];
   quip: string;
   category: "welcome" | "price" | "visit" | "living" | "general";
   checkpoints: BrokerCheckpoint[];
@@ -138,8 +140,10 @@ export function brokerSnapshot(input: {
     }
   }
 
+  const viewingDone = chat.some((m) => m.author_type === "human" &&
+    /(?:방|집|매물)\s*보고\s*왔|보고\s*왔는데/.test(m.text));
   let nextStep: BrokerNextStep;
-  if (visitStatus === "pending") {
+  if (visitStatus === "pending" && !viewingDone) {
     nextStep = {
       title: "방문 시간, 한 번만 확인해 봐요",
       note: visitText + " 일정이 제안됐어요. 아직 예약이 확정된 건 아니에요.",
@@ -157,7 +161,7 @@ export function brokerSnapshot(input: {
       note: "대화에 나온 허용 여부와 세부 조건은 따로 확인해 두는 게 좋아요.",
       prompt: "반려동물을 키울 때 특별히 지켜야 할 조건이 있을까요?",
     };
-  } else if (visitStatus === "not-started") {
+  } else if (visitStatus === "not-started" && !viewingDone) {
     nextStep = {
       title: "집은 언제 볼 수 있을까요?",
       note: "일정을 물어보면 다음 단계가 훨씬 쉬워져요.",
@@ -170,5 +174,38 @@ export function brokerSnapshot(input: {
       prompt: "관리비와 입주 가능일, 추가 생활 조건을 알려주실 수 있나요?",
     };
   }
-  return { quip, category, checkpoints, nextStep };
+  const contract = latestProposal("계약일");
+  const earnest = latestProposal("계약금");
+  const handover = latestProposal("인도일");
+  const balance = latestProposal("잔금일");
+  const moveIn = latestProposal("입주일");
+  const options = ["옵션", "수리 요청", "관리비"].map(latestProposal);
+
+  const optionPending = options.some((p) => p?.status === "proposed");
+  const hasPetTalk = chat.some((m) => m.author_type !== "assistant" && /고양이|강아지|반려동물|반려묘|반려견/.test(m.text));
+  const anyContractStep = contract?.status === "agreed" || earnest?.status === "agreed";
+  const stage = (key: string, label: string, status: BrokerState, detail: string): DealStage => ({key,label,status,detail});
+  const journey: DealStage[] = [
+    stage("visit", "집 확인·방문", viewingDone || visitStatus === "checked" ? "checked" : visitStatus, viewingDone ? "방문했다는 대화 있음" : visit?.status === "수락됨" ? "일정 확인" : "날짜·시간 확인"),
+    stage("price", "가격 확정", priceStatus, priceStatus === "checked" ? "양측 동의 완료" : "가격 카드 양측 동의 필요"),
+    stage("options", "옵션·특약", optionPending ? "pending" : options.some((p) => p?.status === "agreed") ? "checked" : hasPetTalk ? "talking" : "not-started", optionPending ? "제안 카드 응답 대기" : "반려동물·수리·관리비 확인"),
+    stage("contract", trade === "매매" ? "계약·가계약 여부" : "임대차 계약", contract?.status === "agreed" ? "checked" : contract?.status === "proposed" ? "pending" : "not-started", "계약일과 필요한 서류 확인"),
+    stage("earnest", "계약금", earnest?.status === "agreed" ? "checked" : earnest?.status === "proposed" ? "pending" : "not-started", "금액·지급 시점 확인"),
+    stage("handover", "잔금·입주", balance?.status === "agreed" && (handover?.status === "agreed" || moveIn?.status === "agreed") ? "checked" :
+      [balance,handover,moveIn].some((p) => p?.status === "proposed") ? "pending" : "not-started", "잔금일·인도/입주일·실제 열쇠 전달")
+  ];
+  if (priceStatus === "pending") {
+    nextStep = {title:"가격 조건, 두 분이 확정해 주세요",note:"제안 카드를 확인하고 임대인·임차인이 각각 동의해야 합니다.",prompt:"이 가격 조건으로 최종 확정할까요?"};
+  } else if (priceStatus === "checked" && optionPending) {
+    nextStep = {title:"옵션과 특약도 확정할까요?",note:"반려동물 허용이나 수리 같은 조건은 양측 확인 뒤 기록합니다.",prompt:"이 옵션 조건에 두 분 모두 동의하시나요?"};
+  } else if (priceStatus === "checked" && contract?.status === "proposed") {
+    nextStep = {title:"계약일을 확정할까요?",note:"제안된 계약 날짜를 카드에서 양측이 확인해 주세요.",prompt:"말씀하신 날짜로 계약일을 확정할까요?"};
+  } else if (priceStatus === "checked" && !contract?.value && !anyContractStep) {
+    nextStep = {title:"계약일은 언제로 할까요?",note:trade === "매매" ? "가계약은 필수가 아닙니다. 계약일과 가계약 여부를 먼저 정해 보세요." : "계약일, 계약금, 입주 가능일을 차례로 확인해요.",prompt:"두 분, 계약일은 언제로 하실까요?"};
+  } else if (contract?.status === "agreed" && earnest?.status !== "agreed") {
+    nextStep = {title:"계약금 금액과 시점을 확인할까요?",note:"계약일이 정해졌으니 계약금 지급 조건을 두 분이 확인해 주세요.",prompt:"계약금은 얼마를 언제 지급할까요?"};
+  } else if (anyContractStep && !balance?.value) {
+    nextStep = {title:"잔금일은 언제로 할까요?",note:"매매는 인도일, 임대차는 입주일과 함께 확인해요.",prompt:"잔금 지급일과 인도/입주일은 언제로 정할까요?"};
+  }
+  return { quip, category, checkpoints, nextStep, journey };
 }

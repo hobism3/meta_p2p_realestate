@@ -949,3 +949,20 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
 .jiptok-checkpoint.is-pending{background:#fff3dc;border-color:#e9d4a9}
 .jiptok-progress p{font-size:11px;color:#756a5a;line-height:1.5;margin:10px 0 0}
 @media(max-width:650px){.jiptok-progress-grid{grid-template-columns:1fr}.conversation-row.is-jiptok .conversation-message{max-width:90%}}
+
+/* Contract journey: transaction-specific steps, never mistaken for legal completion. */
+.jiptok-journey{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:14px}
+.jiptok-journey-step{background:#fff;border:1px solid #e8e0d4;border-radius:9px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:7px 8px;min-width:0;color:#625647;font-size:10px}
+.jiptok-journey-step .jiptok-stage-number{width:19px;height:19px;flex:0 0 19px;display:grid;place-items:center;border-radius:50%;background:#f3ede3;color:#745e45;font-size:10px;font-weight:700}
+.jiptok-journey-step small{margin-left:auto;color:#9a9086;font-size:9px}
+.jiptok-journey-step.is-checked{border-color:#bbdfc2;background:#f1faf3}
+.jiptok-journey-step.is-checked .jiptok-stage-number{background:#34734a;color:white}
+.jiptok-journey-step.is-pending{border-color:#f0c88d;background:#fff6e7}
+.jiptok-journey-step.is-pending .jiptok-stage-number{background:#dfad64;color:#3b2b1e}
+.jiptok-journey-step.is-talking{border-color:#bdd4e7;background:#f3f8fc}
+.jiptok-progress .jiptok-next{padding-top:10px;border-top:1px solid #eae1d3;margin-top:11px}
+@media(max-width:650px){.jiptok-journey{grid-template-columns:repeat(2,minmax(0,1fr))}.jiptok-journey-step{padding:7px 5px}.jiptok-journey-step small{flex-basis:100%;margin-left:25px}}
+
+.jiptok-reconcile{margin-top:10px;background:transparent;border:1px solid #dbc9a8;border-radius:9px;padding:7px 10px;color:#80623d;font:inherit;font-size:10px;cursor:pointer;max-width:100%;white-space:normal;text-align:left}
+.jiptok-reconcile:hover{background:#fff5e3}
+.jiptok-reconcile:disabled{opacity:.58;cursor:wait}

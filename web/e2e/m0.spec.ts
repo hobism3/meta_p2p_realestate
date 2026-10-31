@@ -119,14 +119,14 @@ test("시연방: 집톡이 그룹채팅 메시지와 가격 카드 확정", asyn
   await page.goto("/listings/s21");
   await page.getByRole("button", { name: "문의하기" }).click();
   const chat = page.getByRole("log", { name: "거래 대화" });
-  await expect(chat.locator(".jiptok-checkpoint")).toHaveCount(3);
+  await expect(chat.locator(".jiptok-journey-step")).toHaveCount(6);
   await page.getByPlaceholder("메시지 입력").fill("44000만원에 합시다");
   await page.getByRole("button", { name: "전송" }).click();
   await expect(chat.locator(".conversation-row.is-jiptok").last()).toBeVisible({ timeout: 30000 });
   const card = chat.locator(".proposal-card").last();
   await expect(card).toBeVisible();
   await card.getByRole("button", { name: "동의하기" }).click();
-  await expect(chat.locator(".jiptok-checkpoint").first()).toContainText("양측 확인");
+  await expect(chat.locator(".jiptok-journey-step").nth(1)).toContainText("완료");
   await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await expect(page.getByText("44,000만원").first()).toBeVisible();
 });

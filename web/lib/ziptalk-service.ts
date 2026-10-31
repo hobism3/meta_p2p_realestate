@@ -519,7 +519,7 @@ export function analyzeMock(
   // short acceptance as traceable evidence.
   const accepted = upserts.find((u) => u.name === wantName && u.evidence.length > 1);
   const final = upserts.find((u) => u.name === finalName);
-  if (accepted && final) final.evidence = [...new Set([...final.evidence, ...accepted.evidence])];
+  if (accepted && final) final.evidence = Array.from(new Set([...final.evidence, ...accepted.evidence]));
   const qfin = upserts.filter((u) => u.name === finalName);
   if (upserts.length === qfin.length && cls === "question") {
     if (t.includes("입주")) {

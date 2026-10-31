@@ -45,7 +45,7 @@ describe("동네 부동산 친구 집톡이", () => {
     assert.equal(s.checkpoints[0].status, "talking");
     assert.match(s.quip, /보증금 3,000만원\/월세 60만원/);
     assert.match(s.quip, /보증금 3,000만원\/월세 72만원/);
-    assert.match(s.quip, /아직 합의 전/);
+    assert.match(s.quip, /아직 확정 전/);
     assert.match(s.nextStep.prompt, /가격 조건/);
   });
   it("10월 31일 오후 3시 방문 제안: 시간과 미확정 상태를 정확히 말한다", () => {
@@ -105,10 +105,33 @@ describe("동네 부동산 친구 집톡이", () => {
     assert.match(s.nextStep.title, /반려동물/);
     assert.doesNotMatch(s.nextStep.note, /허용됩니다/);
   });
+  it("한쪽의 조건 confirmed_by만으로는 가격·방문을 양측 확정으로 표시하지 않는다", () => {
+    const s = snapshot({ conditions: [
+      makeCondition("월세 조건", "보증금 3,000만원/월세 72만원", true),
+      makeCondition("방문일", "10월 31일 오후 3시", true),
+    ]});
+    assert.equal(s.checkpoints[0].status, "talking");
+    assert.equal(s.checkpoints[1].status, "talking");
+  });
+  it("동일 조건의 양측 합의 카드 status=agreed만 가격 완료로 표시한다", () => {
+    const s = snapshot({ conditions: [makeCondition("월세 조건", "보증금 3,000만원/월세 72만원", true)],
+      proposals: [{ id: "p1", name: "월세 조건", status: "agreed" }] });
+    assert.equal(s.checkpoints[0].status, "checked");
+    const pending = snapshot({ conditions: [makeCondition("월세 조건", "보증금 3,000만원/월세 72만원", true)],
+      proposals: [{ id: "p2", name: "월세 조건", status: "proposed" }] });
+    assert.equal(pending.checkpoints[0].status, "pending");
+  });
+  it("확정된 가격 카드 이후 새 제안이 오면 재확인 상태로 전환한다", () => {
+    const s = snapshot({ proposals: [
+      { id: "old", name: "월세 조건", status: "agreed" },
+      { id: "new", name: "월세 조건", status: "proposed" }
+    ]});
+    assert.equal(s.checkpoints[0].status, "pending");
+  });
   it("확정 버전이 달라지면 확인 완료를 철회한다", () => {
     const c = makeCondition("월세 조건", "보증금 3,000만원/월세 72만원", true);
     c.version = 3;
     const s = snapshot({ conditions: [c], latestNote: note("월세 조건이 바뀌었어요.") });
-    assert.equal(s.checkpoints[0].status, "pending");
+    assert.equal(s.checkpoints[0].status, "talking");
   });
 });

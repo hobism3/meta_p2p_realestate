@@ -1,4 +1,4 @@
-import type { DealMessage, RoomCondition, RoomVisit } from "./store.ts";
+import type { DealMessage, RoomCondition, RoomProposal, RoomVisit } from "./store.ts";
 
 export type BrokerState = "pending" | "talking" | "checked" | "not-started";
 export interface BrokerCheckpoint {
@@ -49,6 +49,7 @@ export function brokerSnapshot(input: {
   tradeType?: string;
   conditions: RoomCondition[];
   visits: RoomVisit[];
+  proposals?: RoomProposal[];
   chat: DealMessage[];
   latestNote?: DealMessage | null;
 }): BrokerSnapshot {
@@ -57,22 +58,30 @@ export function brokerSnapshot(input: {
   const trade = input.tradeType ?? "월세";
   const finalName = trade === "매매" ? "최종 매매가" : trade === "전세" ? "최종 전세보증금" : "월세 조건";
   const finalPrice = byName.get(finalName);
+  // A persisted condition confirmation is not bilateral approval.
+  // The approval service is the single source of truth for a concluded term.
+  const latestProposal = (name: string) =>
+    (input.proposals ?? []).filter((p) => p.name === name && p.status !== "superseded").slice(-1)[0];
+  const priceProposal = latestProposal(finalName);
   const offers = trade === "매매" ? ["매수 희망가", "매도 제안가"]
     : ["임차 희망 조건", "임대 제안 조건"];
   const wishText = byName.get(offers[0])?.value ?? "";
   const offeredText = byName.get(offers[1])?.value ?? "";
   const hasPriceTalk = offers.some((name) => !!byName.get(name)?.value);
-  const priceStatus: BrokerState = confirmed(finalPrice) ? "checked"
-    : finalPrice?.value ? "pending" : hasPriceTalk ? "talking" : "not-started";
+  const priceStatus: BrokerState = priceProposal?.status === "agreed" ? "checked"
+    : priceProposal?.status === "proposed" ? "pending"
+      : finalPrice?.value || hasPriceTalk ? "talking" : "not-started";
   const visit = preferredVisit(visits);
   const visitCondition = byName.get("방문일");
+  const visitProposal = latestProposal("방문일");
   const visitStatus: BrokerState = visit?.status === "제안됨" ? "pending"
-    : visit?.status === "수락됨" || confirmed(visitCondition) ? "checked"
-      : visitCondition?.value ? "talking" : "not-started";
+    : visit?.status === "수락됨" || visitProposal?.status === "agreed" ? "checked"
+      : visitProposal?.status === "proposed" ? "pending"
+        : visitCondition?.value ? "talking" : "not-started";
   const lifeConditions = ["입주일", "옵션", "관리비", "수리 요청"].map((key) => byName.get(key));
   const lifeMentioned = chat.some((m) => m.author_type !== "assistant" &&
     /고양이|강아지|반려동물|반려묘|반려견|입주|관리비|옵션|가전|수리/.test(m.text));
-  const lifeStatus: BrokerState = lifeConditions.some(confirmed) ? "checked"
+  const lifeStatus: BrokerState = ["입주일", "옵션", "관리비", "수리 요청"].some((key) => latestProposal(key)?.status === "agreed") ? "checked"
     : lifeConditions.some((c) => !!c?.value) || lifeMentioned ? "talking" : "not-started";
 
   const checkpoints: BrokerCheckpoint[] = [
@@ -80,7 +89,7 @@ export function brokerSnapshot(input: {
       key: "price", label: "가격 이야기", status: priceStatus,
       description: priceStatus === "checked" ? "서로 확인됨"
         : priceStatus === "pending" ? "제안 답변 대기"
-        : hasPriceTalk ? "의견 조율 중" : "아직 시작 전",
+        : hasPriceTalk ? "양측 확인 전" : "아직 시작 전",
     },
     {
       key: "visit", label: "집 보러 가기", status: visitStatus,
@@ -114,7 +123,7 @@ export function brokerSnapshot(input: {
       quip = priceStatus === "checked"
         ? "어머, 금액 조건은 확인됐네요! 남은 일정도 제가 챙겨볼게요."
         : wishText && offeredText
-          ? "어머, 원하신 건 " + wishText + ", 상대 제안은 " + offeredText + "이네요! 아직 합의 전이니 같이 조율해 봐요."
+          ? "어머, 원하신 건 " + wishText + ", 상대 제안은 " + offeredText + "이네요! 아직 확정 전이에요. 각자 조건이 같은지 확인해 주세요."
           : wishText || offeredText
             ? "어머, " + (wishText || offeredText) + " 이야기가 나왔네요! 아직 상대방 확인이 남아 있어요."
             : "양쪽에서 금액 이야기가 오갔네요. 제가 메모했어요! 아직 합의됐다고 보긴 이르죠.";

@@ -230,13 +230,6 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const [zipPending, setZipPending] = useState(false);
   const [zipError, setZipError] = useState("");
   const [zipNotice, setZipNotice] = useState("");
-  const [zipOpen, setZipOpen] = useState(false);
-  const [zipPeek, setZipPeek] = useState(false);
-  const [zipUnread, setZipUnread] = useState(false);
-  const lastZipId = useRef<string | null>(null);
-  const zipInitialized = useRef(false);
-  const zipPanelRef = useRef<HTMLDivElement | null>(null);
-  const composingRef = useRef(false);
   const [me] = useState(() => myId());
   const [propData, setPropData] = useState<ProposalsData | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
@@ -245,24 +238,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
 
   const refresh = useCallback(async () => {
     try {
-      const m = await loadRoomMessages(params.rid);
-      const newest = m.filter((item) => item.author_type === "assistant").slice(-1)[0]?.id ?? null;
-      if (!zipInitialized.current) {
-        zipInitialized.current = true;
-        lastZipId.current = newest;
-      } else if (newest && newest !== lastZipId.current) {
-        lastZipId.current = newest;
-        // A broker should gently tap the shoulder, not take over the chat.
-        // Never cover a transaction drawer or an actively focused composer.
-        if (!panelOpen && !composingRef.current) setZipPeek(true);
-        setZipUnread(true);
-      }
-      setMessages(m);
+      setMessages(await loadRoomMessages(params.rid));
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "조회 실패");
     }
-  }, [params.rid, panelOpen]);
+  }, [params.rid]);
 
   const refreshConditions = useCallback(async () => {
     try {
@@ -290,13 +271,6 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     const el = msgsRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, aiPending]);
-
-  useEffect(() => {
-    if (zipOpen) {
-      if (zipPanelRef.current) zipPanelRef.current.scrollTop = zipPanelRef.current.scrollHeight;
-      setZipUnread(false);
-    }
-  }, [zipOpen, messages]);
 
   if (authed === null) {
     return <div className="deal-route-skeleton" role="status">거래방을 준비하는 중...</div>;
@@ -326,31 +300,21 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     }
   };
 
-  // 집톡이 분석은 매도자 응답과 분리 실행한다. 조용하면 말풍선을 남기지 않는다.
-  const callZiptalk = async (triggerId?: string, openOnRequest = false) => {
+  // Group chat participant. Every note is persisted as a normal assistant message.
+  const callZiptalk = async (triggerId?: string) => {
     if (zipBusy.current) return;
     zipBusy.current = true;
     setZipPending(true);
-    if (openOnRequest) {
-      setZipOpen(true);
-      setZipPeek(false);
-    }
     setZipError("");
     setZipNotice("");
     try {
       const result = await invokeZiptalk(params.rid, triggerId);
-      if (result.fallback === "meta_truncated") {
-        setZipNotice("모델 응답이 길이 제한에 걸려 기본 규칙으로 분석했습니다. 대화 근거와 거래 현황을 확인해 주세요.");
-        setZipOpen(true);
-        setZipPeek(false);
-      }
+      if (result.fallback === "meta_truncated")
+        setZipNotice("기본 규칙으로 조건을 정리했습니다. 중요한 합의는 아래 카드에서 각자 확인해 주세요.");
       await refresh();
-      // 채팅 카드(ProposalCard)도 제안 목록에 의존하므로 패널이 닫혀 있어도 갱신한다.
       await refreshConditions();
     } catch (e) {
-      setZipOpen(true);
-      setZipPeek(false);
-      setZipError(`집톡이 분석 실패(${e instanceof Error ? e.message : "오류"})`);
+      setZipError(`집톡이 확인 실패(${e instanceof Error ? e.message : "오류"})`);
     } finally {
       setZipPending(false);
       zipBusy.current = false;
@@ -362,7 +326,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     // 실거래방은 사람 채팅만 한다. AI 호출은 시연방 전용이다.
     const demo = meta?.demo === true;
     const text = msg.trim();
-    setZipPeek(false);
+
     setSending(true);
     let id: string;
     try {
@@ -394,20 +358,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   };
 
   const onTogglePanel = async () => {
-    const next = !panelOpen;
-    setPanelOpen(next);
-    if (next) {
-      setZipOpen(false);
-      setZipPeek(false);
-    }
-    if (next) await refreshConditions();
-  };
-
-  const openPanel = async () => {
-    setZipOpen(false);
-    setZipPeek(false);
-    setPanelOpen(true);
-    await refreshConditions();
+    if (!panelOpen) await refreshConditions();
+    setPanelOpen(!panelOpen);
   };
 
   const scrollToEvidence = (id: string) => {
@@ -444,7 +396,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   };
 
   const onChangeRequest = () => {
-    setZipPeek(false);
+
     setPanelOpen(true);
     document.getElementById("room-input")?.focus();
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
@@ -461,7 +413,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   };
 
   const onSuggest = (name: string, value: string) => {
-    setZipPeek(false);
+
     setMsg(`${name} ${value} 말고 다른 조건을 제안합니다. `);
     document.getElementById("room-input")?.focus();
   };
@@ -472,15 +424,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
 
   const quickAsk = (q: string) => {
     setMsg(q);
-    setZipPeek(false);
-    document.getElementById("room-input")?.focus();
-  };
 
-  const placeBrokerQuestion = (q: string) => {
-    setMsg(q);
-    setZipOpen(false);
-    setZipPeek(false);
-    window.requestAnimationFrame(() => document.getElementById("room-input")?.focus());
+    document.getElementById("room-input")?.focus();
   };
 
   const chatMessages = messages.filter((m) => m.author_type !== "assistant");
@@ -488,19 +433,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const newestZip = zipMessages[zipMessages.length - 1] ?? null;
   const broker = brokerSnapshot({
     tradeType: meta?.listing?.tradeType,
-    conditions, visits, chat: chatMessages, latestNote: newestZip,
+    conditions, visits, proposals: propData?.proposals ?? [], chat: chatMessages, latestNote: newestZip,
   });
-  const finalName = meta?.listing?.tradeType === "매매" ? "최종 매매가" : meta?.listing?.tradeType === "전세" ? "최종 전세보증금" : "월세 조건";
-  const latestFinal = propData?.proposals.filter((p) => p.name === finalName && p.status !== "superseded").slice(-1)[0];
-  const checkpoints = broker.checkpoints.map((point) => point.key !== "price" ? point : ({
-    ...point,
-    status: latestFinal?.status === "agreed" ? "checked" as const :
-      latestFinal?.status === "proposed" ? "pending" as const :
-      point.status === "checked" ? "talking" as const : point.status,
-    description: latestFinal?.status === "agreed" ? "양측 동의 완료" :
-      latestFinal?.status === "proposed" ? "양측 동의 대기" :
-      point.status === "checked" ? "양측 동의 전" : point.description
-  }));
   const participant = meta?.demo ? aiName(meta?.listing?.tradeType) : "거래 상대방";
   const listing = meta?.listing;
   const formattedPrice = !listing ? "" : listing.tradeType === "매매"
@@ -546,12 +480,6 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               <button type="button" className="conversation-tools-button" onClick={onTogglePanel}>
                 <span aria-hidden="true">▤</span> {panelOpen ? "거래 현황 닫기" : "거래 현황"}
               </button>
-              {meta?.demo ? (
-                <button type="button" className="conversation-tools-button is-accent"
-                  onClick={() => void callZiptalk(undefined, true)} disabled={zipPending}>
-                  <span aria-hidden="true">✦</span> {zipPending ? "집톡이가 메모 중" : "집톡이 확인하기"}
-                </button>
-              ) : null}
             </div>
           </div>
           {error ? <p className="error" role="alert">{error}</p> : null}
@@ -561,7 +489,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               <section className="jiptok-progress" aria-label="집톡이 진행 현황">
                 <strong>✦ 집톡이가 챙기는 거래 진행</strong>
                 <div className="jiptok-progress-grid">
-                  {checkpoints.map((point) => (
+                  {broker.checkpoints.map((point) => (
                     <div key={point.key} className={"jiptok-checkpoint is-" + point.status}>
                       <strong>{point.label}</strong>
                       <span>{point.status === "checked" ? "✓ 양측 확인" : point.status === "pending" ? "동의 대기" : point.status === "talking" ? "확인 필요" : "미정"}</span>
@@ -591,6 +519,15 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
                 </div>
               );
             })}
+            {zipPending && meta?.demo ? (
+              <div className="conversation-row is-jiptok" role="status">
+                <span className="conversation-small-avatar jiptok-avatar" aria-hidden="true">✦</span>
+                <div className="conversation-message">
+                  <span className="conversation-author">집톡이</span>
+                  <div className="bubble jiptok conversation-typing" aria-label="집톡이가 남은 사항을 확인 중입니다"><i/><i/><i/></div>
+                </div>
+              </div>
+            ) : null}
             {aiPending && meta?.demo ? (
               <div className="conversation-row is-theirs" role="status">
                 <span className="conversation-small-avatar" aria-hidden="true">⌂</span>
@@ -601,6 +538,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               </div>
             ) : null}
           </div>
+          {zipError ? <p className="conversation-inline-error" role="alert">{zipError}</p> : null}
+          {zipNotice ? <p className="meta" role="status">{zipNotice}</p> : null}
           {aiError ? (
             <p className="conversation-inline-error" role="alert">
               {aiError} <button type="button" className="btn ghost" onClick={onRetry} disabled={aiPending}>다시 시도</button>
@@ -620,17 +559,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             <div className="field">
               <label htmlFor="room-input">메시지 입력 <span>Enter 전송 · Shift+Enter 줄바꿈</span></label>
               <textarea id="room-input" rows={2} value={msg} placeholder="메시지 입력"
-                onFocus={() => {
-                  composingRef.current = true;
-                  setZipOpen(false);
-                  setZipPeek(false);
-                }}
-                onBlur={() => { composingRef.current = false; }}
-                onChange={(e) => {
-                  setZipOpen(false);
-                  setZipPeek(false);
-                  setMsg(e.target.value);
-                }}
+                onChange={(e) => setMsg(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault();
@@ -642,7 +571,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               {sending ? "전송 중..." : "전송"} <span aria-hidden="true">↗</span>
             </button>
           </div>
-          <p className="conversation-privacy">시연용 AI의 제안은 실제 계약이나 방문 확정이 아닙니다. 거래 현황에서 확인하세요.</p>
+          <p className="conversation-privacy">집톡이는 남은 확인 사항을 챙깁니다. 조건과 방문은 당사자 확인 후 확정되며, AI 시연 동의는 실제 계약이 아닙니다.</p>
         </section>
         {panelOpen ? (
           <aside className="card drawer open" aria-label="거래 현황 상세">

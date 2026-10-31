@@ -56,5 +56,19 @@ test("6단계 진행 안내는 계약·잔금까지 이어진다", () => {
   assert.equal(progress.journey[1].status,"checked");
   assert.match(progress.nextStep.title,/계약일/);
   const contract=brokerSnapshot({...base,proposals:[p,{id:"c",name:"계약일",status:"agreed"}]});
-  assert.match(contract.nextStep.title,/잔금일/);
+  assert.match(contract.nextStep.title,/계약금/);
+  const paid = brokerSnapshot({...base,proposals:[p,{id:"c",name:"계약일",status:"agreed"},{id:"d",name:"계약금",status:"agreed"}]});
+  assert.match(paid.nextStep.title,/잔금일/);
+});
+
+test("이미 집을 보고 왔다면 방문 일정이 미확정이어도 다음 가격 확인을 안내한다", () => {
+  const s = brokerSnapshot({
+    tradeType:"월세",
+    conditions:[{name:"임대 제안 조건",value:"보증금 3,000만원/월세 68만원",proposer:"demo",status:"proposed"}],
+    visits:[{id:"v",visit_date:"2026-10-31",visit_time:"15:00",status:"제안됨",proposed_by:"demo",created_at:"2026-10-30T10:00:00Z"}],
+    chat:[{id:"h",author_type:"human",text:"방 보고 왔는데 좋네요"}],
+    proposals:[],
+  });
+  assert.equal(s.journey[0].status,"checked");
+  assert.match(s.nextStep.title,/가격/);
 });

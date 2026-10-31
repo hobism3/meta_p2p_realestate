@@ -140,8 +140,10 @@ export function brokerSnapshot(input: {
     }
   }
 
+  const viewingDone = chat.some((m) => m.author_type === "human" &&
+    /(?:방|집|매물)\s*보고\s*왔|보고\s*왔는데/.test(m.text));
   let nextStep: BrokerNextStep;
-  if (visitStatus === "pending") {
+  if (visitStatus === "pending" && !viewingDone) {
     nextStep = {
       title: "방문 시간, 한 번만 확인해 봐요",
       note: visitText + " 일정이 제안됐어요. 아직 예약이 확정된 건 아니에요.",
@@ -159,7 +161,7 @@ export function brokerSnapshot(input: {
       note: "대화에 나온 허용 여부와 세부 조건은 따로 확인해 두는 게 좋아요.",
       prompt: "반려동물을 키울 때 특별히 지켜야 할 조건이 있을까요?",
     };
-  } else if (visitStatus === "not-started") {
+  } else if (visitStatus === "not-started" && !viewingDone) {
     nextStep = {
       title: "집은 언제 볼 수 있을까요?",
       note: "일정을 물어보면 다음 단계가 훨씬 쉬워져요.",
@@ -178,7 +180,7 @@ export function brokerSnapshot(input: {
   const balance = latestProposal("잔금일");
   const moveIn = latestProposal("입주일");
   const options = ["옵션", "수리 요청", "관리비"].map(latestProposal);
-  const viewingDone = chat.some((m) => m.author_type === "human" && /(?:방|집|매물)\s*보고\s*왔|보고\s*왔는데/.test(m.text));
+
   const optionPending = options.some((p) => p?.status === "proposed");
   const hasPetTalk = chat.some((m) => m.author_type !== "assistant" && /고양이|강아지|반려동물|반려묘|반려견/.test(m.text));
   const anyContractStep = contract?.status === "agreed" || earnest?.status === "agreed";
@@ -200,6 +202,8 @@ export function brokerSnapshot(input: {
     nextStep = {title:"계약일을 확정할까요?",note:"제안된 계약 날짜를 카드에서 양측이 확인해 주세요.",prompt:"말씀하신 날짜로 계약일을 확정할까요?"};
   } else if (priceStatus === "checked" && !contract?.value && !anyContractStep) {
     nextStep = {title:"계약일은 언제로 할까요?",note:trade === "매매" ? "가계약은 필수가 아닙니다. 계약일과 가계약 여부를 먼저 정해 보세요." : "계약일, 계약금, 입주 가능일을 차례로 확인해요.",prompt:"두 분, 계약일은 언제로 하실까요?"};
+  } else if (contract?.status === "agreed" && earnest?.status !== "agreed") {
+    nextStep = {title:"계약금 금액과 시점을 확인할까요?",note:"계약일이 정해졌으니 계약금 지급 조건을 두 분이 확인해 주세요.",prompt:"계약금은 얼마를 언제 지급할까요?"};
   } else if (anyContractStep && !balance?.value) {
     nextStep = {title:"잔금일은 언제로 할까요?",note:"매매는 인도일, 임대차는 입주일과 함께 확인해요.",prompt:"잔금 지급일과 인도/입주일은 언제로 정할까요?"};
   }

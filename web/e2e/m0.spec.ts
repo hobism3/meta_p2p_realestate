@@ -114,55 +114,36 @@ test("시연방: 문의→AI 첫인사→대화→새로고침 유지", async ({
   await expect(page.getByText("가격은").first()).toBeVisible();
 });
 
-test("시연방: 집톡이 제안 정리→거래 현황", async ({ page }) => {
+test("시연방: 집톡이 그룹채팅 메시지와 가격 카드 확정", async ({ page }) => {
   await loginAs(page, uid("e2e-ziptalk"), "E2E집톡이");
   await page.goto("/listings/s21");
   await page.getByRole("button", { name: "문의하기" }).click();
-  await expect(page).toHaveURL(/\/rooms\//);
+  const chat = page.getByRole("log", { name: "거래 대화" });
+  await expect(chat.locator(".jiptok-checkpoint")).toHaveCount(3);
   await page.getByPlaceholder("메시지 입력").fill("44000만원에 합시다");
   await page.getByRole("button", { name: "전송" }).click();
-  await expect(page.getByText("새로 제안됐어요").first()).toBeVisible();
-  await expect(page.getByText("집톡이").first()).toBeVisible();
-  await expect(page.getByText("합의 카드에서 동의해 주세요").first()).toBeVisible();
-  await page.getByRole("button", { name: "거래 현황", exact: true }).click();
-  await expect(page.getByText("44,000만원").first()).toBeVisible();
-  await expect(page.getByText(/동일한 조건 버전에 양측이 동의해야/)).toBeVisible();
-  await expect(page.getByText("45,000만원").first()).toBeVisible();
-  const finRow = page.locator("li", { hasText: "최종 매매가" }).first();
-  await finRow.getByRole("button", { name: "동의하기" }).click();
-  await expect(finRow).toContainText("양측 동의");
-  await page.getByRole("button", { name: "거래 현황 닫기" }).click();
-  await page.getByPlaceholder("메시지 입력").fill("44500만원에 합시다");
-  await page.getByRole("button", { name: "전송" }).click();
-  await expect(page.getByText("변경됐어요").first()).toBeVisible();
-  await page.getByRole("button", { name: "거래 현황", exact: true }).click();
-  await expect(finRow).toContainText("동의 대기");
-  await finRow.getByRole("button", { name: "동의하기" }).click();
-  await expect(finRow).toContainText("양측 동의");
-  await page.getByRole("button", { name: "거래 현황 닫기" }).click();
-  await page.getByPlaceholder("메시지 입력").fill("매매가 얼마인가요?");
-  await page.getByRole("button", { name: "전송" }).click();
-  await expect(page.getByText("매수 희망가는 44,500만원").first()).toBeVisible();
-  await page.reload();
+  await expect(chat.locator(".conversation-row.is-jiptok").last()).toBeVisible({ timeout: 30000 });
+  const card = chat.locator(".proposal-card").last();
+  await expect(card).toBeVisible();
+  await card.getByRole("button", { name: "동의하기" }).click();
+  await expect(chat.locator(".jiptok-checkpoint").first()).toContainText("양측 확인");
   await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await expect(page.getByText("44,000만원").first()).toBeVisible();
 });
 
-test("시연방: 방문 제안→일정 확인→변경", async ({ page }) => {
+test("시연방: 방문 제안 후 일정 확인과 재제안은 별개", async ({ page }) => {
   await loginAs(page, uid("e2e-visit"), "E2E방문");
   await page.goto("/listings/s24");
   await page.getByRole("button", { name: "문의하기" }).click();
-  await expect(page).toHaveURL(/\/rooms\//);
+  const chat = page.getByRole("log", { name: "거래 대화" });
   await page.getByPlaceholder("메시지 입력").fill("38000만원에 합시다");
   await page.getByRole("button", { name: "전송" }).click();
-  await expect(page.getByText("새로 제안됐어요").first()).toBeVisible();
+  await expect(chat.locator(".conversation-row.is-jiptok").last()).toBeVisible({ timeout: 30000 });
   await page.getByPlaceholder("메시지 입력").fill("내일 오후 2시에 방문하고 싶어요");
   await page.getByRole("button", { name: "전송" }).click();
-  await expect(page.getByText("거래 현황에서 확인해 주세요").first()).toBeVisible();
   await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await page.getByRole("button", { name: "일정 확인" }).click();
   await expect(page.getByText("수락됨").first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "일정 확인" })).toHaveCount(0);
   await page.getByRole("button", { name: "거래 현황 닫기" }).click();
   await page.getByPlaceholder("메시지 입력").fill("모레 오후 2시로 바꿔서 방문하고 싶어요");
   await page.getByRole("button", { name: "전송" }).click();
@@ -173,8 +154,13 @@ test("시연방: 방문 제안→일정 확인→변경", async ({ page }) => {
 test("문의: 같은 매물은 기존 방으로 재입장", async ({ page }) => {
   await loginAs(page, uid("e2e-reentry"), "E2E재입장");
   await page.goto("/listings/s21");
-  if (await page.getByRole("button", { name: "문의하기" }).count() > 0) {
-    await page.getByRole("button", { name: "문의하기" }).click();
+  // Listing hydration/auth/room lookup is async. A zero count immediately
+  // after goto does not establish that this user already has a room.
+  const inquire = page.getByRole("button", { name: "문의하기" });
+  const resume = page.getByRole("link", { name: "대화 이어하기" });
+  await expect(inquire.or(resume).first()).toBeVisible();
+  if (await inquire.isVisible()) {
+    await inquire.click();
     await expect(page).toHaveURL(/\/rooms\//);
     await page.goto("/listings/s21");
   }

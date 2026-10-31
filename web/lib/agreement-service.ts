@@ -574,7 +574,7 @@ export function bubbleFor(created: CreatedProposal[], tradeType: TradeType = "�
   const L = sideLabels(tradeType);
   let s: string;
   if (c.name === "최종 매매가" || c.name === "최종 전세보증금" || c.name === "월세 조건") {
-    s = `${c.value} 조건에 동의할까요? 양측이 모두 동의해야 확정됩니다(AI 시연 동의는 실제 계약이 아닙니다).`;
+    s = `두 분이 말씀하신 ${c.value} 조건으로 확정할까요? 아래 카드에서 각자 동의해 주세요. 양측 모두 동의해야 확정됩니다(AI 시연 동의는 실제 계약이 아닙니다).`;
   } else {
     const short = c.name.replace(/일$/, "");
     s = `${c.name}: ${c.value} — ${short} 확인 카드를 만들었어요. 양측이 모두 동의해야 확정됩니다.`;

@@ -836,3 +836,116 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
  .rooms-entry-arrow{width:27px;height:27px;font-size:17px}
 }
 .deal-route-skeleton{max-width:900px;margin:28px auto;min-height:280px;border:1px solid #e4eaf4;border-radius:22px;background:linear-gradient(115deg,#f3f8ff,#fff);color:#8095ad;display:grid;place-items:center;font-size:13px}
+
+/* House-pal redesign: Ziptalk is a note-taking companion, not a customer service chat. */
+.broker-companion{gap:11px}
+.broker-dock{
+  background:linear-gradient(138deg,#fffcf1 0%,#fff5d9 65%,#ffe9be 100%);
+  border-color:#f1d8a3;color:#63502c;
+  box-shadow:0 12px 40px rgba(119,87,31,.20),0 2px 5px rgba(70,70,58,.06);
+}
+.broker-dock:hover{box-shadow:0 15px 45px rgba(120,88,32,.25);transform:translateY(-2px)}
+.broker-dock .ziptalk-dock-caption strong{color:#72501f}
+.broker-dock .ziptalk-dock-caption small{color:#9c7f50}
+.broker-dock .ziptalk-dock-chevron{color:#bb9663}
+.broker-dock .ziptalk-mascot-roof{background:#eeab69;box-shadow:0 0 0 1px #d68555}
+.broker-dock .ziptalk-mascot-face{background:#fff4d8;border-color:#e1ad6d;box-shadow:inset 0 -5px 0 #ffdfac}
+.broker-dock.has-new .ziptalk-mascot{animation:broker-greet .52s cubic-bezier(.22,.72,.26,1.3) 1}
+@keyframes broker-greet{0%{transform:rotate(0deg)}33%{transform:rotate(-10deg)}65%{transform:rotate(10deg)}100%{transform:rotate(0deg)}}
+.broker-peek{
+  position:relative;max-width:min(360px,calc(100vw - 26px));width:340px;padding:17px 20px 16px;
+  border:1px solid #ead4a5;border-radius:21px 21px 5px 21px;
+  background:linear-gradient(155deg,#fffdf5,#fff5dc);
+  box-shadow:0 20px 45px rgba(103,81,45,.18),0 3px 6px rgba(74,65,45,.05);
+  animation:broker-hello .34s cubic-bezier(.17,.76,.22,1.24) both;
+  transform-origin:bottom right;
+}
+.broker-peek::after{content:"";position:absolute;right:31px;bottom:-8px;width:16px;height:16px;background:#fff5dc;border-right:1px solid #ead4a5;border-bottom:1px solid #ead4a5;transform:rotate(45deg)}
+@keyframes broker-hello{from{opacity:0;transform:translateY(16px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+.broker-peek-eyebrow{font-size:10px;letter-spacing:.055em;font-weight:900;color:#bd8153}
+.broker-peek p{font-size:14px;font-weight:780;line-height:1.65;color:#59462c;letter-spacing:-.016em;word-break:keep-all;overflow-wrap:anywhere;margin:9px 0 14px}
+.broker-peek-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.broker-peek-actions button{font-size:11px;font-weight:850;border:0;border-radius:10px;padding:10px 12px;background:#eeba79;color:#4d351e;min-height:38px}
+.broker-peek-actions button:hover{background:#eaa962}
+.broker-peek-actions .broker-peek-dismiss{background:transparent;color:#a79279;padding:10px}
+.broker-peek-actions .broker-peek-dismiss:hover{background:#ffefd3}
+.broker-notebook{width:min(417px,calc(100vw - 26px));max-height:min(75dvh,680px);border:1px solid #e7d7b9;border-radius:20px;background:#fffefb;box-shadow:0 21px 61px rgba(86,67,38,.19),0 6px 15px rgba(74,62,42,.05)}
+.broker-notebook-head{
+  display:flex;align-items:center;gap:9px;padding:17px 14px 16px;
+  background:linear-gradient(120deg,#fff5dc 1%,#fffdfa 75%);
+  border-bottom:1px dashed #e5d5b8;flex:0 0 auto;
+}
+.broker-notebook-head .ziptalk-mascot-roof{background:#edb26c;box-shadow:0 0 0 1px #d99253}
+.broker-notebook-head .ziptalk-mascot-face{background:#fff0cd;border-color:#e4a56c}
+.broker-notebook-head>div{min-width:0;flex:1}
+.broker-notebook-overline{font-size:9px;font-weight:900;color:#b18450;letter-spacing:.085em}
+.broker-notebook-head h3{font-size:17px;font-weight:900;line-height:1.3;color:#5b4127;margin:5px 0 3px;letter-spacing:-.06em}
+.broker-notebook-head h3 span{color:#d99555;font-family:Georgia,serif}
+.broker-notebook-head small{font-size:10px;color:#a18c72}
+.broker-notebook-head .ziptalk-close{border-color:#ebddc4;color:#a99177;background:#fffef9;flex:0 0 33px}
+.broker-notebook-body{gap:17px;background:linear-gradient(180deg,#fffefb,#fff 50%);padding:17px 16px 25px}
+.broker-section-label{display:block;font-weight:900;color:#bc8b57;font-size:10px;margin-bottom:8px;letter-spacing:.035em}
+.broker-comment{background:linear-gradient(130deg,#fff6e0,#fffdf5);padding:16px 17px;border-radius:15px 15px 15px 5px;border:1px solid #f2e4c7;box-shadow:0 4px 14px rgba(160,119,57,.045)}
+.broker-comment p{font-size:14px;line-height:1.68;font-weight:790;color:#69502f;letter-spacing:-.022em;margin:0;word-break:keep-all;overflow-wrap:anywhere}
+.broker-section-title{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:10px}
+.broker-section-title strong{font-size:13px;color:#554b42;font-weight:850;letter-spacing:-.028em}
+.broker-section-title>span{font-size:10px;padding:3px 8px;border:1px solid #e8e3d9;background:#faf8f4;border-radius:30px;color:#a69987}
+.broker-progress ul{padding:0;margin:0;list-style:none;display:grid;gap:7px}
+.broker-checkpoint{display:flex;align-items:center;gap:11px;padding:9px 12px;border:1px solid #eae7dd;border-radius:12px;background:#fff;min-width:0}
+.broker-checkpoint-icon{display:grid;place-items:center;width:26px;height:26px;flex:0 0 26px;background:#f3f1ea;border-radius:8px;font-size:15px;font-weight:900;color:#c0b19b}
+.broker-checkpoint.is-pending .broker-checkpoint-icon{background:#fff2db;color:#c28834}
+.broker-checkpoint.is-talking .broker-checkpoint-icon{background:#e9f1fb;color:#5681b5}
+.broker-checkpoint.is-checked .broker-checkpoint-icon{background:#e4f6ea;color:#35895f}
+.broker-checkpoint>div{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.broker-checkpoint>div strong{font-size:12px;font-weight:850;color:#52473c}
+.broker-checkpoint>div small{font-size:10px;color:#948d82}
+.broker-checkpoint-hint{font-size:10px;color:#a88e6f;white-space:nowrap;font-weight:750}
+.broker-next{background:#f4f9f5;border:1px solid #d8e8db;padding:15px;border-radius:16px}
+.broker-next .broker-section-label{color:#6a9b78}
+.broker-next strong{font-size:14px;line-height:1.45;color:#365b41;font-weight:900;display:block;letter-spacing:-.03em}
+.broker-next p{font-size:12px;line-height:1.55;color:#62816c;margin:7px 0 13px;word-break:keep-all}
+.broker-next button{width:100%;min-height:44px;border-radius:11px;border:1px solid #7bb18c;background:#568d68;color:#fff;font-size:12px;font-weight:850;padding:11px 13px}
+.broker-next button:hover{background:#417d55}
+.broker-next small{display:block;margin-top:9px;font-size:10px;color:#85a08a;text-align:center}
+.broker-latest-note{display:grid;gap:5px}
+.broker-latest-note .ziptalk-note{background:#fbfaf6;border-color:#e9e4d6;border-radius:11px}
+.broker-latest-note .ziptalk-note p{color:#656057}
+.broker-history{border-top:1px dashed #e7e1d5;padding-top:12px}
+.broker-history summary{cursor:pointer;list-style:none;min-height:42px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:850;color:#89765f}
+.broker-history summary::-webkit-details-marker{display:none}
+.broker-history summary span{font-size:16px;color:#b6a58c;transition:transform .15s}
+.broker-history[open] summary span{transform:rotate(180deg)}
+.broker-history-list{display:grid;gap:9px;padding-top:10px}
+.broker-notebook-footer{background:#fffcf5;border-color:#f2e8d4}
+.broker-notebook-footer>span{color:#a79984}
+.broker-notebook-footer button{background:#fff4dc;border-color:#e9d2a5;color:#a3783d}
+@media(max-width:650px){
+  .broker-peek{width:min(320px,calc(100vw - 24px));padding:15px 16px}
+  .broker-peek p{font-size:13px}
+  .broker-notebook{width:min(377px,calc(100vw - 24px));max-height:min(76dvh,680px)}
+  .broker-notebook-head{padding:13px}
+  .broker-notebook-body{padding:15px 12px 22px}
+  .broker-next button{min-height:46px}
+}
+@media(prefers-reduced-motion:reduce){
+  .broker-peek,.broker-dock.has-new .ziptalk-mascot{animation:none}
+}
+
+/* Inline third participant */
+.conversation-row.is-jiptok{justify-content:flex-start}
+.conversation-row.is-jiptok .conversation-message{max-width:min(88%,650px)}
+.conversation-row.is-jiptok .jiptok-avatar{background:#fff1d9;color:#ae762e;border:1px solid #e9cfa5}
+.conversation-row.is-jiptok .conversation-author{color:#976632}
+.deal-page .conversation-message .bubble.jiptok{background:#fff8e8;color:#614b2c;border:1px solid #ead7b1;border-radius:17px 17px 17px 5px}
+.conversation-row.is-jiptok .proposal-card{margin:9px 0 0;width:100%;max-width:100%}
+.jiptok-progress{background:#fffcf4;border:1px solid #eadbbf;border-radius:15px;padding:14px;margin-bottom:20px;overflow-wrap:anywhere}
+.jiptok-progress>strong{display:block;color:#705433;font-size:12px;margin-bottom:10px}
+.jiptok-progress-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.jiptok-checkpoint{background:white;border:1px solid #e6e8ec;border-radius:10px;padding:9px;min-width:0;display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px}
+.jiptok-checkpoint strong{font-size:11px;color:#514b40}
+.jiptok-checkpoint span{font-size:10px;color:#a17d54}
+.jiptok-checkpoint small{width:100%;font-size:10px;color:#92897b}
+.jiptok-checkpoint.is-checked{background:#eff9f0;border-color:#d5e8d4}
+.jiptok-checkpoint.is-pending{background:#fff3dc;border-color:#e9d4a9}
+.jiptok-progress p{font-size:11px;color:#756a5a;line-height:1.5;margin:10px 0 0}
+@media(max-width:650px){.jiptok-progress-grid{grid-template-columns:1fr}.conversation-row.is-jiptok .conversation-message{max-width:90%}}

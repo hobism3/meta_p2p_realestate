@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../../../lib/client-auth";
+import { brokerSnapshot } from "../../../lib/broker-companion";
 import { hasNewProposalCue } from "../../../lib/agent";
 import { groupListingFeatures, initialTerms } from "../../../lib/listing-presentation";
 import {
@@ -229,11 +230,6 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const [zipPending, setZipPending] = useState(false);
   const [zipError, setZipError] = useState("");
   const [zipNotice, setZipNotice] = useState("");
-  const [zipOpen, setZipOpen] = useState(false);
-  const [zipUnread, setZipUnread] = useState(false);
-  const lastZipId = useRef<string | null>(null);
-  const zipInitialized = useRef(false);
-  const zipPanelRef = useRef<HTMLDivElement | null>(null);
   const [me] = useState(() => myId());
   const [propData, setPropData] = useState<ProposalsData | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
@@ -242,23 +238,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
 
   const refresh = useCallback(async () => {
     try {
-      const m = await loadRoomMessages(params.rid);
-      const newest = m.filter((item) => item.author_type === "assistant").slice(-1)[0]?.id ?? null;
-      if (!zipInitialized.current) {
-        zipInitialized.current = true;
-        lastZipId.current = newest;
-      } else if (newest && newest !== lastZipId.current) {
-        lastZipId.current = newest;
-        // A transaction drawer has priority over unsolicited companion notices.
-        if (!panelOpen) setZipOpen(true);
-        setZipUnread(true);
-      }
-      setMessages(m);
+      setMessages(await loadRoomMessages(params.rid));
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "조회 실패");
     }
-  }, [params.rid, panelOpen]);
+  }, [params.rid]);
 
   const refreshConditions = useCallback(async () => {
     try {
@@ -276,22 +261,16 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     setAuthed(!!getAccessToken());
     loadRoomMeta(params.rid).then(setMeta).catch(() => setMeta(null));
     refresh();
+    void refreshConditions();
     // 상대방 메시지를 5초마다 갱신한다.
     const t = setInterval(refresh, 5000);
     return () => clearInterval(t);
-  }, [params.rid, refresh]);
+  }, [params.rid, refresh, refreshConditions]);
 
   useEffect(() => {
     const el = msgsRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, aiPending]);
-
-  useEffect(() => {
-    if (zipOpen) {
-      if (zipPanelRef.current) zipPanelRef.current.scrollTop = zipPanelRef.current.scrollHeight;
-      setZipUnread(false);
-    }
-  }, [zipOpen, messages]);
 
   if (authed === null) {
     return <div className="deal-route-skeleton" role="status">거래방을 준비하는 중...</div>;
@@ -321,26 +300,21 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     }
   };
 
-  // 집톡이 분석은 매도자 응답과 분리 실행한다. 조용하면 말풍선을 남기지 않는다.
-  const callZiptalk = async (triggerId?: string, openOnRequest = false) => {
+  // Group chat participant. Every note is persisted as a normal assistant message.
+  const callZiptalk = async (triggerId?: string) => {
     if (zipBusy.current) return;
     zipBusy.current = true;
     setZipPending(true);
-    if (openOnRequest) setZipOpen(true);
     setZipError("");
     setZipNotice("");
     try {
       const result = await invokeZiptalk(params.rid, triggerId);
-      if (result.fallback === "meta_truncated") {
-        setZipNotice("모델 응답이 길이 제한에 걸려 기본 규칙으로 분석했습니다. 대화 근거와 거래 현황을 확인해 주세요.");
-        setZipOpen(true);
-      }
+      if (result.fallback === "meta_truncated")
+        setZipNotice("기본 규칙으로 조건을 정리했습니다. 중요한 합의는 아래 카드에서 각자 확인해 주세요.");
       await refresh();
-      // 채팅 카드(ProposalCard)도 제안 목록에 의존하므로 패널이 닫혀 있어도 갱신한다.
       await refreshConditions();
     } catch (e) {
-      setZipOpen(true);
-      setZipError(`집톡이 분석 실패(${e instanceof Error ? e.message : "오류"})`);
+      setZipError(`집톡이 확인 실패(${e instanceof Error ? e.message : "오류"})`);
     } finally {
       setZipPending(false);
       zipBusy.current = false;
@@ -352,6 +326,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     // 실거래방은 사람 채팅만 한다. AI 호출은 시연방 전용이다.
     const demo = meta?.demo === true;
     const text = msg.trim();
+
     setSending(true);
     let id: string;
     try {
@@ -383,16 +358,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   };
 
   const onTogglePanel = async () => {
-    const next = !panelOpen;
-    setPanelOpen(next);
-    if (next) setZipOpen(false);
-    if (next) await refreshConditions();
-  };
-
-  const openPanel = async () => {
-    setZipOpen(false);
-    setPanelOpen(true);
-    await refreshConditions();
+    if (!panelOpen) await refreshConditions();
+    setPanelOpen(!panelOpen);
   };
 
   const scrollToEvidence = (id: string) => {
@@ -429,6 +396,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   };
 
   const onChangeRequest = () => {
+
     setPanelOpen(true);
     document.getElementById("room-input")?.focus();
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
@@ -445,6 +413,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   };
 
   const onSuggest = (name: string, value: string) => {
+
     setMsg(`${name} ${value} 말고 다른 조건을 제안합니다. `);
     document.getElementById("room-input")?.focus();
   };
@@ -455,12 +424,17 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
 
   const quickAsk = (q: string) => {
     setMsg(q);
+
     document.getElementById("room-input")?.focus();
   };
 
   const chatMessages = messages.filter((m) => m.author_type !== "assistant");
   const zipMessages = messages.filter((m) => m.author_type === "assistant");
   const newestZip = zipMessages[zipMessages.length - 1] ?? null;
+  const broker = brokerSnapshot({
+    tradeType: meta?.listing?.tradeType,
+    conditions, visits, proposals: propData?.proposals ?? [], chat: chatMessages, latestNote: newestZip,
+  });
   const participant = meta?.demo ? aiName(meta?.listing?.tradeType) : "거래 상대방";
   const listing = meta?.listing;
   const formattedPrice = !listing ? "" : listing.tradeType === "매매"
@@ -482,7 +456,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             {formattedPrice ? <strong className="deal-hero-price">{formattedPrice}</strong> : null}
           </div>
           <p>{meta?.demo
-            ? "AI 임대인·매도자와 편하게 대화해 보세요. 집톡이가 옆에서 조건과 방문 일정을 정리해 드려요."
+            ? "집톡이도 그룹채팅에 참여해 조건과 남은 확인 절차를 챙깁니다."
             : "이 거래방은 참여자가 직접 대화합니다. AI 임대인은 참여하지 않습니다."}</p>
         </div>
         <div className="deal-hero-symbol" aria-hidden="true">
@@ -496,9 +470,9 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             <div className="conversation-identity">
               <span className="conversation-avatar" aria-hidden="true">⌂</span>
               <div>
-                <strong>{participant}</strong>
+                <strong>{meta?.demo ? participant + " · 집톡이" : participant}</strong>
                 <span className="conversation-status"><i aria-hidden="true" />
-                  {meta?.demo ? "AI 시연 · 실제 소유자가 아닙니다" : "개인 거래 · 참여자 간 메시지"}
+                  {meta?.demo ? "그룹채팅 · 임대인·임차인·집톡이 (AI 시연)" : "개인 거래 · 참여자 간 메시지"}
                 </span>
               </div>
             </div>
@@ -506,30 +480,54 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               <button type="button" className="conversation-tools-button" onClick={onTogglePanel}>
                 <span aria-hidden="true">▤</span> {panelOpen ? "거래 현황 닫기" : "거래 현황"}
               </button>
-              {meta?.demo ? (
-                <button type="button" className="conversation-tools-button is-accent"
-                  onClick={() => void callZiptalk(undefined, true)} disabled={zipPending}>
-                  <span aria-hidden="true">✦</span> {zipPending ? "집톡이 분석 중" : "집톡이 분석"}
-                </button>
-              ) : null}
             </div>
           </div>
           {error ? <p className="error" role="alert">{error}</p> : null}
           <div className="msgs conversation-feed" ref={msgsRef} role="log" aria-label="거래 대화" aria-relevant="additions text">
-            <div className="conversation-day-label"><span>메시지 · {meta?.demo ? "AI 시연" : "개인 간 거래"}</span></div>
-            {chatMessages.map((m) => (
-              <div key={m.id} id={"msg-" + m.id}
-                className={"conversation-row " + (m.author_type === "human" ? "is-mine" : "is-theirs")}>
-                {m.author_type !== "human" ? <span className="conversation-small-avatar" aria-hidden="true">⌂</span> : null}
+            <div className="conversation-day-label"><span>메시지 · {meta?.demo ? "그룹채팅 시연" : "개인 간 거래"}</span></div>
+            {meta?.demo ? (
+              <section className="jiptok-progress" aria-label="집톡이 진행 현황">
+                <strong>✦ 집톡이가 챙기는 거래 진행</strong>
+                <div className="jiptok-progress-grid">
+                  {broker.checkpoints.map((point) => (
+                    <div key={point.key} className={"jiptok-checkpoint is-" + point.status}>
+                      <strong>{point.label}</strong>
+                      <span>{point.status === "checked" ? "✓ 양측 확인" : point.status === "pending" ? "동의 대기" : point.status === "talking" ? "확인 필요" : "미정"}</span>
+                      <small>{point.description}</small>
+                    </div>
+                  ))}
+                </div>
+                <p>다음 확인: {broker.nextStep.title} · {broker.nextStep.note}</p>
+              </section>
+            ) : null}
+            {messages.map((m) => {
+              const jiptok = m.author_type === "assistant";
+              const mine = m.author_type === "human";
+              return (
+                <div key={m.id} id={"msg-" + m.id} className={"conversation-row " + (jiptok ? "is-jiptok" : mine ? "is-mine" : "is-theirs")}>
+                  {!mine ? <span className={"conversation-small-avatar" + (jiptok ? " jiptok-avatar" : "")} aria-hidden="true">{jiptok ? "✦" : "⌂"}</span> : null}
+                  <div className="conversation-message">
+                    {!mine ? <span className="conversation-author">{jiptok ? "집톡이 · 거래 진행 도우미" : m.author + authorTag(m)}</span> : null}
+                    <div className={mine ? "bubble mine" : jiptok ? "bubble jiptok" : "bubble theirs"}>{m.text}</div>
+                    {jiptok && propData ? propData.proposals.filter((p) => p.card_msg_id === m.id && p.status !== "superseded" && !dismissed.includes(p.id)).map((p) => (
+                      <ProposalCard key={p.id} p={p} approvals={propData.approvals} sides={propData.sides} demo={propData.demo} me={me} onDecide={onDecide} onSuggest={onSuggest} onHold={onHold} onEvidence={scrollToEvidence}/>
+                    )) : null}
+                    <time className="conversation-time" dateTime={m.created_at}>
+                      {new Date(m.created_at).toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" })}
+                    </time>
+                  </div>
+                </div>
+              );
+            })}
+            {zipPending && meta?.demo ? (
+              <div className="conversation-row is-jiptok" role="status">
+                <span className="conversation-small-avatar jiptok-avatar" aria-hidden="true">✦</span>
                 <div className="conversation-message">
-                  {m.author_type !== "human" ? <span className="conversation-author">{m.author}{authorTag(m)}</span> : null}
-                  <div className={m.author_type === "human" ? "bubble mine" : "bubble theirs"}>{m.text}</div>
-                  <time className="conversation-time" dateTime={m.created_at}>
-                    {new Date(m.created_at).toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" })}
-                  </time>
+                  <span className="conversation-author">집톡이</span>
+                  <div className="bubble jiptok conversation-typing" aria-label="집톡이가 남은 사항을 확인 중입니다"><i/><i/><i/></div>
                 </div>
               </div>
-            ))}
+            ) : null}
             {aiPending && meta?.demo ? (
               <div className="conversation-row is-theirs" role="status">
                 <span className="conversation-small-avatar" aria-hidden="true">⌂</span>
@@ -540,6 +538,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               </div>
             ) : null}
           </div>
+          {zipError ? <p className="conversation-inline-error" role="alert">{zipError}</p> : null}
+          {zipNotice ? <p className="meta" role="status">{zipNotice}</p> : null}
           {aiError ? (
             <p className="conversation-inline-error" role="alert">
               {aiError} <button type="button" className="btn ghost" onClick={onRetry} disabled={aiPending}>다시 시도</button>
@@ -559,8 +559,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             <div className="field">
               <label htmlFor="room-input">메시지 입력 <span>Enter 전송 · Shift+Enter 줄바꿈</span></label>
               <textarea id="room-input" rows={2} value={msg} placeholder="메시지 입력"
-                onFocus={() => setZipOpen(false)}
-                onChange={(e) => { setZipOpen(false); setMsg(e.target.value); }}
+                onChange={(e) => setMsg(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault();
@@ -572,7 +571,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               {sending ? "전송 중..." : "전송"} <span aria-hidden="true">↗</span>
             </button>
           </div>
-          <p className="conversation-privacy">시연용 AI의 제안은 실제 계약이나 방문 확정이 아닙니다. 거래 현황에서 확인하세요.</p>
+          <p className="conversation-privacy">집톡이는 남은 확인 사항을 챙깁니다. 조건과 방문은 당사자 확인 후 확정되며, AI 시연 동의는 실제 계약이 아닙니다.</p>
         </section>
         {panelOpen ? (
           <aside className="card drawer open" aria-label="거래 현황 상세">
@@ -580,7 +579,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               <button className="btn ghost" onClick={() => setPanelOpen(false)}>닫기</button>
             </div>
             <h3>거래 현황</h3>
-            <p className="meta">등록 조건과 협상 조건을 구분합니다. 동일한 조건 버전에 양측이 동의해야 시연 합의로 표시됩니다.</p>
+            <p className="meta">등록 조건과 대화 중 제안은 구분됩니다. 동일한 조건 버전에 양측이 동의해야 합의로 표시됩니다.</p>
             <h4>{meta?.listing?.tradeType === "매매" ? "매매 가격" : meta?.listing?.tradeType === "전세" ? "전세 조건" : "월세 조건"}</h4>
             {meta?.listing ? <div className="deal-terms-baseline" aria-label="매물 등록 조건">
               {initialTerms(meta.listing as { tradeType: "매매" | "전세" | "월세"; salePrice: number; deposit: number; rent: number }).map(term => (
@@ -693,86 +692,6 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           </aside>
         ) : null}
       </div>
-      {meta?.demo && !panelOpen ? (
-        <aside className={"ziptalk-companion " + (zipOpen ? "is-open" : "")} aria-label="집톡이 거래 도우미">
-          {zipOpen ? (
-            <div className="ziptalk-popover" role="region" aria-label="집톡이의 조건 정리"
-              onKeyDown={(e) => { if (e.key === "Escape") setZipOpen(false); }}>
-              <div className="ziptalk-popover-header">
-                <span className="ziptalk-mascot is-small" aria-hidden="true">
-                  <span className="ziptalk-mascot-roof" />
-                  <span className="ziptalk-mascot-face"><i/><i/><b/></span>
-                  <span className="ziptalk-mascot-star">✦</span>
-                </span>
-                <div className="ziptalk-popover-identity">
-                  <strong>집톡이 <span>✦</span></strong>
-                  <small>거래를 옆에서 정리해 주는 친구</small>
-                </div>
-                <button type="button" className="ziptalk-close"
-                  onClick={() => setZipOpen(false)} aria-label="집톡이 안내 닫기">×</button>
-              </div>
-              <div className="ziptalk-popover-content" ref={zipPanelRef} aria-live="polite">
-                {zipNotice ? <div className="ziptalk-status-note">{zipNotice}</div> : null}
-                {zipError ? <div className="ziptalk-error" role="alert">{zipError}</div> : null}
-                {zipPending ? (
-                  <div className="ziptalk-thinking" role="status">
-                    <span className="ziptalk-thinking-sparkles" aria-hidden="true">✦ ✧</span>
-                    잠깐! 대화에서 조건을 정리하고 있어요...
-                  </div>
-                ) : null}
-                {zipMessages.length === 0 && !zipPending ? (
-                  <div className="ziptalk-empty">
-                    <strong>반가워요! 집톡이에요 🏠</strong>
-                    <p>가격이나 방문 일정을 이야기하면 여기서 정리해 드릴게요.</p>
-                  </div>
-                ) : null}
-                {zipMessages.map((m) => (
-                  <article className="ziptalk-note" id={"msg-" + m.id} key={m.id}>
-                    <span className="ziptalk-note-label">✦ 집톡이의 정리</span>
-                    <p>{m.text}</p>
-                    {m.text.includes("거래 현황에서 확인") ? (
-                      <button type="button" className="ziptalk-note-link" onClick={() => void openPanel()}>
-                        거래 현황에서 확인 ↗
-                      </button>
-                    ) : null}
-                    {propData ? propData.proposals
-                      .filter((p) => p.card_msg_id === m.id && p.status !== "superseded" && !dismissed.includes(p.id))
-                      .map((p) => (
-                        <ProposalCard key={p.id} p={p} approvals={propData.approvals}
-                          sides={propData.sides} demo={propData.demo} me={me}
-                          onDecide={onDecide}
-                          onSuggest={(name, value) => { setZipOpen(false); onSuggest(name, value); }}
-                          onHold={onHold}
-                          onEvidence={(id) => { setZipOpen(false); scrollToEvidence(id); }}
-                        />
-                      )) : null}
-                  </article>
-                ))}
-              </div>
-              <div className="ziptalk-popover-footer">
-                <span>집톡이는 정보를 정리할 뿐, 계약을 확정하지 않아요.</span>
-                <button type="button" onClick={() => void openPanel()}>거래 현황 ↗</button>
-              </div>
-            </div>
-          ) : null}
-          <button type="button" className={"ziptalk-dock-button " + (zipPending ? "is-thinking" : "")}
-            aria-label={zipOpen ? "집톡이 안내 닫기" : "집톡이 열기"}
-            aria-expanded={zipOpen}
-            onClick={() => { setZipOpen((prev) => !prev); setZipUnread(false); }}>
-            <span className="ziptalk-mascot" aria-hidden="true">
-              <span className="ziptalk-mascot-roof" />
-              <span className="ziptalk-mascot-face"><i/><i/><b/></span>
-              <span className="ziptalk-mascot-star">✦</span>
-            </span>
-            <span className="ziptalk-dock-caption">
-              <strong>집톡이</strong>
-              <small>{zipPending ? "생각 중..." : newestZip ? "최근 정리 보기" : "옆에서 도와줄게요"}</small>
-            </span>
-            {zipUnread && !zipOpen ? <i className="ziptalk-unread" aria-label="새 안내" /> : null}
-            <span className="ziptalk-dock-chevron" aria-hidden="true">{zipOpen ? "⌄" : "⌃"}</span>
-          </button>
-        </aside>
-      ) : null}
     </div>
   );
 }

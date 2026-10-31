@@ -74,8 +74,28 @@ function toAmount(num: string, unit: string | undefined): number | null {
  * 보증금·월세 필드를 문맥과 함께 뽑는다. 필드 단서(보증금·월세)가 있어야 하며
  * 서로 다른 두 금액을 한 가격으로 합치지 않는다. 파싱 실패는 null 필드다.
  */
+/**
+ * Spoken Korean price words are normalized only when the field itself is explicit.
+ * "삼천에 육십팔" without a price cue is deliberately not inferred as a contract.
+ */
+export function normalizeRentSpeech(text: string): string {
+  const digit: Record<string, number> = {영:0,일:1,이:2,삼:3,사:4,오:5,육:6,칠:7,팔:8,구:9};
+  function koreanNumber(raw: string): number | null {
+    if (raw === "천") return 1000;
+    if (/^[일이삼사오육칠팔구]천$/.test(raw)) return (digit[raw[0]] ?? 0)*1000;
+    let value=0, remaining=raw;
+    for(const [unit,scale] of [["백",100],["십",10]] as const){
+      const m=remaining.match(new RegExp("^([일이삼사오육칠팔구]?)"+unit));
+      if(m){value+=(m[1]?digit[m[1]]:1)*scale;remaining=remaining.slice(m[0].length);}
+    }
+    if(remaining){if(remaining.length!==1||digit[remaining]===undefined)return null;value+=digit[remaining];}
+    return value>0?value:null;
+  }
+  return text.replace(/(보증금|월세)\s*([일이삼사오육칠팔구영십백천]+)(?=\s|에|으로|이면|이면|만|[,.!?]|$)/g,
+    (full,field:string,num:string)=>{const parsed=koreanNumber(num);return parsed===null?full:field+" "+parsed+"만원";});
+}
 export function parseRentFields(text: string): RentFields {
-  const t = text.replace(/,/g, "");
+  const t = normalizeRentSpeech(text).replace(/,/g, "");
   let deposit: number | null = null;
   const comp = t.match(/(전세보증금|보증금|전세)[^\d\n]{0,10}(\d+(?:\.\d+)?)\s*억\s*(\d+(?:\.\d+)?)?\s*(천만|천|만)?/);
   if (comp) {

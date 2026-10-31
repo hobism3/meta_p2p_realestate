@@ -309,6 +309,40 @@ export function analyzeMock(
       if (!isNew && cur.confirmedBy) bubbles.push(`이전에 확인한 ${cur.value}와 다릅니다. 다시 협의할까요?`);
     }
   }
+  // Explicit pet permission belongs to transaction-specific option conditions,
+  // not to the original listing inventory. Questions never become permission.
+  if (proposer === "demo" && /고양이|반려묘|반려동물|강아지|반려견/.test(t) &&
+      /괜찮|가능|허용|키우셔도|키워도/.test(t) && !/안 됩니다|안돼|불가|금지|어렵/.test(t) &&
+      !isQuestionLike(t)) {
+    const animal = /고양이|반려묘/.test(t) ? "반려묘" : /강아지|반려견/.test(t) ? "반려견" : "반려동물";
+    const permission = animal + " 허용" + (/조용히/.test(t) ? "(조용히 키우는 조건)" : "");
+    const prior = current.get("옵션")?.value ?? "";
+    if (!prior.includes(animal + " 허용")) {
+      const value = prior && !prior.includes("미확인") ? prior + " / " + permission : permission;
+      upserts.push({name:"옵션",value,proposer:"demo",status:"proposed",evidence:[trigger.id]});
+      bubbles.push(animal + " 조건도 이야기됐네요. 제안 내용을 카드에서 확인해 주세요.");
+    }
+  }
+  // A short affirmative is meaningful only if the preceding conversation
+  // contains an explicit rental offer from the other side. No guessed amounts.
+  if (tradeType === "월세" && proposer === "demo") {
+    const humanIndex = history.findIndex((m) => m.author_type === "human" && m.id !== trigger.id);
+    const recentHuman = humanIndex >= 0 ? history[humanIndex] : null;
+    const affirmative = recentHuman && /^(전\s*)?(좋아요|동의해요|그렇게\s*해요|그\s*조건으로\s*할게요|그렇게\s*진행해요)[.!~ ]*$/.test(recentHuman.text.trim());
+    // Only the immediately preceding AI turn can be accepted by a bare "좋아요".
+    const previousAI = humanIndex >= 0 ? history.slice(humanIndex + 1).find((m) => m.author_type === "demo_agent") : undefined;
+    const offer = previousAI && parseRentFields(previousAI.text).deposit !== null &&
+      parseRentFields(previousAI.text).monthlyRent !== null ? previousAI : null;
+    if (affirmative && offer) {
+      const amount = parseRentFields(offer.text);
+      const value = formatRentBundle(amount.deposit!,amount.monthlyRent!);
+      const previous = current.get(wantName);
+      if (previous?.value !== value && !upserts.some((u) => u.name === wantName)) {
+        upserts.push({name:wantName,value,proposer:"human",status:"proposed",evidence:[recentHuman.id,offer.id]});
+        bubbles.push("임차인도 상대방의 " + value + " 제안에 동의하셨네요. 양측 확정 카드로 확인할게요.");
+      }
+    }
+  }
   // 양측 최신값이 수렴하면 최종 협의 후보 1건만 올린다. 희망·역제안에는 카드를 만들지 않는다.
   if (cls !== "withdraw") {
     if (tradeType === "매매") {
@@ -465,37 +499,6 @@ export function analyzeMock(
           : `${name}이 ${cur.value}에서 ${disp}로 변경됐어요. 아직 확정되지는 않았습니다.`,
       );
       if (!isNew && cur.confirmedBy) bubbles.push(`이전에 확인한 ${cur.value}와 다릅니다. 다시 협의할까요?`);
-    }
-  }
-  // Explicit pet permission belongs to transaction-specific option conditions,
-  // not to the original listing inventory. Questions never become permission.
-  if (proposer === "demo" && /고양이|반려묘|반려동물|강아지|반려견/.test(t) &&
-      /괜찮|가능|허용|키우셔도|키워도/.test(t) && !/안 됩니다|안돼|불가|금지|어렵/.test(t) &&
-      !isQuestionLike(t)) {
-    const animal = /고양이|반려묘/.test(t) ? "반려묘" : /강아지|반려견/.test(t) ? "반려견" : "반려동물";
-    const permission = animal + " 허용" + (/조용히/.test(t) ? "(조용히 키우는 조건)" : "");
-    const prior = current.get("옵션")?.value ?? "";
-    if (!prior.includes(animal + " 허용")) {
-      const value = prior && !prior.includes("미확인") ? prior + " / " + permission : permission;
-      upserts.push({name:"옵션",value,proposer:"demo",status:"proposed",evidence:[trigger.id]});
-      bubbles.push(animal + " 조건도 이야기됐네요. 제안 내용을 카드에서 확인해 주세요.");
-    }
-  }
-  // A short affirmative is meaningful only if the preceding conversation
-  // contains an explicit rental offer from the other side. No guessed amounts.
-  if (tradeType === "월세" && proposer === "demo") {
-    const recentHuman = history.find((m) => m.author_type === "human");
-    const affirmative = recentHuman && /^(전\s*)?(좋아요|동의해요|그렇게\s*해요|그\s*조건으로\s*할게요|그렇게\s*진행해요)[.!~ ]*$/.test(recentHuman.text.trim());
-    const offer = history.find((m) => m.author_type === "demo_agent" && m.id !== trigger.id &&
-      parseRentFields(m.text).deposit !== null && parseRentFields(m.text).monthlyRent !== null);
-    if (affirmative && offer) {
-      const amount = parseRentFields(offer.text);
-      const value = formatRentBundle(amount.deposit!,amount.monthlyRent!);
-      const previous = current.get(wantName);
-      if (previous?.value !== value && !upserts.some((u) => u.name === wantName)) {
-        upserts.push({name:wantName,value,proposer:"human",status:"proposed",evidence:[recentHuman.id,offer.id]});
-        bubbles.push("임차인도 상대방의 " + value + " 제안에 동의하셨네요. 양측 확정 카드로 확인할게요.");
-      }
     }
   }
   const qfin = upserts.filter((u) => u.name === finalName);
@@ -1175,6 +1178,24 @@ async function executeZiptalk(
         const grounded = `방문 일정은 ${visit.display}로 제안됐어요. 거래 현황에서 확인해 주세요.`;
         outcome.bubble = `${bubble ? bubble + " " : ""}${grounded}`.slice(0, ZIPTALK_BUBBLE_LIMIT);
         outcome.intervene = true;
+      }
+    }
+    if (provider === "meta") {
+      const recent = (await getDal().all(
+        "SELECT id, author_type, text FROM messages WHERE room_id = ? AND (author_type = 'human' OR author_type = 'demo_agent') ORDER BY created_at DESC LIMIT 8",
+        [roomId],
+      )) as Array<{ id: string; author_type: string; text: string }>;
+      const grounded = analyzeMock(trigger, current, trigger.created_at,
+        recent.map((r) => ({ id: String(r.id), author_type: String(r.author_type), text: String(r.text ?? "") })),
+        tradeType);
+      const reviewedNames = new Set(["임차 희망 조건", "임대 제안 조건", "월세 조건", "옵션"]);
+      const additions = grounded.upserts.filter((u) => reviewedNames.has(u.name) &&
+        !outcome.upserts.some((old) => old.name === u.name));
+      if (additions.length) {
+        outcome.upserts.push(...additions);
+        outcome.intervene = true;
+        const note = grounded.bubble ?? "두 분이 이야기한 조건을 확인 카드에 정리했어요.";
+        outcome.bubble = [outcome.bubble, note].filter(Boolean).join(" ").slice(0, ZIPTALK_BUBBLE_LIMIT);
       }
     }
     const applied = await applyOutcome(roomId, outcome);

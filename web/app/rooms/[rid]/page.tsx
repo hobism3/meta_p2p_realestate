@@ -497,7 +497,16 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
                     </div>
                   ))}
                 </div>
-                <p>다음 확인: {broker.nextStep.title} · {broker.nextStep.note}</p>
+                <div className="jiptok-journey" aria-label="거래 진행 단계">
+                  {broker.journey.map((step, index) => (
+                    <div key={step.key} className={"jiptok-journey-step is-" + step.status} title={step.detail}>
+                      <span className="jiptok-stage-number">{step.status === "checked" ? "✓" : index + 1}</span>
+                      <span>{step.label}</span>
+                      <small>{step.status === "checked" ? "완료" : step.status === "pending" ? "동의 대기" : step.status === "talking" ? "확인 중" : "예정"}</small>
+                    </div>
+                  ))}
+                </div>
+                <p className="jiptok-next"><strong>집톡이의 다음 확인</strong> · {broker.nextStep.title} — {broker.nextStep.note}</p>
               </section>
             ) : null}
             {messages.map((m) => {

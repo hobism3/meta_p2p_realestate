@@ -345,7 +345,12 @@ export function analyzeMock(
       const amount = parseRentFields(offer.text);
       const value = formatRentBundle(amount.deposit!,amount.monthlyRent!);
       const previous = current.get(wantName);
-      if (previous?.value !== value && !upserts.some((u) => u.name === wantName)) {
+      const index = upserts.findIndex((u) => u.name === wantName);
+      const latest = index >= 0 ? upserts[index].value : previous?.value;
+      if (latest !== value) {
+        // An explicit acknowledgement supersedes a stale numeric wish found
+        // further back in the same history scan.
+        if (index >= 0) upserts.splice(index, 1);
         upserts.push({name:wantName,value,proposer:"human",status:"proposed",evidence:[recentHuman.id,offer.id]});
         bubbles.push("임차인도 상대방의 " + value + " 제안에 동의하셨네요. 양측 확정 카드로 확인할게요.");
       }
@@ -510,6 +515,11 @@ export function analyzeMock(
       if (!isNew && cur.confirmedBy) bubbles.push(`이전에 확인한 ${cur.value}와 다릅니다. 다시 협의할까요?`);
     }
   }
+  // The final price claim retains both the spoken offer and the human's
+  // short acceptance as traceable evidence.
+  const accepted = upserts.find((u) => u.name === wantName && u.evidence.length > 1);
+  const final = upserts.find((u) => u.name === finalName);
+  if (accepted && final) final.evidence = [...new Set([...final.evidence, ...accepted.evidence])];
   const qfin = upserts.filter((u) => u.name === finalName);
   if (upserts.length === qfin.length && cls === "question") {
     if (t.includes("입주")) {

@@ -7,65 +7,47 @@ function loginAs(page: Page, sub: string, name: string) {
   return page.addInitScript((value: string) => localStorage.setItem("directhome.access_token", value), token);
 }
 
-test("집톡이: 채팅 밖에 등장하고 팝업에서 정리·합의 카드를 확인한다", async ({ page }) => {
-  await loginAs(page, "companion-" + test.info().project.name, "팝업테스터");
+test("집톡이: 상담창 대신 그룹채팅에서 말하고 합의 카드를 보여준다", async ({ page }) => {
+  await loginAs(page, "companion-" + test.info().project.name, "그룹채팅테스터");
   await page.goto("/listings/s21");
   await page.getByRole("button", { name: "문의하기" }).click();
-  await expect(page).toHaveURL(/\/rooms\//);
-  await expect(page.getByRole("button", { name: "집톡이 열기" })).toBeVisible();
+  const chat = page.getByRole("log", { name: "거래 대화" });
+  await expect(chat.locator(".jiptok-checkpoint")).toHaveCount(3);
+  await expect(page.locator(".ziptalk-companion")).toHaveCount(0);
   await page.getByPlaceholder("메시지 입력").fill("44000만원에 합시다");
   await page.getByRole("button", { name: "전송" }).click();
-  const popover = page.getByRole("region", { name: "집톡이의 조건 정리" });
-  const peek = page.locator(".broker-peek");
-  await expect(peek).toBeVisible({ timeout: 30000 });
-  await expect(peek).toContainText(/어머|메모했어요|금액/);
-  await expect(popover).toHaveCount(0);
-  await peek.getByRole("button", { name: /제가 적은 거 볼래요/ }).click();
-  await expect(popover).toBeVisible();
-  await expect(popover.getByText(/새로 제안됐어요/).first()).toBeVisible();
-  await expect(popover.locator(".broker-checkpoint")).toHaveCount(3);
-  await expect(popover.getByText("다음엔 이거 하나만!", { exact: false })).toBeVisible();
-  await expect(page.getByRole("log", { name: "거래 대화" }).getByText(/새로 제안됐어요/)).toHaveCount(0);
-  await expect(page.getByRole("log", { name: "거래 대화" }).locator(".zipcard")).toHaveCount(0);
-  await expect(page.locator(".conversation-row.is-mine").first()).toBeVisible();
-  await page.locator(".ziptalk-close").click();
-  await expect(popover).toHaveCount(0);
-  await page.getByRole("button", { name: "집톡이 열기" }).click();
-  await expect(popover.getByText(/새로 제안됐어요/).first()).toBeVisible();
+  await expect(chat.locator(".conversation-row.is-jiptok").last()).toBeVisible({ timeout: 30000 });
+  await expect(chat.locator(".proposal-card").last()).toBeVisible();
+  await expect(chat.locator(".jiptok-checkpoint").first()).toContainText("동의 대기");
   await page.reload();
-  await page.getByRole("button", { name: "집톡이 열기" }).click();
-  await expect(popover.getByText(/새로 제안됐어요/).first()).toBeVisible();
+  await expect(page.getByRole("log", { name: "거래 대화" }).locator(".conversation-row.is-jiptok").last()).toBeVisible();
 });
 
-test("집톡이: 질문은 대화 입력칸에만 넣고, 전송하지 않는다", async ({ page }) => {
-  await loginAs(page, "broker-action-" + test.info().project.name, "중개수첩테스터");
-  await page.goto("/listings/s16");
+test("집톡이: 가격 카드에 동의하면 양측 확인이 표시되고, 수정하면 다시 대기한다", async ({ page }) => {
+  await loginAs(page, "approval-" + test.info().project.name, "동의테스터");
+  await page.goto("/listings/s21");
   await page.getByRole("button", { name: "문의하기" }).click();
-  await expect(page).toHaveURL(/\/rooms\//);
-  await page.getByRole("button", { name: "집톡이 열기" }).click();
-  const popover = page.getByRole("region", { name: "집톡이의 조건 정리" });
   const chat = page.getByRole("log", { name: "거래 대화" });
-  await expect(popover.getByText(/다음엔 이거 하나만/)).toBeVisible();
-  const before = await chat.locator(".conversation-row.is-mine").count();
-  await popover.getByRole("button", { name: /그 질문, 대화창에 넣어줘/ }).click();
-  await expect(popover).toHaveCount(0);
-  await expect(page.getByPlaceholder("메시지 입력")).toHaveValue(/방문 가능한 날짜|방문하는 일정|가격 조건|생활 조건/);
-  await expect(chat.locator(".conversation-row.is-mine")).toHaveCount(before);
+  await page.getByPlaceholder("메시지 입력").fill("44000만원에 합시다");
+  await page.getByRole("button", { name: "전송" }).click();
+  const card = chat.locator(".proposal-card").last();
+  await expect(card).toBeVisible({ timeout: 30000 });
+  await card.getByRole("button", { name: "동의하기" }).click();
+  await expect(chat.locator(".jiptok-checkpoint").first()).toContainText("양측 확인");
+  await page.getByPlaceholder("메시지 입력").fill("44500만원에 합시다");
+  await page.getByRole("button", { name: "전송" }).click();
+  await expect(chat.locator(".proposal-card").last()).toContainText("44,500");
+  await expect(chat.locator(".jiptok-checkpoint").first()).toContainText("동의 대기");
 });
 
-test("집톡이: 모바일 팝업에서 거래 현황으로 이동하고 가로로 넘치지 않는다", async ({ page }) => {
+test("집톡이: 모바일 화면에서 그룹채팅과 진행현황이 넘치지 않는다", async ({ page }) => {
   await loginAs(page, "companion-mobile-" + test.info().project.name, "모바일테스터");
   await page.goto("/listings/s16");
   await page.getByRole("button", { name: "문의하기" }).click();
-  await expect(page).toHaveURL(/\/rooms\//);
-  await page.getByRole("button", { name: "집톡이 열기" }).click();
-  const popover = page.getByRole("region", { name: "집톡이의 조건 정리" });
-  await expect(popover).toBeVisible();
-  const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(over).toBeLessThanOrEqual(0);
-  await popover.locator(".ziptalk-popover-footer button").click();
+  await expect(page.getByRole("log", { name: "거래 대화" }).locator(".jiptok-checkpoint")).toHaveCount(3);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await expect(page.getByRole("heading", { name: "거래 현황" })).toBeVisible();
-  await expect(popover).toHaveCount(0);
 });
 
 test("내 거래방: 검색 및 필터, 빈 상태를 제공한다", async ({ page }) => {

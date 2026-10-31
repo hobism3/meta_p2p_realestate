@@ -962,3 +962,7 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
 .jiptok-journey-step.is-talking{border-color:#bdd4e7;background:#f3f8fc}
 .jiptok-progress .jiptok-next{padding-top:10px;border-top:1px solid #eae1d3;margin-top:11px}
 @media(max-width:650px){.jiptok-journey{grid-template-columns:repeat(2,minmax(0,1fr))}.jiptok-journey-step{padding:7px 5px}.jiptok-journey-step small{flex-basis:100%;margin-left:25px}}
+
+.jiptok-reconcile{margin-top:10px;background:transparent;border:1px solid #dbc9a8;border-radius:9px;padding:7px 10px;color:#80623d;font:inherit;font-size:10px;cursor:pointer;max-width:100%;white-space:normal;text-align:left}
+.jiptok-reconcile:hover{background:#fff5e3}
+.jiptok-reconcile:disabled{opacity:.58;cursor:wait}

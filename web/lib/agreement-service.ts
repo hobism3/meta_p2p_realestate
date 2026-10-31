@@ -395,6 +395,12 @@ export async function createProposals(
       });
       continue;
     }
+    // Backfills must not turn an already agreed identical term into a new pending card.
+    const priorAgreed = await tx.get(
+      "SELECT id FROM room_proposals WHERE room_id = ? AND name = ? AND value = ? AND status = 'agreed' ORDER BY created_at DESC LIMIT 1",
+      [roomId, it.name, it.value],
+    );
+    if (priorAgreed) continue;
     const mv = (await tx.get("SELECT MAX(version) AS m FROM room_proposals WHERE room_id = ? AND name = ?", [
       roomId,
       it.name,
@@ -556,6 +562,31 @@ export async function decideProposal(
             stamp,
             visitId,
           ]);
+        }
+      }
+      // Guide the next step in the existing group chat only after BOTH sides approved.
+      if (demo && status === "agreed") {
+        const name = String(p.name ?? "");
+        const trade: TradeType = listing?.tradeType === "전세" ? "전세" :
+          listing?.tradeType === "월세" ? "월세" : "매매";
+        const text = name === "최종 매매가" || name === "최종 전세보증금" || name === "월세 조건"
+          ? "가격 조건은 두 분이 모두 확인하셨어요. 추가 옵션·특약을 확인하고, 그럼 계약일은 언제로 할까요?"
+          : name === "방문일"
+            ? "방문 일정이 양측 확인됐어요. 집을 본 다음 가격과 추가 조건도 확인해 주세요."
+            : name === "옵션" || name === "수리 요청" || name === "관리비"
+              ? "추가 조건도 확인됐네요. 두 분, 계약일은 언제로 할까요?"
+              : name === "계약일"
+                ? "계약일은 확인됐어요. 계약금 금액과 지급 시점을 정해 볼까요?"
+                : name === "계약금"
+                  ? "계약금 조건도 확인됐네요. 잔금일과 " + (trade === "매매" ? "인도일" : "입주일") + "은 언제로 할까요?"
+                  : name === "잔금일" || name === "입주일" || name === "인도일"
+                    ? "잔금과 인도·입주 날짜도 서로 일치하는지 한 번 더 확인해 주세요."
+                    : "";
+        if (text) {
+          await tx.run(
+            "INSERT INTO messages (id,listing_id,author,role,user_id,author_type,room_id,text,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+            [randomUUID(), String(room?.listing_id ?? ""), "집톡이", "", `agent:${roomId}:ziptalk`, "assistant", roomId, text, stamp],
+          );
         }
       }
       return { ok: true as const, status, version: Number(p.version ?? 1) };

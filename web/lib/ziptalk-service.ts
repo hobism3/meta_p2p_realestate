@@ -92,6 +92,7 @@ export interface HistoryMsg {
   id: string;
   text: string;
   author_type: string;
+  created_at?: string;
 }
 
 function isQuestionLike(t: string): boolean {
@@ -156,6 +157,7 @@ interface CandMsg {
   id: string;
   text: string;
   author_type: string;
+  created_at?: string;
 }
 
 /** 이력 값(묶음·전세·부분 표기)을 필드로 되돌린다. */
@@ -228,8 +230,8 @@ export function analyzeMock(
   const pname = proposer === "human" ? wantName : offerName;
   // 사람 트리거는 사람 발화만 훑고, AI 트리거는 AI 자신의 발화를 포함한다.
   // 입장 인사말은 어느 경우에도 제안 근거가 되지 않는다. 같은 방 대화를 섞지 않는다.
-  const cands: Array<{ id: string; text: string; author_type: string }> = [
-    { id: trigger.id, text: t, author_type: trigger.author_type },
+  const cands: CandMsg[] = [
+    { id: trigger.id, text: t, author_type: trigger.author_type, created_at: trigger.created_at },
     ...history.filter(
       (h) =>
         (h.author_type === "human" || (trigger.author_type === "demo_agent" && h.author_type === "demo_agent")) &&
@@ -311,16 +313,22 @@ export function analyzeMock(
   }
   // Explicit pet permission belongs to transaction-specific option conditions,
   // not to the original listing inventory. Questions never become permission.
-  if (proposer === "demo" && /고양이|반려묘|반려동물|강아지|반려견/.test(t) &&
-      /괜찮|가능|허용|키우셔도|키워도/.test(t) && !/안 됩니다|안돼|불가|금지|어렵/.test(t) &&
-      !isQuestionLike(t)) {
-    const animal = /고양이|반려묘/.test(t) ? "반려묘" : /강아지|반려견/.test(t) ? "반려견" : "반려동물";
-    const permission = animal + " 허용" + (/조용히/.test(t) ? "(조용히 키우는 조건)" : "");
-    const prior = current.get("옵션")?.value ?? "";
-    if (!prior.includes(animal + " 허용")) {
-      const value = prior && !prior.includes("미확인") ? prior + " / " + permission : permission;
-      upserts.push({name:"옵션",value,proposer:"demo",status:"proposed",evidence:[trigger.id]});
-      bubbles.push(animal + " 조건도 이야기됐네요. 제안 내용을 카드에서 확인해 주세요.");
+  if (proposer === "demo") {
+    const petReply = cands.find((c) => c.author_type === "demo_agent" &&
+      /고양이|반려묘|반려동물|강아지|반려견/.test(c.text) &&
+      /괜찮|가능|허용|키우셔도|키워도|안 됩니다|안돼|불가|금지|어렵/.test(c.text));
+    if (petReply && /괜찮|가능|허용|키우셔도|키워도/.test(petReply.text) &&
+        !/안 됩니다|안돼|불가|금지|어렵/.test(petReply.text) &&
+        !isQuestionLike(petReply.text)) {
+      const animal = /고양이|반려묘/.test(petReply.text) ? "반려묘" :
+        /강아지|반려견/.test(petReply.text) ? "반려견" : "반려동물";
+      const permission = animal + " 허용" + (/조용히/.test(petReply.text) ? "(조용히 키우는 조건)" : "");
+      const prior = current.get("옵션")?.value ?? "";
+      if (!prior.includes(animal + " 허용")) {
+        const value = prior && !prior.includes("미확인") ? prior + " / " + permission : permission;
+        upserts.push({name:"옵션",value,proposer:"demo",status:"proposed",evidence:[petReply.id]});
+        bubbles.push(animal + " 조건도 이야기됐네요. 제안 내용을 카드에서 확인해 주세요.");
+      }
     }
   }
   // A short affirmative is meaningful only if the preceding conversation
@@ -421,7 +429,7 @@ export function analyzeMock(
     if (isQuestionLike(c.text)) continue;
     // "그때 뵐게요" 같은 지시어는 같은 방의 가장 최근 방문일을 가리킨다. 확정 없이 묻기만 한다.
     if (/그때|그날|그 시간/.test(c.text)) {
-      const prior = cands.slice(cands.indexOf(c) + 1).map((o) => parseVisitProposal(o.text, refISO || trigger.created_at)).find((p) => p && p.time);
+      const prior = cands.slice(cands.indexOf(c) + 1).map((o) => parseVisitProposal(o.text, o.created_at || refISO || trigger.created_at)).find((p) => p && p.time);
       if (prior && prior.time) {
         bubbles.push(`${prior.display} 말씀하시는 거죠? 아직 확정되지는 않았습니다.`);
         break;
@@ -431,7 +439,7 @@ export function analyzeMock(
     const previous = cands.slice(cands.indexOf(c) + 1)
       .filter((p) => p.id !== c.id)
       .map((p) => ({ id: p.id, text: p.text }));
-    const resolved = resolveVisitDateTime(c.text, refISO || trigger.created_at, previous);
+    const resolved = resolveVisitDateTime(c.text, c.created_at || refISO || trigger.created_at, previous);
     const v = resolved?.visit;
     if (!v) continue;
     if (!hasWord && !v.time) continue;
@@ -482,8 +490,9 @@ export function analyzeMock(
       if (schedSeen.has(name)) continue;
       if (name === "계약일" && c.text.includes("계약금")) continue;
       if (!words.some((w) => c.text.includes(w))) continue;
-      const day = parseVisitProposal(c.text, refTime);
-      const disp = day ? day.display : parseMonthRef(c.text, refTime)?.display ?? null;
+      const sourceTime = c.created_at || refTime;
+      const day = parseVisitProposal(c.text, sourceTime);
+      const disp = day ? day.display : parseMonthRef(c.text, sourceTime)?.display ?? null;
       if (!disp) continue;
       const cur = current.get(name);
       if (cur && cur.value === disp) {
@@ -990,8 +999,10 @@ export async function runZiptalk(opts: {
   roomId: string;
   triggerMessageId?: string;
   provider?: DemoProvider;
+  reconcile?: boolean;
 }): Promise<ZiptalkOk | ZiptalkErr> {
-  const provider = opts.provider ?? resolveProvider();
+  const provider = opts.reconcile ? "mock" : opts.provider ?? resolveProvider();
+  const agentType = opts.reconcile ? "ziptalk_reconcile_v2" : "ziptalk";
   const model = provider === "meta" ? process.env.MODEL_MODEL ?? META_DEFAULT_MODEL : "ziptalk-v1";
   const room = await getRoom(opts.roomId);
   if (!room) return { ok: false, status: 404, error: "거래방 없음", provider, model };
@@ -1025,13 +1036,13 @@ export async function runZiptalk(opts: {
   try {
     await dal.run(
       "INSERT INTO agent_runs (id,room_id,trigger_msg_id,agent_type,provider,model,status,latency_ms,error,usage_json,message_id,summary,created_at,prompt_version) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-      [runId, opts.roomId, trigger.id, "ziptalk", provider, model, "running", 0, "", "{}", "", "", now(), ZIPTALK_VERSION],
+      [runId, opts.roomId, trigger.id, agentType, provider, model, "running", 0, "", "{}", "", "", now(), ZIPTALK_VERSION],
     );
   } catch {
     const existing = await dal.get("SELECT * FROM agent_runs WHERE room_id = ? AND trigger_msg_id = ? AND agent_type = ?", [
       opts.roomId,
       trigger.id,
-      "ziptalk",
+      agentType,
     ]);
     if (!existing) throw new Error("실행 등록 실패");
     const st = String(existing.status ?? "");
@@ -1047,11 +1058,11 @@ export async function runZiptalk(opts: {
     }
     if (st === "failed") {
       await dal.run("UPDATE agent_runs SET status = 'running', error = '', latency_ms = ? WHERE id = ?", [0, String(existing.id)]);
-      return executeZiptalk(String(existing.id), opts.roomId, trigger, listing, current, provider, model);
+      return executeZiptalk(String(existing.id), opts.roomId, trigger, listing, current, provider, model, opts.reconcile ? 40 : 6);
     }
     return { ok: false, status: 409, error: "처리 중", provider, model };
   }
-  return executeZiptalk(runId, opts.roomId, trigger, listing, current, provider, model);
+  return executeZiptalk(runId, opts.roomId, trigger, listing, current, provider, model, opts.reconcile ? 40 : 6);
 }
 
 async function executeZiptalk(
@@ -1062,6 +1073,7 @@ async function executeZiptalk(
   current: Map<string, StoredCondition>,
   provider: DemoProvider,
   model: string,
+  historyLimit = 6,
 ): Promise<ZiptalkOk | ZiptalkErr> {
   const started = Date.now();
   const fail = async (error: string, status: number, logExtra = ""): Promise<ZiptalkErr> => {
@@ -1142,14 +1154,14 @@ async function executeZiptalk(
       }
     } else {
       const recent = (await getDal().all(
-        "SELECT id, author_type, text FROM messages WHERE room_id = ? AND (author_type = 'human' OR author_type = 'demo_agent') ORDER BY created_at DESC LIMIT 6",
+        "SELECT id, author_type, text, created_at FROM messages WHERE room_id = ? AND (author_type = 'human' OR author_type = 'demo_agent') ORDER BY created_at DESC LIMIT " + historyLimit,
         [roomId],
-      )) as { id: string; author_type: string; text: string }[];
+      )) as { id: string; author_type: string; text: string; created_at: string }[];
       outcome = analyzeMock(
         trigger,
         current,
         trigger.created_at,
-        recent.map((r) => ({ id: String(r.id), text: String(r.text ?? ""), author_type: String(r.author_type ?? "") })),
+        recent.map((r) => ({ id: String(r.id), text: String(r.text ?? ""), author_type: String(r.author_type ?? ""), created_at: String(r.created_at ?? "") })),
         tradeType,
       );
     }

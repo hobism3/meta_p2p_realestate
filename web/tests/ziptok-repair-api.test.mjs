@@ -86,6 +86,18 @@ test("이전 방 재정리: 월세·반려묘·방문일을 근거/확인 카드
       assert.ok(chat.body.some(m=>m.author_type==="assistant"&&m.id===p.card_msg_id));
     }
   }
+  const priceCard = cards.body.proposals.find((p) => p.name === "월세 조건");
+  assert.ok(priceCard);
+  assert.ok(cards.body.approvals[priceCard.id].some((a) =>
+    a.actor_type === "demo" && a.decision === "agree"),"explicit AI rent counteroffer should be approved on the demo side");
+  const approval = await api(`/api/rooms/${room}/proposals/${priceCard.id}/decide`,"POST",HUMAN,{
+    decision:"agree",version:priceCard.version,
+  });
+  assert.equal(approval.status,200,JSON.stringify(approval.body));
+  assert.equal(approval.body.status,"agreed");
+  const nextChat = await api(`/api/rooms/${room}/messages`);
+  assert.ok(nextChat.body.some((m) => m.author_type === "assistant" &&
+    /계약일은 언제로 할까요/.test(m.text)),"agreement must prompt the next contract stage in group chat");
   const beforeCount=cards.body.proposals.length;
   const again=await api(`/api/rooms/${room}/ziptalk/reconcile`,"POST");
   assert.equal(again.status,200);

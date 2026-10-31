@@ -187,7 +187,7 @@ export function rentValueSupported(value: string, evidenceText: string): boolean
   return depOk && numberNear(ev, "월세", b.monthlyRent);
 }
 
-const RENT_ACCEPT_CUES = /(가능합니다|좋습니다|그러시죠|알겠습니다|동의합니다|받겠습니다)/;
+const RENT_ACCEPT_CUES = /(가능합니다|좋습니다|그러시죠|알겠습니다|동의합니다|받겠습니다|좋겠어요|좋겠네요|진행해요|진행하죠|괜찮아요)/;
 const RENT_REFUSE_CUES = /(어렵습니다|어렵다|안 됩니다|안됩니다|불가합니다|거절합니다)/;
 
 function fieldsCover(parsed: RentFields, deposit: number, monthlyRent: number | null): boolean {
@@ -206,7 +206,7 @@ export function aiAcceptsRentBundle(
   monthlyRent: number | null,
 ): boolean {
   return (aiDated ?? []).some(
-    (d) => RENT_ACCEPT_CUES.test(d.text) && fieldsCover(parseRentFields(d.text), deposit, monthlyRent),
+    (d) => !d.text.trim().endsWith("?") && RENT_ACCEPT_CUES.test(d.text) && fieldsCover(parseRentFields(d.text), deposit, monthlyRent),
   );
 }
 

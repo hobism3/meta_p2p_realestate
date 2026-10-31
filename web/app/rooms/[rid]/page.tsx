@@ -280,10 +280,11 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     setAuthed(!!getAccessToken());
     loadRoomMeta(params.rid).then(setMeta).catch(() => setMeta(null));
     refresh();
+    void refreshConditions();
     // 상대방 메시지를 5초마다 갱신한다.
     const t = setInterval(refresh, 5000);
     return () => clearInterval(t);
-  }, [params.rid, refresh]);
+  }, [params.rid, refresh, refreshConditions]);
 
   useEffect(() => {
     const el = msgsRef.current;
@@ -489,6 +490,17 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     tradeType: meta?.listing?.tradeType,
     conditions, visits, chat: chatMessages, latestNote: newestZip,
   });
+  const finalName = meta?.listing?.tradeType === "매매" ? "최종 매매가" : meta?.listing?.tradeType === "전세" ? "최종 전세보증금" : "월세 조건";
+  const latestFinal = propData?.proposals.filter((p) => p.name === finalName && p.status !== "superseded").slice(-1)[0];
+  const checkpoints = broker.checkpoints.map((point) => point.key !== "price" ? point : ({
+    ...point,
+    status: latestFinal?.status === "agreed" ? "checked" as const :
+      latestFinal?.status === "proposed" ? "pending" as const :
+      point.status === "checked" ? "talking" as const : point.status,
+    description: latestFinal?.status === "agreed" ? "양측 동의 완료" :
+      latestFinal?.status === "proposed" ? "양측 동의 대기" :
+      point.status === "checked" ? "양측 동의 전" : point.description
+  }));
   const participant = meta?.demo ? aiName(meta?.listing?.tradeType) : "거래 상대방";
   const listing = meta?.listing;
   const formattedPrice = !listing ? "" : listing.tradeType === "매매"
@@ -510,7 +522,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             {formattedPrice ? <strong className="deal-hero-price">{formattedPrice}</strong> : null}
           </div>
           <p>{meta?.demo
-            ? "AI 임대인·매도자와 편하게 대화해 보세요. 집톡이가 옆에서 조건과 방문 일정을 정리해 드려요."
+            ? "집톡이도 그룹채팅에 참여해 조건과 남은 확인 절차를 챙깁니다."
             : "이 거래방은 참여자가 직접 대화합니다. AI 임대인은 참여하지 않습니다."}</p>
         </div>
         <div className="deal-hero-symbol" aria-hidden="true">
@@ -524,9 +536,9 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             <div className="conversation-identity">
               <span className="conversation-avatar" aria-hidden="true">⌂</span>
               <div>
-                <strong>{participant}</strong>
+                <strong>{meta?.demo ? participant + " · 집톡이" : participant}</strong>
                 <span className="conversation-status"><i aria-hidden="true" />
-                  {meta?.demo ? "AI 시연 · 실제 소유자가 아닙니다" : "개인 거래 · 참여자 간 메시지"}
+                  {meta?.demo ? "그룹채팅 · 임대인·임차인·집톡이 (AI 시연)" : "개인 거래 · 참여자 간 메시지"}
                 </span>
               </div>
             </div>
@@ -537,27 +549,48 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               {meta?.demo ? (
                 <button type="button" className="conversation-tools-button is-accent"
                   onClick={() => void callZiptalk(undefined, true)} disabled={zipPending}>
-                  <span aria-hidden="true">✦</span> {zipPending ? "집톡이가 메모 중" : "집톡이야, 정리해줘!"}
+                  <span aria-hidden="true">✦</span> {zipPending ? "집톡이가 메모 중" : "집톡이 확인하기"}
                 </button>
               ) : null}
             </div>
           </div>
           {error ? <p className="error" role="alert">{error}</p> : null}
           <div className="msgs conversation-feed" ref={msgsRef} role="log" aria-label="거래 대화" aria-relevant="additions text">
-            <div className="conversation-day-label"><span>메시지 · {meta?.demo ? "AI 시연" : "개인 간 거래"}</span></div>
-            {chatMessages.map((m) => (
-              <div key={m.id} id={"msg-" + m.id}
-                className={"conversation-row " + (m.author_type === "human" ? "is-mine" : "is-theirs")}>
-                {m.author_type !== "human" ? <span className="conversation-small-avatar" aria-hidden="true">⌂</span> : null}
-                <div className="conversation-message">
-                  {m.author_type !== "human" ? <span className="conversation-author">{m.author}{authorTag(m)}</span> : null}
-                  <div className={m.author_type === "human" ? "bubble mine" : "bubble theirs"}>{m.text}</div>
-                  <time className="conversation-time" dateTime={m.created_at}>
-                    {new Date(m.created_at).toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" })}
-                  </time>
+            <div className="conversation-day-label"><span>메시지 · {meta?.demo ? "그룹채팅 시연" : "개인 간 거래"}</span></div>
+            {meta?.demo ? (
+              <section className="jiptok-progress" aria-label="집톡이 진행 현황">
+                <strong>✦ 집톡이가 챙기는 거래 진행</strong>
+                <div className="jiptok-progress-grid">
+                  {checkpoints.map((point) => (
+                    <div key={point.key} className={"jiptok-checkpoint is-" + point.status}>
+                      <strong>{point.label}</strong>
+                      <span>{point.status === "checked" ? "✓ 양측 확인" : point.status === "pending" ? "동의 대기" : point.status === "talking" ? "확인 필요" : "미정"}</span>
+                      <small>{point.description}</small>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
+                <p>다음 확인: {broker.nextStep.title} · {broker.nextStep.note}</p>
+              </section>
+            ) : null}
+            {messages.map((m) => {
+              const jiptok = m.author_type === "assistant";
+              const mine = m.author_type === "human";
+              return (
+                <div key={m.id} id={"msg-" + m.id} className={"conversation-row " + (jiptok ? "is-jiptok" : mine ? "is-mine" : "is-theirs")}>
+                  {!mine ? <span className={"conversation-small-avatar" + (jiptok ? " jiptok-avatar" : "")} aria-hidden="true">{jiptok ? "✦" : "⌂"}</span> : null}
+                  <div className="conversation-message">
+                    {!mine ? <span className="conversation-author">{jiptok ? "집톡이 · 거래 진행 도우미" : m.author + authorTag(m)}</span> : null}
+                    <div className={mine ? "bubble mine" : jiptok ? "bubble jiptok" : "bubble theirs"}>{m.text}</div>
+                    {jiptok && propData ? propData.proposals.filter((p) => p.card_msg_id === m.id && p.status !== "superseded" && !dismissed.includes(p.id)).map((p) => (
+                      <ProposalCard key={p.id} p={p} approvals={propData.approvals} sides={propData.sides} demo={propData.demo} me={me} onDecide={onDecide} onSuggest={onSuggest} onHold={onHold} onEvidence={scrollToEvidence}/>
+                    )) : null}
+                    <time className="conversation-time" dateTime={m.created_at}>
+                      {new Date(m.created_at).toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" })}
+                    </time>
+                  </div>
+                </div>
+              );
+            })}
             {aiPending && meta?.demo ? (
               <div className="conversation-row is-theirs" role="status">
                 <span className="conversation-small-avatar" aria-hidden="true">⌂</span>
@@ -617,7 +650,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               <button className="btn ghost" onClick={() => setPanelOpen(false)}>닫기</button>
             </div>
             <h3>거래 현황</h3>
-            <p className="meta">등록 조건과 협상 조건을 구분합니다. 동일한 조건 버전에 양측이 동의해야 시연 합의로 표시됩니다.</p>
+            <p className="meta">등록 조건과 대화 중 제안은 구분됩니다. 동일한 조건 버전에 양측이 동의해야 합의로 표시됩니다.</p>
             <h4>{meta?.listing?.tradeType === "매매" ? "매매 가격" : meta?.listing?.tradeType === "전세" ? "전세 조건" : "월세 조건"}</h4>
             {meta?.listing ? <div className="deal-terms-baseline" aria-label="매물 등록 조건">
               {initialTerms(meta.listing as { tradeType: "매매" | "전세" | "월세"; salePrice: number; deposit: number; rent: number }).map(term => (
@@ -730,153 +763,6 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           </aside>
         ) : null}
       </div>
-      {meta?.demo && !panelOpen ? (
-        <aside className={"ziptalk-companion broker-companion " + (zipOpen ? "is-open" : "")} aria-label="집톡이 거래 도우미">
-          {zipPeek && !zipOpen && newestZip ? (
-            <div className={"broker-peek broker-peek-" + broker.category} role="status">
-              <div className="broker-peek-eyebrow">✦ 집톡이가 옆에서 한마디</div>
-              <p>{broker.quip}</p>
-              <div className="broker-peek-actions">
-                <button type="button" onClick={() => {
-                  setZipOpen(true);
-                  setZipPeek(false);
-                }}>제가 적은 거 볼래요? ↗</button>
-                <button type="button" className="broker-peek-dismiss"
-                  onClick={() => setZipPeek(false)} aria-label="집톡이 한마디 닫기">나중에요</button>
-              </div>
-            </div>
-          ) : null}
-          {zipOpen ? (
-            <div className="ziptalk-popover broker-notebook" role="region"
-              aria-label="집톡이의 조건 정리" onKeyDown={(e) => {
-                if (e.key === "Escape") setZipOpen(false);
-              }}>
-              <div className="broker-notebook-head">
-                <span className="ziptalk-mascot is-small" aria-hidden="true">
-                  <span className="ziptalk-mascot-roof" />
-                  <span className="ziptalk-mascot-face"><i/><i/><b/></span>
-                  <span className="ziptalk-mascot-star">✦</span>
-                </span>
-                <div>
-                  <span className="broker-notebook-overline">AI 이웃 도우미 · 집톡이의 중개수첩</span>
-                  <h3>아유, 제가 적어뒀어요! <span aria-hidden="true">✎</span></h3>
-                  <small>대화 사이사이 중요한 것만 살짝 챙길게요.</small>
-                </div>
-                <button type="button" className="ziptalk-close" onClick={() => setZipOpen(false)}
-                  aria-label="집톡이 안내 닫기">×</button>
-              </div>
-              <div className="ziptalk-popover-content broker-notebook-body" ref={zipPanelRef}>
-                {zipNotice ? <div className="ziptalk-status-note" role="status">{zipNotice}</div> : null}
-                {zipError ? <div className="ziptalk-error" role="alert">{zipError}</div> : null}
-                {zipPending ? <div className="broker-listening" role="status">
-                  <span aria-hidden="true">✏️</span> 귀 쫑긋! 중요한 이야기만 메모하는 중이에요...
-                </div> : null}
-                <section className="broker-comment" aria-label="집톡이 한마디">
-                  <span className="broker-section-label">집톡이가 한마디</span>
-                  <p>{broker.quip}</p>
-                </section>
-                <section className="broker-progress" aria-label="지금까지 챙긴 조건">
-                  <div className="broker-section-title">
-                    <strong>제가 챙겨보고 있는 것들</strong>
-                    <span>3가지</span>
-                  </div>
-                  <ul>
-                    {broker.checkpoints.map((point) => (
-                      <li key={point.key} className={"broker-checkpoint is-" + point.status}>
-                        <span className="broker-checkpoint-icon" aria-hidden="true">
-                          {point.status === "checked" ? "✓" : point.status === "pending" ? "!" : point.status === "talking" ? "·" : "○"}
-                        </span>
-                        <div><strong>{point.label}</strong><small>{point.description}</small></div>
-                        <span className="broker-checkpoint-hint">
-                          {point.status === "checked" ? "확인" : point.status === "pending" ? "살펴봐요" : ""}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-                <section className="broker-next" aria-label="집톡이의 다음 제안">
-                  <span className="broker-section-label">💡 다음엔 이거 하나만!</span>
-                  <strong>{broker.nextStep.title}</strong>
-                  <p>{broker.nextStep.note}</p>
-                  <button type="button" onClick={() => placeBrokerQuestion(broker.nextStep.prompt)}>
-                    그 질문, 대화창에 넣어줘 ↗
-                  </button>
-                  <small>메시지만 적어드려요. 보내기는 직접 선택하세요.</small>
-                </section>
-                {newestZip ? (
-                  <section className="broker-latest-note" aria-label="방금 적은 메모">
-                    <span className="broker-section-label">📝 방금 적은 메모</span>
-                    <article className="ziptalk-note" id={"msg-" + newestZip.id}>
-                      <p>{newestZip.text}</p>
-                      {newestZip.text.includes("거래 현황에서 확인") ? (
-                        <button type="button" className="ziptalk-note-link" onClick={() => void openPanel()}>
-                          거래 현황에서 확인 ↗
-                        </button>
-                      ) : null}
-                      {propData ? propData.proposals
-                        .filter((p) => p.card_msg_id === newestZip.id && p.status !== "superseded" && !dismissed.includes(p.id))
-                        .map((p) => (
-                          <ProposalCard key={p.id} p={p} approvals={propData.approvals}
-                            sides={propData.sides} demo={propData.demo} me={me}
-                            onDecide={onDecide}
-                            onSuggest={(name, value) => { setZipOpen(false); onSuggest(name, value); }}
-                            onHold={onHold}
-                            onEvidence={(id) => { setZipOpen(false); scrollToEvidence(id); }} />
-                        )) : null}
-                    </article>
-                  </section>
-                ) : null}
-                {zipMessages.length > 1 ? (
-                  <details className="broker-history">
-                    <summary>예전에 적어둔 메모 {zipMessages.length - 1}개 <span aria-hidden="true">⌄</span></summary>
-                    <div className="broker-history-list">
-                      {zipMessages.slice(0, -1).map((m) => (
-                        <article key={m.id} id={"msg-" + m.id} className="ziptalk-note">
-                          <p>{m.text}</p>
-                          {propData ? propData.proposals
-                            .filter((p) => p.card_msg_id === m.id && p.status !== "superseded" && !dismissed.includes(p.id))
-                            .map((p) => (
-                              <ProposalCard key={p.id} p={p} approvals={propData.approvals}
-                                sides={propData.sides} demo={propData.demo} me={me}
-                                onDecide={onDecide}
-                                onSuggest={(name, value) => { setZipOpen(false); onSuggest(name, value); }}
-                                onHold={onHold}
-                                onEvidence={(id) => { setZipOpen(false); scrollToEvidence(id); }} />
-                            )) : null}
-                        </article>
-                      ))}
-                    </div>
-                  </details>
-                ) : null}
-              </div>
-              <div className="ziptalk-popover-footer broker-notebook-footer">
-                <span>집톡이는 AI 도우미예요. 실제 중개·계약 확정은 대신하지 않아요.</span>
-                <button type="button" onClick={() => void openPanel()}>거래 현황 ↗</button>
-              </div>
-            </div>
-          ) : null}
-          <button type="button" className={"ziptalk-dock-button broker-dock " + (zipPending ? "is-thinking" : "") + (zipUnread ? " has-new" : "")}
-            aria-label={zipOpen ? "집톡이 안내 닫기" : "집톡이 열기"}
-            aria-expanded={zipOpen}
-            onClick={() => {
-              setZipOpen((prev) => !prev);
-              setZipPeek(false);
-              setZipUnread(false);
-            }}>
-            <span className="ziptalk-mascot" aria-hidden="true">
-              <span className="ziptalk-mascot-roof" />
-              <span className="ziptalk-mascot-face"><i/><i/><b/></span>
-              <span className="ziptalk-mascot-star">✦</span>
-            </span>
-            <span className="ziptalk-dock-caption">
-              <strong>집톡이</strong>
-              <small>{zipPending ? "귀 쫑긋! 듣는 중" : zipUnread ? "어머, 메모 하나 생겼어요!" : "옆에서 챙겨드려요"}</small>
-            </span>
-            {zipUnread && !zipOpen ? <i className="ziptalk-unread" aria-label="새 안내" /> : null}
-            <span className="ziptalk-dock-chevron" aria-hidden="true">{zipOpen ? "⌄" : "⌃"}</span>
-          </button>
-        </aside>
-      ) : null}
     </div>
   );
 }

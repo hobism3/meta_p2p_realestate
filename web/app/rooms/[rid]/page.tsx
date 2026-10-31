@@ -511,15 +511,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             {meta?.demo ? (
               <section className="jiptok-progress" aria-label="집톡이 진행 현황">
                 <strong>✦ 집톡이가 챙기는 거래 진행</strong>
-                <div className="jiptok-progress-grid">
-                  {broker.checkpoints.map((point) => (
-                    <div key={point.key} className={"jiptok-checkpoint is-" + point.status}>
-                      <strong>{point.label}</strong>
-                      <span>{point.status === "checked" ? "✓ 양측 확인" : point.status === "pending" ? "동의 대기" : point.status === "talking" ? "확인 필요" : "미정"}</span>
-                      <small>{point.description}</small>
-                    </div>
-                  ))}
-                </div>
+                <p className="jiptok-journey-overview">양측이 실제로 확인한 사항만 완료로 표시합니다. {broker.journey.filter((step) => step.status === "checked").length} / 6단계 확인됨</p>
                 <div className="jiptok-journey" aria-label="거래 진행 단계">
                   {broker.journey.map((step, index) => (
                     <div key={step.key} className={"jiptok-journey-step is-" + step.status} title={step.detail}>

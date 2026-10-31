@@ -12,13 +12,13 @@ test("집톡이: 상담창 대신 그룹채팅에서 말하고 합의 카드를 
   await page.goto("/listings/s21");
   await page.getByRole("button", { name: "문의하기" }).click();
   const chat = page.getByRole("log", { name: "거래 대화" });
-  await expect(chat.locator(".jiptok-checkpoint")).toHaveCount(3);
+  await expect(chat.locator(".jiptok-journey-step")).toHaveCount(6);
   await expect(page.locator(".ziptalk-companion")).toHaveCount(0);
   await page.getByPlaceholder("메시지 입력").fill("44000만원에 합시다");
   await page.getByRole("button", { name: "전송" }).click();
   await expect(chat.locator(".conversation-row.is-jiptok").last()).toBeVisible({ timeout: 30000 });
   await expect(chat.locator(".proposal-card").last()).toBeVisible();
-  await expect(chat.locator(".jiptok-checkpoint").first()).toContainText("동의 대기");
+  await expect(chat.locator(".jiptok-journey-step").nth(1)).toContainText("동의 대기");
   await page.reload();
   await expect(page.getByRole("log", { name: "거래 대화" }).locator(".conversation-row.is-jiptok").last()).toBeVisible();
 });
@@ -33,18 +33,18 @@ test("집톡이: 가격 카드에 동의하면 양측 확인이 표시되고, �
   const card = chat.locator(".proposal-card").last();
   await expect(card).toBeVisible({ timeout: 30000 });
   await card.getByRole("button", { name: "동의하기" }).click();
-  await expect(chat.locator(".jiptok-checkpoint").first()).toContainText("양측 확인");
+  await expect(chat.locator(".jiptok-journey-step").nth(1)).toContainText("완료");
   await page.getByPlaceholder("메시지 입력").fill("44500만원에 합시다");
   await page.getByRole("button", { name: "전송" }).click();
   await expect(chat.locator(".proposal-card").last()).toContainText("44,500");
-  await expect(chat.locator(".jiptok-checkpoint").first()).toContainText("동의 대기");
+  await expect(chat.locator(".jiptok-journey-step").nth(1)).toContainText("동의 대기");
 });
 
 test("집톡이: 모바일 화면에서 그룹채팅과 진행현황이 넘치지 않는다", async ({ page }) => {
   await loginAs(page, "companion-mobile-" + test.info().project.name, "모바일테스터");
   await page.goto("/listings/s16");
   await page.getByRole("button", { name: "문의하기" }).click();
-  await expect(page.getByRole("log", { name: "거래 대화" }).locator(".jiptok-checkpoint")).toHaveCount(3);
+  await expect(page.getByRole("log", { name: "거래 대화" }).locator(".jiptok-journey-step")).toHaveCount(6);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   await page.getByRole("button", { name: "거래 현황", exact: true }).click();
   await expect(page.getByRole("heading", { name: "거래 현황" })).toBeVisible();

@@ -23,6 +23,6 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: unit + dal
-        run: node --test tests/listings.test.mjs tests/ratelimit.test.mjs tests/auth.test.mjs tests/dal-sqlite.test.mjs tests/dal-pg.test.mjs tests/ziptalk.test.mjs tests/broker-companion.test.mjs tests/visit-dates.test.mjs tests/agreement.test.mjs tests/rent.test.mjs tests/presentation.test.mjs tests/registry-draft.test.mjs tests/register-wizard.test.mjs
+        run: node --test tests/listings.test.mjs tests/ratelimit.test.mjs tests/auth.test.mjs tests/dal-sqlite.test.mjs tests/dal-pg.test.mjs tests/ziptalk.test.mjs tests/broker-companion.test.mjs tests/ziptok-deal-flow.test.mjs tests/visit-dates.test.mjs tests/agreement.test.mjs tests/rent.test.mjs tests/presentation.test.mjs tests/registry-draft.test.mjs tests/register-wizard.test.mjs
       - name: api + READ_ONLY regression (isolated sqlite, spawned next start)
         run: node --test tests/api.test.mjs tests/readonly.test.mjs tests/m1auth.test.mjs tests/m1brooms.test.mjs tests/m1agent.test.mjs tests/agent.test.mjs tests/m1ziptalk.test.mjs tests/ziptalk-meta-recovery.test.mjs tests/m1deal.test.mjs tests/m1agree.test.mjs

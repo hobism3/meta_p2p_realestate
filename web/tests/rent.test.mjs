@@ -150,7 +150,7 @@ describe("시연 AI 판정(임대차)", () => {
   });
   it("카드 문구는 묶음 질문이다", async () => {
     const s = bubbleFor([{ name: "월세 조건", value: "보증금 5,000만원/월세 65만원", demoDecision: "agree" }], "월세");
-    assert.ok(s && s.includes("보증금 5,000만원/월세 65만원 조건에 동의할까요?"));
+    assert.ok(s && s.includes("보증금 5,000만원/월세 65만원 조건으로 확정할까요?"));
   });
 });
 

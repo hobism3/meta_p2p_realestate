@@ -28,7 +28,7 @@ export async function runRealJiptok(roomId:string,trigger:RealJiptokTrigger):Pro
  // Verify the triggering entity is in the SAME room. Caller routes already
  // authenticate the user, but cross-room IDs must not create any notes.
  let event:RealGuideEvent,proposedCardId:string|undefined;
- let eventKind=trigger.kind,eventKey=trigger.sourceId;
+ let eventKind:string=trigger.kind,eventKey=trigger.sourceId;
  if(trigger.kind==="message"){
   const m=await db.get(
    "SELECT id,text,user_id,author_type FROM messages WHERE id=? AND room_id=?",

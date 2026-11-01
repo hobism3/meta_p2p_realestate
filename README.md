@@ -41,8 +41,8 @@ Owners and landlords can now open **매물 등록** and try the optional **등�
 
 | Component | Responsibility |
 |---|---|
-| **AI seller / AI landlord** | Persona-specific simulated negotiation using the chosen property's facts and current room context |
-| **집톡이, the neutral assistant** | Evidence-linked condition extraction, normalization, clarification, and proposal/approval workflow |
+| **Demo AI seller / demo landlord** | Explicitly fictional test-room personas. Simulated negotiation is isolated from real users and must not be presented as legal representation or a real deal. |\n| **Real owner information assistant** | Repeats only owner-provided property facts, escalates undecided questions to the owner and never autonomously negotiates prices, signs contracts or confirms visits. |
+| **집톡이, the neutral assistant** | Evidence-linked summary, missing-step reminders and user-controlled confirmation cards; no independent price mediation, new deal terms or consent |
 | **Human participants** | Explicit approval or rejection on a versioned proposal; authenticated room membership |
 
 The system does **not** simply generate a summary. It separates **conversation → supported conditions → final-condition candidate → bilateral acknowledgment**, with trade-type validation and revisions.
@@ -76,6 +76,10 @@ Start with the Mock provider; real Meta calls require server-only `AGENT_PROVIDE
 - [Meta-assisted document-to-listing draft (seller flow)](docs/REGISTRY_AI_IMPORT.md)
 - [한국 직거래 법률 심층 검토](docs/legal/LEGAL_DEEP_DIVE_20261101.md)
 - [법률 보완 추적 원장](docs/legal/LEGAL_ISSUES_20261101.md)
+- [법률·규제·개발 기록 Wiki (Start Here)](docs/legal/README.md)
+- [P7 권리관계 구조화 분석 및 중립 집톡이 개발 기록](docs/P7_RIGHTS_ANALYSIS_AND_SUPPORT_20261101.md)
+- [중앙 누적 개발 로그](docs/DEVELOPMENT_LOG.md)
+- [활성 로드맵](docs/ROADMAP.md)
 
 Historical roadmap and initial product specs are retained for project history; use these linked documents for the current state.
 

@@ -123,7 +123,8 @@ export function reviewRegistryRights(input:RightsReviewInput):RightsReviewResult
   });
  }
  let activeMortgageMaximum=0,mortgageCount=0,mortgageMissing=0,cancelled=0,unknown=0;
- for(const [index,right] of validRights.entries()){
+ for(let index=0;index<validRights.length;index++){
+  const right=validRights[index];
   if(right.status==="cancelled"){
    cancelled++;
    continue; // User input says cancelled; must still inspect original cancellation.

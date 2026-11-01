@@ -2,10 +2,13 @@
 import {useCallback,useEffect,useState} from "react";
 import {authHeaders,getAccessToken} from "../lib/client-auth";
 type Row={listingId:string;listingTitle:string;visits:number;requests:number;aiFailures:number;visitRoomId?:string;requestRoomId?:string;failedRoomId?:string};
-type Summary={total:number;visits:number;requests:number;aiFailures:number;byListing:Row[];note:string};
+type Action={id:string;kind:"visit"|"request"|"failed";listingId:string;listingTitle:string;roomId:string;label:string};
+type Summary={actions:Action[];total:number;visits:number;requests:number;aiFailures:number;byListing:Row[];note:string};
 export default function OwnerWorkSummary(){
  const [data,setData]=useState<Summary|null>(null);
  const [error,setError]=useState("");
+ const [kind,setKind]=useState<"all"|"visit"|"request"|"failed">("all");
+ const [listing,setListing]=useState("all");
  const load=useCallback(async()=>{
   if(!getAccessToken())return;
   try{
@@ -28,7 +31,9 @@ export default function OwnerWorkSummary(){
      <p>방문 {row.visits}건 · 문의 {row.requests}건 · 응대 실패 {row.aiFailures}건</p>
      <div style={{display:"flex",flexWrap:"wrap",gap:8}}>{row.visits>0&&row.visitRoomId?<a className="btn ghost" href={`/rooms/${encodeURIComponent(row.visitRoomId)}`}>방문 요청 거래방 →</a>:null}{row.requests>0&&row.requestRoomId?<a className="btn ghost" href={`/rooms/${encodeURIComponent(row.requestRoomId)}`}>답변 요청 거래방 →</a>:null}{row.aiFailures>0&&row.failedRoomId?<a className="btn ghost" href={`/rooms/${encodeURIComponent(row.failedRoomId)}`}>응대 실패 거래방 →</a>:null}</div><p className="meta">처리 버튼은 아래 방문 예약·확인 요청 영역에 있습니다. 거래방 이동은 승인이나 확정을 수행하지 않습니다.</p>
     </article>)}</div>}
-   <p className="meta">{data.note}</p>
+   <div style={{display:"flex",flexWrap:"wrap",gap:12,marginTop:16}}><label>업무 종류 <select aria-label="업무 종류" value={kind} onChange={e=>setKind(e.target.value as "all"|"visit"|"request"|"failed")}><option value="all">전체</option><option value="visit">방문 승인</option><option value="request">직접 답변</option><option value="failed">AI 응대 실패</option></select></label><label>매물 <select aria-label="업무 매물" value={listing} onChange={e=>setListing(e.target.value)}><option value="all">모든 매물</option>{data.byListing.map(row=><option key={row.listingId} value={row.listingId}>{row.listingTitle}</option>)}</select></label></div>
+   <div className="owner-attention-list">{data.actions.filter(a=>(kind==="all"||a.kind===kind)&&(listing==="all"||a.listingId===listing)).map(action=><article className="owner-attention-item" key={action.kind+":"+action.id}><div className="owner-attention-top"><strong>{action.listingTitle}</strong><span>{action.label}</span></div><a className="btn ghost" href={`/rooms/${encodeURIComponent(action.roomId)}`}>거래방 열기 ↗</a>{action.kind==="visit"?<a className="btn ghost" href="#owner-visits">방문 승인 화면 ↓</a>:<a className="btn ghost" href="#owner-attention">확인 요청 화면 ↓</a>}</article>)}</div>
+   <p className="meta">{data.note} 거래방 이동만으로 요청이 승인되거나 답변이 전송되지는 않습니다.</p>
   </>:!error?<p role="status">업무 현황을 확인하는 중...</p>:null}
  </section>;
 }

@@ -504,7 +504,7 @@
     },
     {
       "id": "P8-014",
-      "title": "압류 현행",
+      "title": "갑구에 압류가 현행으로 기재된 경우",
       "category": "dispute",
       "detectability": "title-record",
       "sourceIds": [

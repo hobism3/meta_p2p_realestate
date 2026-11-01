@@ -1131,3 +1131,14 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
 .real-propose-details .btn{font-size:12px}
 @media(max-width:820px){.real-progress-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:490px){.real-progress-grid{grid-template-columns:1fr}.real-transaction-summary{padding:12px}.real-stage-body p{margin:2px 0}}
+
+/* P7 local-only title record analysis. Keep controls readable on narrow screens. */
+.registry-review-page label{font-size:13px;line-height:1.5;font-weight:650;min-width:0}
+.registry-review-page label:has(input:not([type="checkbox"])),
+.registry-review-page label:has(select){display:grid;gap:7px}
+.registry-review-page input:not([type="checkbox"]),
+.registry-review-page select{width:100%;max-width:100%;min-width:0;padding:10px 11px;border:1px solid #cbdad2;border-radius:9px;background:#fff;color:#294437;font:inherit;font-size:14px}
+.registry-review-page input[type="checkbox"]{flex:0 0 18px;width:18px;height:18px;accent-color:#387b4d;margin-top:2px}
+.registry-review-page .card .card{box-shadow:none;background:#fcfefc}
+.registry-review-page .card p{overflow-wrap:anywhere}
+@media(max-width:540px){.registry-review-page>.card{padding:18px}.registry-review-page .btn{white-space:normal;min-height:40px}}

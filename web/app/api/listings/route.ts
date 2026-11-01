@@ -9,7 +9,8 @@ export async function GET(req: Request): Promise<Response> {
   const g = guardRead(req);
   if (g) return g;
   const rows = await getDal().all("SELECT * FROM custom_listings ORDER BY created_at DESC");
-  const custom = rows.map(rowToListing);
+  // Public list must not disclose internal authentication subject IDs.
+  const custom = rows.map(r => { const listing = rowToListing(r); delete listing.ownerId; return listing; });
   const seeds = SEED_LISTINGS.map((l) => ({ ...l, editable: false }));
   return ok([...custom, ...seeds]);
 }

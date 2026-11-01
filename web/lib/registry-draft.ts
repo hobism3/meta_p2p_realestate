@@ -208,6 +208,19 @@ const SAMPLE_SHA256 = createHash("sha256").update(makeSampleRegistryPdf()).diges
 // This branch is a mock fixture ONLY; it is NOT a real Meta extraction or a risk check.
 const KOREAN_EDUCATIONAL_NORMAL_SHA256 = "2ddff3f07aa134c04456685db796ffb8029e007159eabc3c07c6c0fad1e87b50";
 
+/** Legal safety gate: only these exact fictional fixtures may leave our server.
+ * A filename, checkbox, or output filter never means a PDF has been redacted.
+ * Unknown uploads must NOT be sent to any external model provider.
+ */
+export function syntheticRegistryDemoHashes(): string[] {
+  return [SAMPLE_SHA256, KOREAN_EDUCATIONAL_NORMAL_SHA256];
+}
+export function isSyntheticRegistryDemoPdf(buffer: Buffer): boolean {
+  const hash = createHash("sha256").update(buffer).digest("hex");
+  return hash === SAMPLE_SHA256 || hash === KOREAN_EDUCATIONAL_NORMAL_SHA256;
+}
+
+
 /** Offline Mock is deliberately limited to the supplied synthetic fixture. */
 export function mockRegistryDraft(buffer: Buffer): RegistryDraft | null {
   const digest = createHash("sha256").update(buffer).digest("hex");
@@ -263,7 +276,7 @@ export function buildRegistryMetaRequest(pdf: Buffer): Record<string, unknown> {
           "For synthetic examples, documentKind may be registry; never call them official.",
           "No publication or ownership verification; the human will review and complete the draft.",
         ].join("\n") },
-        { type: "file", file: { filename: "redacted-registry.pdf", file_data: `data:application/pdf;base64,${pdf.toString("base64")}` } },
+        { type: "file", file: { filename: "synthetic-registry-demo.pdf", file_data: `data:application/pdf;base64,${pdf.toString("base64")}` } },
       ],
     }],
   };

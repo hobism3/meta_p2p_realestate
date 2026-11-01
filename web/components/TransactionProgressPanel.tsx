@@ -75,7 +75,7 @@ export default function TransactionProgressPanel({rid,tradeType,revision=0,onUpd
    <h3>두 사람의 거래 진행</h3></div>
    <button type="button" className="btn ghost" onClick={()=>void refresh()}>현황 새로고침</button>
   </div>
-  <p className="meta">실제 방문은 집주인 승인, 거래 조건은 양측 동일 버전 동의만 확정으로 표시합니다. AI 발언이나 한 사람의 제안만으로 확정하지 않습니다.</p>
+  <p className="meta">이 화면은 당사자가 입력한 조건의 <strong>플랫폼 내 확인 이력</strong>입니다. 계약서 작성·전자서명·법적 계약 성립 판단 기능은 제공하지 않습니다. 다만 실제 채팅·동의 표현 자체가 법적 의사표시로 평가될 수 있어 주의가 필요합니다. 방문 예약은 집주인 승인 후에만 확정 표시됩니다.</p>
   {summary?<><div className="real-progress-grid">
    {summary.stages.map((step,index)=><div key={step.key} className={"real-stage is-"+step.status}>
     <span className="real-stage-number">{stageSymbol(step.status)}</span>

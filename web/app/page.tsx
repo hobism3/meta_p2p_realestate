@@ -70,7 +70,7 @@ export default function HomePage() {
       <section className="card search-panel" id="properties">
         <div className="section-head"><div><span className="eyebrow">FIND YOUR SPACE</span><h2>관악구 신림동에서 내게 맞는 집 둘러보기</h2></div><span className="pill">시연용 합성 매물</span></div>
         <p className="meta">
-          합성 데이터 {all.length}건(기본 {seedCount()}건 포함)입니다. 실매물·소유자 인증이 아닙니다.
+          기본 합성 매물 {seedCount()}건 · 사용자 등록 매물 {Math.max(0, all.length - seedCount())}건. 사용자 등록 정보의 소유자·게시권한·권리관계는 검증되지 않았습니다.
         </p>
         {loading && <p className="meta">불러오는 중...</p>}
         {error && <p className="error">{error} <button className="btn ghost" onClick={reload}>다시 시도</button></p>}

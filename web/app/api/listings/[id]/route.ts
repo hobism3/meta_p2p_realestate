@@ -7,7 +7,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
   if (g) return g;
   const one = seedListing(params.id) ?? (await customListing(params.id));
   if (!one) return notFound("매물 없음");
-  return ok(one);
+  // Public detail may be viewed anonymously, so omit internal owner subject ID.
+  const publicDetails = { ...one };
+  delete publicDetails.ownerId;
+  return ok(publicDetails);
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }): Promise<Response> {

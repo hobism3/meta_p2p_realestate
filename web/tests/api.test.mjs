@@ -142,6 +142,14 @@ describe("매물 API", () => {
     const one = await api(`/api/listings/${created.body.id}`);
     assert.equal(one.status, 200);
     assert.equal(one.body.editable, true);
+    assert.equal(one.body.synthetic, false, "사용자 매물은 합성 기본 매물로 잘못 표시하지 않는다");
+    assert.equal(Object.hasOwn(one.body, "ownerId"), false, "공개 상세에 내부 owner ID를 공개하지 않는다");
+    const allPublic = await api("/api/listings");
+    const publicOne = allPublic.body.find(l => l.id === created.body.id);
+    assert.ok(publicOne);
+    assert.equal(publicOne.synthetic, false);
+    assert.equal(Object.hasOwn(publicOne, "ownerId"), false, "공개 검색에서도 내부 owner ID를 노출하지 않는다");
+
     const nope = await api("/api/listings/nope");
     assert.equal(nope.status, 404);
   });

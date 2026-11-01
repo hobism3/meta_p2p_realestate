@@ -5,6 +5,7 @@ import { formatPrice, type Listing } from "../../../lib/listings";
 import { groupListingFeatures, initialTerms, listingPhoto, listingPhotoAlt } from "../../../lib/listing-presentation";
 import { getAccessToken } from "../../../lib/client-auth";
 import { createRoom, findListing, loadMyRooms } from "../../../lib/store";
+import ListingReportPanel from "../../../components/ListingReportPanel";
 
 export default function DetailPage({ params }: { params: { id: string } }) {
   const [listing, setListing] = useState<Listing | null>(null);
@@ -127,7 +128,7 @@ export default function DetailPage({ params }: { params: { id: string } }) {
         {!isCustom ? <p className="demo-note">이 매물은 합성 데이터입니다. AI 상대방과 조건 협의를 연습할 수 있으며 실제 계약·예약은 진행되지 않습니다.</p> : null}
         <div className="detail-footer-actions">
           {isCustom && <a className="btn ghost" href={`/register?edit=${listing.id}`}>수정하기</a>}
-          <p className="meta">오류 신고 접수·처리 기능은 아직 제공하지 않습니다. 화면 내 확인만으로 신고가 접수되지 않으며, 게시 정보는 독립적으로 확인해야 합니다.</p>
+          <ListingReportPanel listingId={listing.id}/>
         </div>
       </section>
     </div>

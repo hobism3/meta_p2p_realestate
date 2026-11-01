@@ -370,6 +370,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     }
     setSending(false);
     if (!demo) {
+      setTransactionRevision(v=>v+1);
       if (meta?.ownerAgentEnabled && meta.viewerRole !== "owner") {
         setAiPending(true);
         setAiError("");
@@ -455,6 +456,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
       await decideProposal(params.rid, pid, decision, version);
       await refreshConditions();
       await refresh();
+      setTransactionRevision(v=>v+1);
     } catch (e) {
       setZipError(`합의 실패(${e instanceof Error ? e.message : "오류"})`);
       await refreshConditions();

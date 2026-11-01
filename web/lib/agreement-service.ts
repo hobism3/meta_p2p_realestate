@@ -310,7 +310,7 @@ export interface ProposalItem {
   evidence: string[];
   visitId?: string;
   refISO?: string;
-  createdBy: "human" | "demo";
+  createdBy: "human" | "demo" | "owner_agent";
 }
 
 /**

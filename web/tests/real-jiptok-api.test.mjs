@@ -152,3 +152,46 @@ test("집톡이 영속 이벤트는 방·토픽당 중복 기록 없음",()=>{
   assert.equal(p.n,1);
  }finally{db.close();}
 });
+
+test("집주인 AI 대리인의 사전 반려동물 정책은 제안으로 남고 양측 동의 전 미확정",async()=>{
+ const listing=await api("/api/listings","POST",owner,{
+  title:"집주인 AI 대리 옵션 테스트",address:"합성 주소",tradeType:"월세",
+  deposit:1500,rent:65,salePrice:0,fee:0,area:40,moveIn:"2026-12-01",
+  options:[],publisher:"집주인",description:"정책 근거 검증",
+ });
+ assert.equal(listing.status,201,JSON.stringify(listing.body));
+ const lid=listing.body.id;
+ const setup=await api("/api/owner/listings/"+lid+"/ai","PUT",owner,{
+  aiEnabled:true,visitMode:"manual",availability:[],
+  answers:{pets:"고양이 두 마리 가능",parking:"",notes:""},
+ });
+ assert.equal(setup.status,200,JSON.stringify(setup.body));
+ const room=await api("/api/deals/"+lid+"/rooms","POST",visitor,{});
+ assert.equal(room.status,201);
+ const rid=room.body.id;
+ const question=await api("/api/rooms/"+rid+"/messages","POST",visitor,{text:"고양이 두 마리 키워도 되나요?"});
+ assert.equal(question.status,201,JSON.stringify(question.body));
+ const invoked=await api("/api/rooms/"+rid+"/owner-agent/invoke","POST",visitor,{
+  trigger_message_id:question.body.id,
+ });
+ assert.equal(invoked.status,200,JSON.stringify(invoked.body));
+ assert.equal(invoked.body.outcome,"replied");
+ const props=await api("/api/rooms/"+rid+"/proposals");
+ assert.equal(props.status,200);
+ const opt=props.body.proposals.find(x=>x.name==="옵션");
+ assert.ok(opt,JSON.stringify(props.body));
+ assert.equal(opt.status,"proposed");
+ assert.equal(opt.created_by,"owner_agent");
+ assert.match(opt.value,/고양이.*두 마리/);
+ assert.deepEqual(opt.source_msg_ids,[invoked.body.messageId]);
+ assert.ok(opt.card_msg_id);
+ const messages=(await api("/api/rooms/"+rid+"/messages")).body;
+ assert.ok(messages.some(m=>m.id===opt.card_msg_id&&m.author_type==="assistant"));
+ const state=(await api("/api/rooms/"+rid+"/transaction-state")).body;
+ assert.equal(state.stages.find(s=>s.key==="living").confirmedValue,null);
+ const reInvoked=await api("/api/rooms/"+rid+"/owner-agent/invoke","POST",visitor,{trigger_message_id:question.body.id});
+ assert.equal(reInvoked.status,200);
+ assert.equal(reInvoked.body.messageId,invoked.body.messageId);
+ const messages2=(await api("/api/rooms/"+rid+"/messages")).body;
+ assert.equal(messages2.filter(m=>m.author_type==="assistant"&&/AI 대리인이 전했어요/.test(m.text)).length,1);
+});

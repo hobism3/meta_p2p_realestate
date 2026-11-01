@@ -60,3 +60,13 @@ test("시연방은 실거래 집톡이 엔진에서 제외",()=>{
  const d=buildTransactionSnapshot({tradeType:"월세",demo:true,proposals:[],conditions:[],bookings:[],visits:[],chat:[]});
  assert.equal(decideRealJiptok({kind:"message",text:"고양이",isOwner:false},d).text,null);
 });
+
+test("AI 대리인이 집주인의 명시 정책을 답하면 카드 후보만 제시",()=>{
+ const note=decideRealJiptok({
+  kind:"owner-agent",text:"집주인 설정에 따라 고양이 두 마리 가능",isOwner:true,
+ },blank());
+ assert.deepEqual(note.candidate,{name:"옵션",value:"고양이 두 마리 허용"});
+ assert.match(note.text,/AI 대리인/);
+ assert.match(note.text,/두 분이 직접/);
+ assert.equal(decideRealJiptok({kind:"owner-agent",text:"주차 1대 가능",isOwner:true},blank()).text,null);
+});

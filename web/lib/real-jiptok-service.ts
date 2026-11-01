@@ -3,12 +3,14 @@ import {getDal} from "./dal.ts";
 import {now} from "./db.ts";
 import {getRoom} from "./rooms.ts";
 import {listingForDemo,isDemoListing} from "./demo.ts";
+import {getOwnerAiPolicy} from "./owner-ai.ts";
 import {readTransactionState} from "./transaction-state-service.ts";
 import {createProposals} from "./agreement-service.ts";
 import {decideRealJiptok,type RealGuideEvent} from "./real-jiptok-rules.ts";
 
 export type RealJiptokTrigger=
  | {kind:"message";sourceId:string;actorId:string}
+ | {kind:"owner-agent";sourceId:string;actorId:string}
  | {kind:"proposal-created";sourceId:string;actorId:string}
  | {kind:"proposal-decided";sourceId:string;actorId:string}
  | {kind:"booking";sourceId:string;actorId:string;status:string};
@@ -29,15 +31,24 @@ export async function runRealJiptok(roomId:string,trigger:RealJiptokTrigger):Pro
  // authenticate the user, but cross-room IDs must not create any notes.
  let event:RealGuideEvent,proposedCardId:string|undefined;
  let eventKind:string=trigger.kind,eventKey=trigger.sourceId;
- if(trigger.kind==="message"){
+ if(trigger.kind==="message"||trigger.kind==="owner-agent"){
   const m=await db.get(
    "SELECT id,text,user_id,author_type FROM messages WHERE id=? AND room_id=?",
    [trigger.sourceId,roomId],
   );
-  if(!m||m.author_type!=="human"||m.user_id!==trigger.actorId)
-   return {status:"skipped",messageId:null};
-  event={kind:"message",text:String(m.text??""),
-    isOwner:trigger.actorId===listing.ownerId};
+  if(!m)return {status:"skipped",messageId:null};
+  if(trigger.kind==="message"){
+    if(m.author_type!=="human"||m.user_id!==trigger.actorId)
+      return {status:"skipped",messageId:null};
+    event={kind:"message",text:String(m.text??""),
+      isOwner:trigger.actorId===listing.ownerId};
+  }else{
+    if(m.author_type!=="owner_agent")return {status:"skipped",messageId:null};
+    const policy=await getOwnerAiPolicy(room.listing_id);
+    if(!policy.aiEnabled || !policy.answers.pets.trim())
+      return {status:"skipped",messageId:null};
+    event={kind:"owner-agent",text:String(m.text??""),isOwner:true};
+  }
  }else if(trigger.kind==="proposal-created"||trigger.kind==="proposal-decided"){
   const p=await db.get("SELECT id,name,value,status FROM room_proposals WHERE id=? AND room_id=?",
     [trigger.sourceId,roomId]);
@@ -62,12 +73,12 @@ export async function runRealJiptok(roomId:string,trigger:RealJiptokTrigger):Pro
  let decision=decideRealJiptok(event,snapshot);
  if(!decision.text)return {status:"skipped",messageId:null};
 
- if(trigger.kind==="message"&&decision.candidate){
+ if((trigger.kind==="message"||trigger.kind==="owner-agent")&&decision.candidate){
   // Propose concrete text ONLY (no automatic consent). This is a normal
   // versioned proposal with its triggering human message as evidence.
   const created=await createProposals(roomId,[{
    name:decision.candidate.name,value:decision.candidate.value,
-   evidence:[trigger.sourceId],createdBy:"human",
+   evidence:[trigger.sourceId],createdBy:trigger.kind==="owner-agent"?"owner_agent":"human",
   }]);
   if(!created[0]?.isNew)return {status:"skipped",messageId:null};
   proposedCardId=created[0].id;

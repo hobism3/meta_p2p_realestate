@@ -9,6 +9,7 @@ import type {TransactionSnapshot} from "./transaction-projection.ts";
 
 export type RealGuideEvent=
  | {kind:"message";text:string;isOwner:boolean}
+ | {kind:"owner-agent";text:string;isOwner:true}
  | {kind:"proposal-created";name:string;value:string;status:string}
  | {kind:"proposal-decided";name:string;value:string;status:string}
  | {kind:"booking";status:string;date:string;time:string};
@@ -26,21 +27,23 @@ const QUESTION= /[?？]|(?:되나요|될까요|가능한가|얼마나|어떨까�
 const NEGATIVE=/(?:안됩니다|안 됩니다|어렵습니다|어렵겠|불가능|불가|취소|철회|거절|허용하지|안 돼요|안돼요|못합니다|안 할)/;
 const OFFER=/(?:제안|가능합니다|가능해요|괜찮습니다|괜찮아요|좋겠습니다|좋겠어요|진행합시다|진행하죠|맞추겠습니다|맞춰드릴|하겠습니다|동의합니다|확정해요)/;
 const PET=/(고양이|반려묘|반려동물|강아지|반려견)/;
-const PET_ALLOW=/(허용|가능합니다|가능해요|괜찮습니다|괜찮아요|키워도 됩니다|키워도 돼요)/;
+const PET_ALLOW=/(허용|가능|괜찮습니다|괜찮아요|키워도 됩니다|키워도 돼요)/;
 /** An explicit, unambiguous offer: candidate only, NEVER a consent. */
 export function extractRealProposal(text:string,tradeType:string,isOwner:boolean):
   {name:string;value:string}|null {
  const raw=text.trim();
- if(!raw||QUESTION.test(raw)||NEGATIVE.test(raw)||!OFFER.test(raw))return null;
+ if(!raw||QUESTION.test(raw)||NEGATIVE.test(raw))return null;
  if(isOwner && PET.test(raw) && PET_ALLOW.test(raw)){
    const pet=/(고양이|반려묘)/.test(raw)?"고양이":/(강아지|반려견)/.test(raw)?"강아지":"반려동물";
-   const count=/한\s*마리|1\s*마리/.test(raw)?" 한 마리":"";
+   const qty=raw.match(/([0-9]+|한|두|세|네|다섯)[ ]*마리/);
+   const count=qty?` ${qty[1]} 마리`:"";
    // If both pet and price are present, price candidate takes precedence;
    // the pet information remains a separate unconfirmed conversation fact.
    const rent=parseRentFields(raw);
    if(!(tradeType==="월세"&&rent.deposit!==null&&rent.monthlyRent!==null))
      return {name:"옵션",value:`${pet}${count} 허용`};
  }
+ if(!OFFER.test(raw))return null;
  if(tradeType==="월세"){
    const f=parseRentFields(raw);
    return f.deposit!==null&&f.monthlyRent!==null?
@@ -88,6 +91,13 @@ export function decideRealJiptok(event:RealGuideEvent,snapshot:TransactionSnapsh
  const text=event.text.trim();
  if(!text)return {text:null,topic:"empty"};
  const candidate=extractRealProposal(text,snapshot.tradeType,event.isOwner);
+ if(event.kind==="owner-agent"){
+   // The owner configured the facts, not the consent. Offer an explicit card,
+   // never silently accept an AI delegate's wording as a human agreement.
+   if(!candidate||candidate.name!=="옵션")return {text:null,topic:"owner-policy-unrelated"};
+   return {topic:"owner-policy-pet",candidate,text:
+     `집주인이 등록한 반려동물 안내를 AI 대리인이 전했어요. '${candidate.value}'를 거래 조건으로 남기려면 아래 카드에서 두 분이 직접 확인해 주세요.`};
+ }
  if(candidate)return {topic:"offer",candidate,text:`${candidate.value} 조건이 대화에서 제안됐어요. 아래 카드에서 두 분이 각각 확인하시면 거래 현황에 반영할게요.`};
  if(PET.test(text)){
    if(living?.status==="partial"||living?.status==="pending")

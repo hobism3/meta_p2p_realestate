@@ -163,7 +163,7 @@ export function reviewRegistryRights(input:RightsReviewInput):RightsReviewResult
     nextAction:"공동담보목록·관련 부동산·채무의 범위와 변동·말소 여부를 원본 및 관계 자료로 확인하세요.",
    });
   }
-  if(right.cancellationPromised===true && right.status!=="cancelled"){
+  if(right.cancellationPromised===true){ // cancelled records have already continued above
    findings.push({
     id:`promise-${index}-${right.id}`,level:"attention",title:"말소 예정이라는 설명은 실제 말소가 아닙니다",
     detail:"사용자가 말소 약속을 표시했지만 입력된 권리 상태는 현행 또는 미확인입니다. 약속만으로 권리가 소멸하지 않습니다.",

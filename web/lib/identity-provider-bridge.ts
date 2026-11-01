@@ -9,6 +9,8 @@ type Config={
  * happen inside that bridge before it sends a signed attestation.
  */
 export function identityProviderConfig():Config|null{
+ // Explicit kill-switch: credentials alone must never enable a new provider.
+ if(process.env.IDENTITY_BRIDGE_ENABLED!=="true")return null;
  const startUrl=process.env.IDENTITY_BRIDGE_START_URL??"";
  const apiKey=process.env.IDENTITY_BRIDGE_API_KEY??"";
  const callbackUrl=process.env.IDENTITY_BRIDGE_CALLBACK_URL??"";

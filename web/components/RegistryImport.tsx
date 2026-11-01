@@ -143,10 +143,10 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
           <p>주소·전유면적을 일일이 입력하지 마세요. PDF에서 확인 가능한 항목만 초안으로 가져옵니다.</p>
         </div>
       </div>
-      {capability?.sampleOnly ? (
+      {capability?.provider === "mock" ? (
         <p className="registry-mode-note" role="status">
           현재는 <strong>오프라인 Mock 시연</strong>입니다. 지정된 교육용 PDF 예시만 분석할 수 있으며, 실제 Meta 모델 추출이 아닙니다.
-          새 PDF의 실제 AI 분석은 서버에서 Meta 모드를 활성화해야 가능합니다.
+          실제 등기 PDF는 이 화면에서 분석할 수 없습니다.
         </p>
       ) : capability?.provider === "meta" && !capability.enabled ? (
         <p className="registry-mode-note" role="status">
@@ -154,12 +154,12 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
         </p>
       ) : capability?.provider === "meta" ? (
         <p className="registry-mode-note" role="status">
-          Meta Muse Spark 분석 모드입니다. 민감정보를 가린 PDF만 전송하세요.
+          Meta Muse Spark 시연 모드입니다. 정확히 일치하는 가상 예시 PDF만 Meta에 전송하며 실제 등기 PDF는 전송하지 않습니다.
         </p>
       ) : null}
       <p className="registry-warning">
         <strong>시연 전용 · 진위 확인 아님.</strong> 등기부에는 개인정보와 권리관계가 포함될 수 있습니다.
-        성명·주민등록번호·소유자 정보 등을 가린 문서만 사용하세요. 실제 개인정보가 있는 서류는 업로드하지 마세요.
+        실제 등기부나 개인정보가 있는 문서는 업로드하지 마세요. 이 기능은 제공된 가상 PDF 시연 예시만 허용합니다.
       </p>
       <div className="registry-actions">
         <label htmlFor="registry-pdf" className="registry-file-label">PDF 파일 선택</label>
@@ -169,7 +169,7 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
       <p className="meta">{file ? `선택된 파일: ${file.name}` : "예시 PDF로 먼저 체험할 수 있습니다."} · 최대 2MB</p>
       <label className="registry-consent">
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} disabled={busy} />
-        <span>민감정보를 가린 시연 문서이며, Meta 모드에서는 분석을 위해 PDF가 Meta Model API로 1회 전송됨을 이해하고 동의합니다. 분석 결과는 사람이 확인합니다.</span>
+        <span>제공된 가상 시연 PDF임을 확인합니다. Meta 모드에서는 해당 합성 PDF가 Meta Model API로 1회 전송됩니다. 실제 등기부·개인정보 문서는 허용하지 않습니다.</span>
       </label>
       <button className="btn" onClick={analyze} disabled={busy || !file || !consent}>{busy ? (capability?.sampleOnly ? "가상 PDF 확인 중..." : "Meta AI 문서 분석 중...") : "AI로 매물 정보 추출하기"}</button>
       {busy ? <div className="registry-progress" role="status" aria-live="polite"><span className="registry-spinner" aria-hidden="true" /><strong>{progress || "문서 분석 중"}</strong><span>{elapsed}초 경과</span><p>Meta 분석에는 수십 초가 걸릴 수 있습니다. 페이지를 닫지 마세요.</p></div> : null}

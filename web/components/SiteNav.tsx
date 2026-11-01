@@ -53,7 +53,7 @@ export default function SiteNav() {
 
   return (
     <nav className="site-nav" aria-label="주요 메뉴">
-      <a href="/">탐색</a>
+      <a href="/">집 찾기</a>
       <a href="/register">매물 등록</a>
       {me ? (
         <>

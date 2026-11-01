@@ -43,24 +43,29 @@ export default function HomePage() {
 
   return (
     <div className="grid home-page">
-      <section className="site-intro">
-        <div className="intro-copy">
-          <span className="intro-kicker"><span aria-hidden="true">✦</span> DirectHome · AI 거래 도우미</span>
-          <h1>집을 찾는 일부터,<br /><em>조건을 확인하는 일</em>까지.</h1>
-          <p>찾고, 묻고, 합의하는 부동산 직거래.<br />AI 임대인·매도자와 대화하고, 집톡이와 거래 조건을 한눈에 정리하세요.</p>
-          <div className="intro-actions">
-            <a className="btn intro-primary" href="#properties">매물 둘러보기 <span aria-hidden="true">↗</span></a>
-            <a className="btn intro-secondary" href="/rooms">내 거래방</a>
-          </div>
-          <div className="intro-steps" aria-label="이용 순서">
-            <span><b>01</b> 관심 매물 찾기</span><span><b>02</b> AI와 조건 협상</span><span><b>03</b> 집톡이로 합의 확인</span>
-          </div>
+      <section className="entry-hero" aria-labelledby="entry-heading">
+        <div className="entry-heading">
+          <span className="intro-kicker">✦ DirectHome · AI 직거래 파트너</span>
+          <h1 id="entry-heading">어떤 목적으로 오셨나요?</h1>
+          <p>집을 내놓는 사람도, 새로운 집을 찾는 사람도.<br />원하는 일을 골라 시작하세요.</p>
         </div>
-        <div className="intro-visual" aria-hidden="true">
-          <img src="/images/demo-living-skyline.webp" alt="" />
-          <div className="intro-floating-card"><span className="intro-floating-icon">✦</span><span><b>집톡이 AI</b><small>대화 속 조건을 정확하게 정리</small></span></div>
-          <span className="intro-photo-label">AI 생성 시연 이미지</span>
+        <div className="entry-options" role="group" aria-label="이용 목적 선택">
+          <a className="entry-role-card is-owner" href="/owner" aria-label="집주인이신가요? 내 집 관리로 이동">
+            <span className="entry-role-symbol" aria-hidden="true">⌂</span>
+            <span className="entry-role-tag">임대인 · 매도인</span>
+            <strong>집주인이신가요?</strong>
+            <span className="entry-role-detail">매물 등록부터 AI 문의 응대, 방문 예약 승인까지 한곳에서 관리하세요.</span>
+            <span className="entry-role-link">내 집 관리 시작하기 <span aria-hidden="true">↗</span></span>
+          </a>
+          <a className="entry-role-card is-seeker" href="#properties" aria-label="집을 구하시나요? 매물 둘러보기">
+            <span className="entry-role-symbol" aria-hidden="true">⌕</span>
+            <span className="entry-role-tag">임차인 · 매수인</span>
+            <strong>집을 구하시나요?</strong>
+            <span className="entry-role-detail">지도와 리스트로 매물을 찾고, 문의하고, 방문 일정을 신청하세요.</span>
+            <span className="entry-role-link">집 찾아보기 <span aria-hidden="true">↗</span></span>
+          </a>
         </div>
+        <p className="entry-note">같은 계정으로 두 기능을 모두 이용할 수 있습니다. 선택은 권한이나 소유자 인증을 변경하지 않습니다.</p>
       </section>
       <section className="card search-panel" id="properties">
         <div className="section-head"><div><span className="eyebrow">FIND YOUR SPACE</span><h2>관악구 신림동에서 내게 맞는 집 둘러보기</h2></div><span className="pill">시연용 합성 매물</span></div>

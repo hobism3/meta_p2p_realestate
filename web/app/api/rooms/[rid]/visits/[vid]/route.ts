@@ -3,6 +3,7 @@ import { authenticate } from "@/lib/auth";
 import { getDal } from "@/lib/dal";
 import { getRoom, isRoomMember } from "@/lib/rooms";
 import { acceptVisit } from "@/lib/ziptalk-service";
+import { isListingOwner } from "@/lib/authz";
 
 export async function PATCH(
   req: Request,
@@ -24,6 +25,13 @@ export async function PATCH(
     params.rid,
   ]);
   if (!cur) return notFound("일정 없음");
+  // The legacy visit-proposal endpoint is not an owner-approved booking.
+  // On real listings, a tenant cannot mark even a proposal as accepted for the owner.
+  if (status === "수락됨") {
+    const actual = await getDal().get("SELECT owner_id FROM custom_listings WHERE id = ?",[room.listing_id]);
+    if (actual?.owner_id && !(await isListingOwner(room.listing_id,a.identity.userId)))
+      return ok({error:"실제 방문 예약은 집주인 승인이 필요합니다. 방문 예약 카드를 이용해주세요."},403);
+  }
   if (status === "수락됨" && parsed.value.confirm_visit === true) {
     const cv = parsed.value.condition_version;
     const r = await acceptVisit(params.rid, params.vid, a.identity.userId, typeof cv === "number" ? cv : undefined);

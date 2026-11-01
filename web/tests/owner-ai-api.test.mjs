@@ -111,3 +111,72 @@ test("실제 매물: 등록 사실 응답 → 직접 확인 요청 → 집주인
  assert.equal(paused.body.outcome,"disabled");
  assert.equal(paused.body.messageId,null);
 });
+
+test("방문 신청→슬롯 중복 차단→집주인 승인→취소·재신청",async()=>{
+ const creation=await api("/api/listings","POST",owner,{
+   title:"예약 충돌 검증 매물",address:"수원 테스트 주소",tradeType:"월세",
+   deposit:1500,rent:70,salePrice:0,fee:4,area:42,moveIn:"2026-12-01",
+   options:[],description:"합성 예약 검증",publisher:"임대인",
+ });
+ assert.equal(creation.status,201,JSON.stringify(creation.body));
+ const lid=creation.body.id;
+ const setup=await api("/api/owner/listings/"+lid+"/ai","PUT",owner,{
+  aiEnabled:true,visitMode:"approval",availability:[{weekday:6,start:"13:00",end:"18:00"}],
+  answers:{pets:"고양이 가능",parking:"",notes:""},
+ });
+ assert.equal(setup.status,200,JSON.stringify(setup.body));
+ const another=mintTestToken("visitor-c","다른 임차인","tenant",SECRET,Math.floor(Date.now()/1000)+3600);
+ const a=await api("/api/deals/"+lid+"/rooms","POST",stranger,{});
+ const b=await api("/api/deals/"+lid+"/rooms","POST",another,{});
+ assert.equal(a.status,201);assert.equal(b.status,201);
+ const ra=a.body.id,rb=b.body.id;
+ let date="";
+ for(let i=1;i<=8;i++){
+  const future=new Date(Date.now()+i*86400000);
+  const value=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).format(future);
+  if(new Date(value+"T00:00:00Z").getUTCDay()===6){date=value;break;}
+ }
+ assert.ok(date);
+ const p="/api/rooms/"+ra+"/bookings";
+ assert.equal((await api(p+"?date="+date,"GET",stranger)).body.available.includes("13:00"),true);
+ assert.equal((await api(p+"?date="+date,"GET",another)).status,404);
+ const post=await api(p,"POST",stranger,{date,time:"13:00"});
+ assert.equal(post.status,201,JSON.stringify(post.body));
+ const id=post.body.id;
+ assert.equal(post.body.status,"requested");
+ const conflict=await api("/api/rooms/"+rb+"/bookings","POST",another,{date,time:"13:30"});
+ assert.equal(conflict.status,409,JSON.stringify(conflict.body));
+ assert.equal((await api(p+"?date="+date,"GET",stranger)).body.available.includes("13:30"),false);
+ assert.equal((await api(p,"POST",stranger,{date,time:"13:15"})).status,400);
+ assert.equal((await api(p,"POST",stranger,{date,time:"23:00"})).status,400);
+ const action="/api/rooms/"+ra+"/bookings/"+id;
+ assert.equal((await api(action,"PATCH",stranger,{action:"confirm"})).status,409);
+ assert.equal((await api(action,"PATCH",another,{action:"confirm"})).status,404);
+ const own=await api("/api/owner/bookings","GET",owner);
+ assert.equal(own.status,200);
+ assert.ok(own.body.some(x=>x.id===id&&x.status==="requested"));
+ assert.equal((await api("/api/owner/bookings","GET",stranger)).body.length,0);
+ const confirmed=await api(action,"PATCH",owner,{action:"confirm"});
+ assert.equal(confirmed.status,200,JSON.stringify(confirmed.body));
+ assert.equal(confirmed.body.status,"confirmed");
+ assert.equal((await api(action,"PATCH",owner,{action:"decline"})).status,409);
+ const msg=(await api("/api/rooms/"+ra+"/messages","GET",stranger)).body;
+ assert.ok(msg.some(m=>m.author_type==="booking_notice"&&m.text.includes("예약이 확정된 것이 아닙니다")));
+ assert.ok(msg.some(m=>m.author_type==="booking_notice"&&m.text.includes("방문 확정")));
+ const cancelled=await api(action,"PATCH",stranger,{action:"cancel"});
+ assert.equal(cancelled.status,200,JSON.stringify(cancelled.body));
+ assert.equal((await api(action,"PATCH",stranger,{action:"cancel"})).status,409);
+ const reused=await api("/api/rooms/"+rb+"/bookings","POST",another,{date,time:"13:00"});
+ assert.equal(reused.status,201,JSON.stringify(reused.body));
+ const declined=await api("/api/rooms/"+rb+"/bookings/"+reused.body.id,"PATCH",owner,{action:"decline"});
+ assert.equal(declined.status,200);
+ const legacy=await api("/api/rooms/"+ra+"/visits","POST",stranger,{date,time:"14:00"});
+ assert.equal(legacy.status,201);
+ assert.equal((await api("/api/rooms/"+ra+"/visits/"+legacy.body.id,"PATCH",stranger,{status:"수락됨"})).status,403);
+ const manual=await api("/api/owner/listings/"+lid+"/ai","PUT",owner,{
+  aiEnabled:true,visitMode:"manual",availability:[{weekday:6,start:"13:00",end:"18:00"}],
+  answers:{pets:"",parking:"",notes:""},
+ });
+ assert.equal(manual.status,200);
+ assert.equal((await api(p,"POST",stranger,{date,time:"15:00"})).status,409);
+});

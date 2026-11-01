@@ -18,7 +18,7 @@ export type RawProposal={
  id:string;name:string;value:string;version:number;status:string;
  source_msg_ids?:string[];
 };
-export type RawCondition={name:string;value:string;source_msg_ids?:string};
+export type RawCondition={name:string;value:string;source_msg_ids?:string[]};
 export type RawBooking={visit_date:string;visit_time:string;status:string;created_at?:string};
 export type RawVisit={visit_date:string;visit_time:string;status:string;created_at?:string};
 export type RawChat={text:string;author_type?:string};

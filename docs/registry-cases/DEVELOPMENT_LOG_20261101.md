@@ -53,3 +53,12 @@ Date: 2026-11-01 · repository: hobism3/meta_p2p_realestate · branch: feat/p8-r
 - `verify-e2e`의 마지막 실행은 **main 병합 당시 in_progress (최종 결과 추후 확인)**; 이 실험은 실거래 2인 QA/진짜 등기부 PDF 판독을 의미하지 않는다.
 - 사진/VLM 별도 PR #25는 head `5fda26ca`에서 verify-fast/e2e SUCCESS였으나 이번 P8 병합 당시 OPEN. 상대 사진 기능 병합 여부는 상대 PR 관리 흐름에 위임. P8과 PR #25 변경 파일은 겹치지 않음.
 - 외부 사업자 등기 API 계약, 본인확인기관 B/소유·위임관계 C 검증, 실제 등기 PDF OCR 및 실제 사용자 거래 검증은 미진행. P8은 사례 기반 **권리 정책 회귀**와 증거 공백 노출 단계만 완료.
+
+## 2026-11-01 · 최종 CI 결과 확인 (PR #26 병합 후)
+- 최종 P8 코드 head `bb6888bb81fab6298e8e2dd52529fb22d88d3612`:
+  - `verify-fast`: **SUCCESS** — Next build PASS; Node unit+DAL **294/294 PASS**; API/READ_ONLY **206/206 PASS**.
+  - `verify-e2e`: **SUCCESS** — Playwright **82 PASS / 4 SKIP**, 실패 0.
+- 병합 commit: `52fd46b669b263610bcb616ee9f3242eb9610823`, PR #26 MERGED. 구현·자동 테스트 범위를 갖춘 PoC 완료.
+- 38개 골든 시나리오의 통과는 **가상 구조화 입력 정책 검증**. 실제 등기사항증명서 원본 판독/이미지 OCR·VLM/개인정보 적법성/보증금 회수액 추산·실거래/전문 법률자문 검증으로 확대 해석하면 안 됨.
+- PR #25 사진 AI 개발은 최종 확인 시 **OPEN**(head `5fda26ca`, verify-fast/e2e SUCCESS). 사진 시각 기능과 P8 권리관계 분석의 코드 변경은 겹치지 않음.
+- 중앙 공유 개발로그는 PR #25도 같은 파일을 수정하고 있으므로 추가 충돌을 피하기 위해 건드리지 않았고, **본 파일 + README + 법률 Wiki + ROADMAP**에 P8 증거를 연결함.

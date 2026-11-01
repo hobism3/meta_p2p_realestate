@@ -4,6 +4,7 @@ import {now} from "./db.ts";
 import {getRoom,isRoomMember} from "./rooms.ts";
 import {isListingOwner} from "./authz.ts";
 import {getOwnerAiPolicy} from "./owner-ai.ts";
+import {expirePendingBookings,displayBookingStatus} from "./owner-booking-expiry.ts";
 import {
   bookingCells,bookingLabel,decideStatus,slotsForDate,
   type BookingStatus,
@@ -17,7 +18,7 @@ type DbBooking = {
   visit_date:string;visit_time:string;status:BookingStatus;
   created_at:string;updated_at:string;decided_by:string;
 };
-export type BookingView=DbBooking & {listing_title?:string};
+export type BookingView=Omit<DbBooking,"status"> & {listing_title?:string;status:BookingStatus|"expired"};
 async function context(roomId:string,userId:string){
   const room=await getRoom(roomId);
   if(!room || !await isRoomMember(roomId,userId))throw new BookingError(404,"거래방이 없거나 접근 권한이 없습니다");
@@ -38,6 +39,7 @@ async function addBookingNotice(tx:{run(sql:string,params?:unknown[]):Promise<vo
 }
 export async function getRoomBookingState(roomId:string,userId:string,date?:string) {
   const {room,isOwner}=await context(roomId,userId);
+  await expirePendingBookings({listingId:room.listing_id});
   const policy=await getOwnerAiPolicy(room.listing_id);
   const bookings=(await getDal().all(
     "SELECT * FROM owner_visit_bookings WHERE room_id=? ORDER BY created_at DESC LIMIT 100",[roomId],
@@ -57,11 +59,13 @@ export async function getRoomBookingState(roomId:string,userId:string,date?:stri
       });
     }
   }
-  return {bookings,availability:policy.availability,mode:policy.visitMode,isOwner,available,date:date??""};
+  return {bookings:bookings.map(b=>({...b,status:displayBookingStatus(b)})),
+    availability:policy.availability,mode:policy.visitMode,isOwner,available,date:date??""};
 }
 export async function requestOwnerBooking(roomId:string,requesterId:string,date:string,time:string){
   const {room,isOwner}=await context(roomId,requesterId);
   if(isOwner)throw new BookingError(403,"집주인 본인은 방문 신청자가 될 수 없습니다");
+  await expirePendingBookings({listingId:room.listing_id});
   const policy=await getOwnerAiPolicy(room.listing_id);
   if(policy.visitMode!=="approval")throw new BookingError(409,"이 매물은 방문 신청을 직접 관리하고 있습니다");
   const cells=bookingCells(time);
@@ -70,6 +74,15 @@ export async function requestOwnerBooking(roomId:string,requesterId:string,date:
   const stamp=now(),id=randomUUID();
   try{
     return await getDal().withTransaction(async tx=>{
+      // Serialize ALL bookings for one listing in PostgreSQL (row UPDATE lock)
+      // and SQLite (writer lock) before checking active requests. This prevents
+      // concurrent requests to different slots from bypassing the per-user cap.
+      await tx.run("UPDATE custom_listings SET id=id WHERE id=?", [room.listing_id]);
+      const active=await tx.get(
+        "SELECT id FROM owner_visit_bookings WHERE listing_id=? AND requester_id=? AND status IN ('requested','confirmed') LIMIT 1",
+        [room.listing_id,requesterId],
+      );
+      if(active)throw new BookingError(409,"이미 진행 중인 방문 예약이 있습니다. 기존 예약을 취소한 후 다시 신청해주세요.");
       // Settings can change while the visitor is submitting the request.
       const current=await tx.get("SELECT visit_mode,availability_json FROM listing_ai_settings WHERE listing_id=?",[room.listing_id]);
       let windows:typeof policy.availability=[];
@@ -95,7 +108,8 @@ export async function requestOwnerBooking(roomId:string,requesterId:string,date:
   }
 }
 export async function changeOwnerBooking(roomId:string,bookingId:string,userId:string,action:string){
-  const {isOwner}=await context(roomId,userId);
+  const {room,isOwner}=await context(roomId,userId);
+  await expirePendingBookings({listingId:room.listing_id});
   return getDal().withTransaction(async tx=>{
     const booking=await tx.get("SELECT * FROM owner_visit_bookings WHERE id=? AND room_id=?",[bookingId,roomId]);
     if(!booking)throw new BookingError(404,"방문 예약을 찾을 수 없습니다");
@@ -119,8 +133,10 @@ export async function changeOwnerBooking(roomId:string,bookingId:string,userId:s
   });
 }
 export async function ownerBookings(ownerId:string):Promise<BookingView[]>{
-  return (await getDal().all(
+  await expirePendingBookings({ownerId});
+  const rows=(await getDal().all(
     "SELECT b.*,l.title AS listing_title FROM owner_visit_bookings b JOIN custom_listings l ON l.id=b.listing_id WHERE l.owner_id=? ORDER BY CASE WHEN b.status='requested' THEN 0 WHEN b.status='confirmed' THEN 1 ELSE 2 END,b.visit_date ASC,b.visit_time ASC LIMIT 120",
     [ownerId],
-  )) as unknown as BookingView[];
+  )) as unknown as DbBooking[];
+  return rows.map(b=>({...b,status:displayBookingStatus(b)}));
 }

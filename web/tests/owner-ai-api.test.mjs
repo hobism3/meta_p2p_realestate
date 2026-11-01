@@ -5,6 +5,7 @@ import {join,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {rmSync} from "node:fs";
 import {mintTestToken} from "../lib/auth.ts";
+import {DatabaseSync} from "node:sqlite";
 const ROOT=join(dirname(fileURLToPath(import.meta.url)),".."), PORT=3163;
 const DB=join(ROOT,"data",`owner-policy-test-${process.pid}.db`);
 const URL=`http://127.0.0.1:${PORT}`, SECRET="owner-policy-test",WRITE="owner-write-test";
@@ -179,4 +180,74 @@ test("방문 신청→슬롯 중복 차단→집주인 승인→취소·재신�
  });
  assert.equal(manual.status,200);
  assert.equal((await api(p,"POST",stranger,{date,time:"15:00"})).status,409);
+});
+
+test("승인 대기 24시간 만료 → 다른 사용자 슬롯 재사용, 중복 신청 제한, 과거 승인 거부",async()=>{
+ const listed=await api("/api/listings","POST",owner,{
+   title:"만료 검증 매물",address:"시연 테스트 주소",tradeType:"월세",deposit:1500,rent:70,salePrice:0,
+   fee:0,area:40,moveIn:"2026-12-01",publisher:"임대인",options:[],description:"합성 데이터",
+ });
+ assert.equal(listed.status,201,JSON.stringify(listed.body));
+ const lid=listed.body.id;
+ const set=await api("/api/owner/listings/"+lid+"/ai","PUT",owner,{
+   aiEnabled:true,visitMode:"approval",availability:[{weekday:6,start:"13:00",end:"18:00"}],
+   answers:{pets:"",parking:"",notes:""},
+ });
+ assert.equal(set.status,200,JSON.stringify(set.body));
+ const another=mintTestToken("exp-visitor","다른 방문자","tenant",SECRET,Math.floor(Date.now()/1000)+3600);
+ const x=await api("/api/deals/"+lid+"/rooms","POST",stranger,{});
+ const y=await api("/api/deals/"+lid+"/rooms","POST",another,{});
+ assert.equal(x.status,201);assert.equal(y.status,201);
+ const r1=x.body.id,r2=y.body.id;
+ let date="";
+ for(let i=1;i<=8;i++){
+   const future=new Date(Date.now()+i*86400000);
+   const day=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).format(future);
+   if(new Date(day+"T00:00:00Z").getUTCDay()===6){date=day;break;}
+ }
+ assert.ok(date);
+ const endpoint="/api/rooms/"+r1+"/bookings";
+ const request=await api(endpoint,"POST",stranger,{date,time:"13:00"});
+ assert.equal(request.status,201,JSON.stringify(request.body));
+ const id=request.body.id;
+ const samePerson=await api(endpoint,"POST",stranger,{date,time:"15:00"});
+ assert.equal(samePerson.status,409,JSON.stringify(samePerson.body));
+ assert.match(samePerson.body.error,/진행 중인 방문 예약/);
+ const stillLocked=await api("/api/rooms/"+r2+"/bookings","POST",another,{date,time:"13:30"});
+ assert.equal(stillLocked.status,409);
+ const db=new DatabaseSync(DB);
+ try{
+   db.prepare("UPDATE owner_visit_bookings SET created_at=? WHERE id=?")
+     .run(new Date(Date.now()-26*3600_000).toISOString(),id);
+ }finally{db.close();}
+ const refreshed=await api(endpoint+"?date="+date,"GET",stranger);
+ assert.equal(refreshed.status,200,JSON.stringify(refreshed.body));
+ const expired=refreshed.body.bookings.find(b=>b.id===id);
+ assert.equal(expired.status,"expired");
+ assert.equal(expired.decided_by,"system:expired");
+ assert.ok(refreshed.body.available.includes("13:00"));
+ const repeated=await api(endpoint+"?date="+date,"GET",stranger);
+ assert.equal(repeated.body.bookings.find(b=>b.id===id).status,"expired");
+ const notices=(await api("/api/rooms/"+r1+"/messages","GET",stranger)).body
+   .filter(m=>m.author_type==="booking_notice"&&m.text.includes("자동 만료"));
+ assert.equal(notices.length,1,"같은 만료 이벤트를 중복 기록하지 않음");
+ const deny=await api(endpoint+"/"+id,"PATCH",owner,{action:"confirm"});
+ assert.equal(deny.status,409);
+ const ownerList=await api("/api/owner/bookings","GET",owner);
+ assert.equal(ownerList.body.find(b=>b.id===id).status,"expired");
+ const open=await api("/api/rooms/"+r2+"/bookings","POST",another,{date,time:"13:00"});
+ assert.equal(open.status,201,JSON.stringify(open.body));
+ const confirm=await api("/api/rooms/"+r2+"/bookings/"+open.body.id,"PATCH",owner,{action:"confirm"});
+ assert.equal(confirm.status,200);
+ // Confirmation is permanent until explicitly cancelled; expiration only targets requested.
+ const db2=new DatabaseSync(DB);
+ try{db2.prepare("UPDATE owner_visit_bookings SET created_at=? WHERE id=?")
+     .run(new Date(Date.now()-48*3600_000).toISOString(),open.body.id);
+ }finally{db2.close();}
+ const later=await api("/api/rooms/"+r2+"/bookings?date="+date,"GET",another);
+ assert.equal(later.body.bookings.find(b=>b.id===open.body.id).status,"confirmed");
+ assert.equal((await api("/api/rooms/"+r2+"/bookings","POST",another,{date,time:"15:00"})).status,409);
+ const cancel=await api("/api/rooms/"+r2+"/bookings/"+open.body.id,"PATCH",another,{action:"cancel"});
+ assert.equal(cancel.status,200);
+ assert.equal((await api(endpoint,"POST",stranger,{date,time:"13:00"})).status,201);
 });

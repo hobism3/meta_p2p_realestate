@@ -45,3 +45,10 @@ test("비밀번호 찾기에는 계정 유무를 노출하지 않는 안내가 �
   await page.getByRole("button",{name:"재설정 메일 보내기"}).click();
   await expect(page.getByRole("status")).toContainText("가입된 이메일이라면");
 });
+
+test("상단 회원가입 메뉴로 직접 가입 화면을 연다",async({page})=>{
+  await page.goto("/");
+  await page.getByRole("link",{name:"회원가입",exact:true}).click();
+  await expect(page).toHaveURL(/\/login\?mode=signup$/);
+  await expect(page.getByRole("heading",{name:"이메일로 회원가입"})).toBeVisible();
+});

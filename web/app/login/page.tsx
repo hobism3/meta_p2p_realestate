@@ -29,6 +29,8 @@ export default function LoginPage(){
     }catch{setMe(null);}
   };
   useEffect(()=>{
+    const q=new URLSearchParams(window.location.search).get("mode");
+    if(q==="signup"||q==="recover")setMode(q);
     const e=new URLSearchParams(window.location.search).get("error");
     if(e==="unconfigured")setError("서버 인증 미설정입니다. 관리자에게 문의하세요.");
     else if(e==="provider")setError("지원하지 않는 로그인 방식입니다.");

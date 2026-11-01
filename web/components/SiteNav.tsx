@@ -65,7 +65,7 @@ export default function SiteNav() {
           </button>
         </>
       ) : (
-        <a href="/login">로그인</a>
+        <><a href="/login?mode=signup">회원가입</a><a href="/login">로그인</a></>
       )}
     </nav>
   );

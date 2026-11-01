@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../../../lib/client-auth";
 import { brokerSnapshot } from "../../../lib/broker-companion";
 import RoomBookingPanel from "../../../components/RoomBookingPanel";
+import TransactionProgressPanel from "../../../components/TransactionProgressPanel";
 import { hasNewProposalCue } from "../../../lib/agent";
 import { groupListingFeatures, initialTerms } from "../../../lib/listing-presentation";
 import {
@@ -236,6 +237,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const [zipNotice, setZipNotice] = useState("");
   const [me] = useState(() => myId());
   const [propData, setPropData] = useState<ProposalsData | null>(null);
+  const [transactionRevision,setTransactionRevision] = useState(0);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const msgsRef = useRef<HTMLDivElement | null>(null);
   const zipBusy = useRef(false);
@@ -591,7 +593,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               </div>
             ) : null}
           </div>
-          {!meta?.demo ? <RoomBookingPanel rid={params.rid} onUpdated={() => void refresh()} /> : null}
+          {meta && !meta.demo ? <TransactionProgressPanel rid={params.rid}
+            tradeType={meta.listing?.tradeType??"월세"}
+            revision={transactionRevision}
+            onUpdated={() => { void refreshConditions(); setTransactionRevision(x=>x+1); }} /> : null}
+          {meta && !meta.demo ? <RoomBookingPanel rid={params.rid}
+            onUpdated={() => { void refresh(); setTransactionRevision(x=>x+1); }} /> : null}
           {zipError ? <p className="conversation-inline-error" role="alert">{zipError}</p> : null}
           {zipNotice ? <p className="meta" role="status">{zipNotice}</p> : null}
           {aiError ? (

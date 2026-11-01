@@ -49,3 +49,10 @@ authenticated tenant POST message
 - 브라우저 종료 **이전 요청 자체가 서버에 도달하지 않았을 경우**까지 자동 저장할 수는 없다. HTTP 201 수신 후에는 DB 원장으로 유실 방지.
 - AI 모델의 생성 응답이 아닌 기존 사실 기반 규칙. Meta/LLM 제공자 오류·토큰 과금 제어는 별도 프로젝트.
 - 외부 알림, 법률 판단/계약 체결·자금 이동, 개인정보 감사·운영 장애 알림, 네이티브 앱은 아직 미구현.
+
+## 2026-11-01 Release Record
+- PR #19 squash merge `92c829495db1e708f3024431d3edb25204fbd5a4` → main.
+- GitHub verify-fast PASS; verify-e2e 최초 1건 모바일 시연 일정 테스트 타임아웃, 동일 workflow 실패 잡 rerun PASS. 로컬 격리 Chromium desktop/mobile 82 PASS/4 SKIP.
+- Next build 및 PostgreSQL 스키마 016 (pg-mem) + SQLite 작업 원장/보안/권한 테스트 PASS.
+- Vercel Production READY, health `{\"ok\":true,\"db\":\"up\",\"kind\":\"pg\"}`, 비인증 Cron GET은 HTTP 401.
+- Production `CRON_SECRET` 암호화 환경변수 준비 완료. **Cron 일일 첫 실행 기록과 실제 Supabase 사용자 2인 종단 간 수동 시나리오는 미확인**.

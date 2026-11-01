@@ -53,3 +53,10 @@ type ExtractedRightCandidate = {
 
 ## 결론
 집 사진으로 매물을 쉽게 등록하도록 하는 시각 AI와 등기부의 법률/권리 사실을 보수적으로 분석하는 P8은 **서로 다른 모듈**이다. 미래 문서 OCR이 생길 때만 검증 가능한 RightEntry 후보를 인계한다. 이번 P8은 시각 개발 코드를 건드리지 않는다.
+
+## 2026-11-01 동시 개발 브랜치 후속 확인 (실제 Git 기준)
+- 사진 가이드 개발 브랜치 **PR #25**: https://github.com/hobism3/meta_p2p_realestate/pull/25 (head `5fda26c`). `verify-fast` **SUCCESS**, `verify-e2e` **SUCCESS**, 확인 당시 PR OPEN. 해당 채팅의 [설계·실행 기록](../VISUAL_LISTING_GUIDE_20261101.md)은 이 브랜치가 아니라 사진 PR에서 생성한 문서이며 main 병합 전에는 링크가 열리지 않을 수 있다.
+- 사진 PR의 구체적인 구현 범위: 매물 등록 Wizard의 사진 가이드, 최대 6장 메모리 처리/EXIF 제거, 중복·밝기 검사, 사각형 수동 마스킹, 동의 후 선택적 Meta VLM 공간분류/옵션 후보/PII 노출 후보. **실물 사진 저장·실제 게시, 3D, SAM 자동분할, 사진 기반 집톡이 질의응답은 범위 밖**.
+- P8의 별도 PR #26과 Git 변경 파일을 비교: 처음 겹쳤던 `.github/workflows/verify-fast.yml` 및 `docs/DEVELOPMENT_LOG.md`은 P8에서 main 버전으로 되돌림. P8 새 goldens는 기존 `web/tests/registry-rights-analysis.test.mjs`에서 import하여 CI에 실리며 기록은 `docs/registry-cases/DEVELOPMENT_LOG_20261101.md`에 보관. **두 열린 PR 변경 파일의 교집합 0개**.
+- 사진 AI에서 반환한 `room`, `features`, `privacyFlags`는 **매물 등록 정보 후보**다. 이를 근저당·신탁·전세권 등 법적 권리 항목으로 자동 매핑하는 인터페이스를 만들어서는 안 된다.
+- 사진과 등기 문서의 개인정보 처리는 별도 데이터 흐름/외부 모델 송신 동의·국외이전·파기 정책으로 검토해야 한다. **Meta 사진 분석에 대한 동의**가 **등기 원문 전송에 대한 적법한 근거**가 되는 것은 아니다.

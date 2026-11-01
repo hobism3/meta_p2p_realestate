@@ -966,3 +966,27 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
 .jiptok-reconcile{margin-top:10px;background:transparent;border:1px solid #dbc9a8;border-radius:9px;padding:7px 10px;color:#80623d;font:inherit;font-size:10px;cursor:pointer;max-width:100%;white-space:normal;text-align:left}
 .jiptok-reconcile:hover{background:#fff5e3}
 .jiptok-reconcile:disabled{opacity:.58;cursor:wait}
+
+.owner-page{max-width:1050px;margin:0 auto 48px;display:grid;gap:18px}
+.owner-hero{padding:28px;border-radius:20px;background:#f4f8f3;border:1px solid #e1e8dd}
+.owner-hero>span{font-size:11px;font-weight:800;letter-spacing:2px;color:#54785b}
+.owner-hero h1{font-size:29px;margin:8px 0;color:#263e32}
+.owner-hero p{color:#5a6c61;line-height:1.65}
+.owner-list-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.owner-list-card{padding:22px}
+.owner-list-card h2{font-size:20px;margin:10px 0}
+.owner-list-card>p{font-size:13px}
+.owner-list-card>div,.owner-actions{display:flex;gap:10px;flex-wrap:wrap}
+.owner-pill{background:#e4f3e6;padding:5px 12px;border-radius:999px;font-size:11px}
+.owner-price{font-weight:700}
+.owner-ai-status{color:#536b5d}
+.owner-settings>section{padding:24px;display:grid;gap:13px}
+.owner-settings label{display:grid;gap:7px;font-size:13px;font-weight:600}
+.owner-settings label input,.owner-settings label textarea,.owner-settings label select,.owner-slot select,.owner-slot input{width:100%;min-width:0;padding:10px;border:1px solid #ccd8d0;border-radius:9px;font:inherit}
+.owner-settings .owner-toggle{display:flex;align-items:center;gap:10px}
+.owner-settings .owner-toggle input{width:auto}
+.owner-slot{display:grid;grid-template-columns:1fr 1fr 12px 1fr auto;gap:8px;align-items:center}
+.owner-back{font-size:13px;color:#35674c}
+.owner-error{color:#a32f25}
+.owner-success{color:#256b3d}
+@media(max-width:650px){.owner-list-grid{grid-template-columns:1fr}.owner-slot{grid-template-columns:1fr 1fr}.owner-slot>span{display:none}.owner-slot>button{grid-column:1/-1}.owner-hero{padding:20px}}

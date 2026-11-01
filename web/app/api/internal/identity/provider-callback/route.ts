@@ -5,6 +5,20 @@ import {callbackSignatureOk,hashProviderSubject,identityProviderConfig} from "@/
 
 export const runtime="nodejs";
 const SAFE_ID=/^[A-Za-z0-9_.:-]{1,160}$/;
+async function boundedBody(req:Request):Promise<string|null>{
+ if(!req.body)return null;
+ const reader=req.body.getReader(),parts:Uint8Array[]=[];let size=0;
+ try{
+  while(true){
+   const {value,done}=await reader.read();if(done)break;
+   size+=value.byteLength;if(size>8192)return null;
+   parts.push(value);
+  }
+  const bytes=new Uint8Array(size);let offset=0;
+  for(const part of parts){bytes.set(part,offset);offset+=part.byteLength;}
+  return new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+ }catch{return null;}finally{reader.releaseLock();}
+}
 
 /** Trusted identity bridge webhook, not a browser callback.
  * A vendor adapter MUST independently validate actual identity-provider evidence
@@ -14,8 +28,8 @@ export async function POST(req:Request):Promise<Response>{
  const cfg=identityProviderConfig();
  if(!cfg)return ok({error:"본인확인기관 미연결"},503);
  if(Number(req.headers.get("content-length")??"0")>8192)return ok({error:"요청 크기 초과"},413);
- const body=await req.text();
- if(body.length>8192)return ok({error:"요청 크기 초과"},413);
+ const body=await boundedBody(req);
+ if(body===null)return ok({error:"요청 본문이 없거나 크기가 초과됐습니다."},413);
  const stamp=req.headers.get("x-identity-timestamp")??"";
  const sig=req.headers.get("x-identity-signature")??"";
  if(!callbackSignatureOk(body,stamp,sig,cfg.callbackSecret))

@@ -19,6 +19,7 @@ export interface DealMessage {
   role: string;
   room_id?: string | null;
   author_type?: string;
+  user_id?: string;
   text: string;
   created_at: string;
 }
@@ -136,6 +137,8 @@ export interface RoomMeta {
   room: RoomInfo;
   listing: { id: string; title: string; tradeType: string; salePrice: number; deposit: number; rent: number; options: string[] } | null;
   demo: boolean;
+  ownerAgentEnabled?: boolean;
+  viewerRole?: "owner" | "visitor";
 }
 
 export async function loadRoomMeta(rid: string): Promise<RoomMeta> {
@@ -154,6 +157,18 @@ export async function invokeAgent(rid: string, triggerMessageId: string): Promis
     method: "POST",
     body: JSON.stringify({ trigger_message_id: triggerMessageId }),
   })) as AgentInvokeResult;
+}
+
+export interface OwnerInvokeResult {
+  outcome: "disabled" | "replied" | "handoff";
+  messageId: string | null;
+  requestId: string | null;
+}
+export async function invokeOwnerAgent(rid: string, triggerMessageId: string): Promise<OwnerInvokeResult> {
+  return (await req(`/api/rooms/${rid}/owner-agent/invoke`, {
+    method: "POST",
+    body: JSON.stringify({ trigger_message_id: triggerMessageId }),
+  })) as OwnerInvokeResult;
 }
 
 export function seedCount(): number {

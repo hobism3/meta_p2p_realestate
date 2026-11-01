@@ -7,6 +7,7 @@ import { hasNewProposalCue } from "../../../lib/agent";
 import { groupListingFeatures, initialTerms } from "../../../lib/listing-presentation";
 import {
   invokeAgent,
+  invokeOwnerAgent,
   invokeZiptalk,
   reconcileZiptalk,
   decideProposal,
@@ -345,7 +346,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
 
   const onSend = async () => {
     if (!msg.trim() || sending) return;
-    // 실거래방은 사람 채팅만 한다. AI 호출은 시연방 전용이다.
+    // 시연방은 기존 AI, 실제 매물은 소유자 설정을 켠 경우에만 제한적 대리 응대.
     const demo = meta?.demo === true;
     const text = msg.trim();
 
@@ -363,7 +364,21 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
       return;
     }
     setSending(false);
-    if (!demo) return;
+    if (!demo) {
+      if (meta?.ownerAgentEnabled && meta.viewerRole !== "owner") {
+        setAiPending(true);
+        setAiError("");
+        try {
+          await invokeOwnerAgent(params.rid, id);
+          await refresh();
+        } catch (e) {
+          setAiError(`AI 대리인이 응답하지 못했습니다(${e instanceof Error ? e.message : "오류"}).`);
+        } finally {
+          setAiPending(false);
+        }
+      }
+      return;
+    }
     const ai = await callAi(id);
     // AI 답에 새 제안·날짜 단서가 있으면 AI 메시지를, 아니면 사람 메시지를 분석한다.
     // 답변이 끝난 질문(아는 가격 등)은 사람 메시지로 넘겨 집톡이가 정리하게 한다.
@@ -376,7 +391,13 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
 
   const onRetry = async () => {
     if (!lastTriggerId || aiPending) return;
-    await callAi(lastTriggerId);
+    if (meta?.demo) await callAi(lastTriggerId);
+    else if (meta?.ownerAgentEnabled && meta.viewerRole !== "owner") {
+      setAiPending(true);
+      try { await invokeOwnerAgent(params.rid, lastTriggerId); await refresh(); setAiError(""); }
+      catch (e) { setAiError(e instanceof Error ? e.message : "재시도 실패"); }
+      finally { setAiPending(false); }
+    }
   };
 
   const onTogglePanel = async () => {
@@ -458,7 +479,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     tradeType: meta?.listing?.tradeType,
     conditions, visits, proposals: propData?.proposals ?? [], chat: chatMessages, latestNote: newestZip,
   });
-  const participant = meta?.demo ? aiName(meta?.listing?.tradeType) : "거래 상대방";
+  const participant = meta?.demo ? aiName(meta?.listing?.tradeType)
+    : meta?.ownerAgentEnabled ? "AI 집주인 대리인 · 집주인" : "거래 상대방";
   const listing = meta?.listing;
   const formattedPrice = !listing ? "" : listing.tradeType === "매매"
     ? "매매 " + listing.salePrice.toLocaleString() + "만원"
@@ -507,7 +529,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           </div>
           {error ? <p className="error" role="alert">{error}</p> : null}
           <div className="msgs conversation-feed" ref={msgsRef} role="log" aria-label="거래 대화" aria-relevant="additions text">
-            <div className="conversation-day-label"><span>메시지 · {meta?.demo ? "그룹채팅 시연" : "개인 간 거래"}</span></div>
+            <div className="conversation-day-label"><span>메시지 · {meta?.demo ? "그룹채팅 시연"
+  : meta?.ownerAgentEnabled ? "실제 매물 · 집주인 AI 대리 응대" : "개인 간 거래"}</span></div>
             {meta?.demo ? (
               <section className="jiptok-progress" aria-label="집톡이 진행 현황">
                 <strong>✦ 집톡이가 챙기는 거래 진행</strong>
@@ -529,7 +552,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             ) : null}
             {messages.map((m) => {
               const jiptok = m.author_type === "assistant";
-              const mine = m.author_type === "human";
+              const mine = m.author_type === "human" && m.user_id === me;
               return (
                 <div key={m.id} id={"msg-" + m.id} className={"conversation-row " + (jiptok ? "is-jiptok" : mine ? "is-mine" : "is-theirs")}>
                   {!mine ? <span className={"conversation-small-avatar" + (jiptok ? " jiptok-avatar" : "")} aria-hidden="true">{jiptok ? "✦" : "⌂"}</span> : null}
@@ -555,12 +578,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
                 </div>
               </div>
             ) : null}
-            {aiPending && meta?.demo ? (
+            {aiPending && (meta?.demo || meta?.ownerAgentEnabled) ? (
               <div className="conversation-row is-theirs" role="status">
                 <span className="conversation-small-avatar" aria-hidden="true">⌂</span>
                 <div className="conversation-message">
                   <span className="conversation-author">{participant}</span>
-                  <div className="bubble theirs conversation-typing" aria-label="AI가 답변 중입니다"><i/><i/><i/></div>
+                  <div className="bubble theirs conversation-typing" aria-label="AI 대리인이 정보 확인 중입니다"><i/><i/><i/></div>
                 </div>
               </div>
             ) : null}
@@ -598,7 +621,11 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               {sending ? "전송 중..." : "전송"} <span aria-hidden="true">↗</span>
             </button>
           </div>
-          <p className="conversation-privacy">집톡이는 남은 확인 사항을 챙깁니다. 조건과 방문은 당사자 확인 후 확정되며, AI 시연 동의는 실제 계약이 아닙니다.</p>
+          <p className="conversation-privacy">{meta?.demo
+            ? "집톡이는 남은 확인 사항을 챙깁니다. 조건과 방문은 당사자 확인 후 확정되며, AI 시연 동의는 실제 계약이 아닙니다."
+            : meta?.ownerAgentEnabled
+              ? "AI 대리인은 집주인이 등록한 사실만 안내합니다. 가격 변경·방문 예약·계약은 AI가 확정하지 않으며, 확인이 필요한 사항은 집주인에게 전달됩니다."
+              : "이 거래방은 두 당사자가 직접 대화합니다. 거래 조건과 일정의 확정은 양측이 확인해야 합니다."}</p>
         </section>
         {panelOpen ? (
           <aside className="card drawer open" aria-label="거래 현황 상세">

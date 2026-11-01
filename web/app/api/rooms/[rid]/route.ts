@@ -4,6 +4,7 @@ import { getDal } from "@/lib/dal";
 import { rowToListing } from "@/lib/db";
 import { SEED_LISTINGS } from "@/lib/listings";
 import { getRoom, isRoomMember } from "@/lib/rooms";
+import { getOwnerAiPolicy } from "@/lib/owner-ai";
 
 // 거래방 정보. 멤버만 본다. 소유자 없는 매물 방은 시연으로 구분한다.
 export async function GET(req: Request, { params }: { params: { rid: string } }): Promise<Response> {
@@ -20,13 +21,18 @@ export async function GET(req: Request, { params }: { params: { rid: string } })
       room,
       listing: { id: seed.id, title: seed.title, tradeType: seed.tradeType, salePrice: seed.salePrice, deposit: seed.deposit, rent: seed.rent, options: seed.options },
       demo: true,
+      ownerAgentEnabled: false,
+      viewerRole: "visitor",
     });
   }
   const row = await getDal().get("SELECT * FROM custom_listings WHERE id = ?", [room.listing_id]);
   if (!row) return ok({ room, listing: null, demo: true });
   const custom = rowToListing(row) as { title: string; tradeType: string; salePrice: number; deposit: number; rent: number; options: string[]; ownerId: string };
+  const policy = custom.ownerId ? await getOwnerAiPolicy(room.listing_id) : null;
   return ok({
     room,
+    ownerAgentEnabled: !!policy?.aiEnabled,
+    viewerRole: custom.ownerId === a.identity.userId ? "owner" : "visitor",
     listing: { id: room.listing_id, title: custom.title, tradeType: custom.tradeType, salePrice: custom.salePrice, deposit: custom.deposit, rent: custom.rent, options: custom.options },
     demo: !custom.ownerId,
   });

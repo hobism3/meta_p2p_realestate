@@ -10,6 +10,7 @@ import {
   type RegisterDraft, type RegisterStep,
 } from "../../lib/register-wizard";
 import RegistryImport from "../../components/RegistryImport";
+import ListingPhotoGuide from "../../components/ListingPhotoGuide";
 
 const STORAGE_KEY = "directhome.register.wizard.v1";
 const NUMBER_FIELDS = new Set<keyof RegisterDraft>(["deposit", "rent", "salePrice", "fee", "area"]);
@@ -344,6 +345,11 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
 
             {stage === 3 ? (
               <div className="wizard-details">
+                <ListingPhotoGuide onSuggestOptions={(values) => {
+                  const existing = form.options.split(",").map((x) => x.trim()).filter(Boolean);
+                  const combined = Array.from(new Set([...existing, ...values]));
+                  set("options", combined.join(", "));
+                }} />
                 <div className="wizard-fields-grid">
                   <FormField id="moveIn" title="입주 가능일 *" value={form.moveIn}
                     placeholder="예: 2026-11-10 또는 즉시 입주" onChange={(v) => set("moveIn", v)}

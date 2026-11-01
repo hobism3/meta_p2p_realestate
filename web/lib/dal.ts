@@ -42,6 +42,7 @@ function migrationFiles(): { version: string; sql: string }[] {
 
 class SqliteDal implements Dal {
   kind = "sqlite" as const;
+  private serialTransactions: Promise<void> = Promise.resolve();
 
   async all(sql: string, params: SQLInputValue[] = []): Promise<Record<string, unknown>[]> {
     return getDb().prepare(sql).all(...params) as Record<string, unknown>[];
@@ -64,29 +65,41 @@ class SqliteDal implements Dal {
   }
 
   async withTransaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
-    const db = getDb();
-    const tx: Tx = {
-      run: async (sql, params = []) => {
-        db.prepare(sql).run(...params);
-      },
-      all: async (sql, params = []) => {
-        return db.prepare(sql).all(...params) as Record<string, unknown>[];
-      },
-      get: async (sql, params = []) => {
-        return db.prepare(sql).get(...params) as Record<string, unknown> | undefined;
-      },
-      upsertKey: async (id: string) => {
-        db.prepare("INSERT OR IGNORE INTO listing_keys (id) VALUES (?)").run(id);
-      },
-    };
-    db.exec("BEGIN;");
+    // SQLite has one connection per worker. Concurrent HTTP requests must
+    // never issue a second BEGIN while the first request awaits its callback.
+    // This local FIFO serializes transactions; SQLite's write lock protects
+    // competing processes. PostgreSQL already uses independent tx clients.
+    const prior = this.serialTransactions;
+    let release: () => void = () => {};
+    this.serialTransactions = new Promise<void>((resolve) => { release = resolve; });
+    await prior;
     try {
-      const r = await fn(tx);
-      db.exec("COMMIT;");
-      return r;
-    } catch (e) {
-      db.exec("ROLLBACK;");
-      throw e;
+      const db = getDb();
+      const tx: Tx = {
+        run: async (sql, params = []) => {
+          db.prepare(sql).run(...params);
+        },
+        all: async (sql, params = []) => {
+          return db.prepare(sql).all(...params) as Record<string, unknown>[];
+        },
+        get: async (sql, params = []) => {
+          return db.prepare(sql).get(...params) as Record<string, unknown> | undefined;
+        },
+        upsertKey: async (id: string) => {
+          db.prepare("INSERT OR IGNORE INTO listing_keys (id) VALUES (?)").run(id);
+        },
+      };
+      db.exec("BEGIN;");
+      try {
+        const result = await fn(tx);
+        db.exec("COMMIT;");
+        return result;
+      } catch (e) {
+        try { db.exec("ROLLBACK;"); } catch { /* original failure wins */ }
+        throw e;
+      }
+    } finally {
+      release();
     }
   }
 

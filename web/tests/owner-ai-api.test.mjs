@@ -251,3 +251,35 @@ test("승인 대기 24시간 만료 → 다른 사용자 슬롯 재사용, 중�
  assert.equal(cancel.status,200);
  assert.equal((await api(endpoint,"POST",stranger,{date,time:"13:00"})).status,201);
 });
+
+test("동시 방문 신청 두 건은 겹치는 한 슬롯에서 하나만 성공",async()=>{
+ const l=await api("/api/listings","POST",owner,{
+  title:"경합 검증 매물",address:"합성 주소",tradeType:"월세",deposit:900,rent:55,salePrice:0,
+  fee:0,area:40,moveIn:"2026-12-01",publisher:"집주인",options:[],description:"경합 검증",
+ });
+ assert.equal(l.status,201);
+ const lid=l.body.id;
+ assert.equal((await api("/api/owner/listings/"+lid+"/ai","PUT",owner,{
+  aiEnabled:true,visitMode:"approval",availability:[{weekday:6,start:"13:00",end:"18:00"}],
+  answers:{pets:"",parking:"",notes:""},
+ })).status,200);
+ const other=mintTestToken("parallel-visitor","방문자 C","tenant",SECRET,Math.floor(Date.now()/1000)+3600);
+ const ra=await api("/api/deals/"+lid+"/rooms","POST",stranger,{});
+ const rb=await api("/api/deals/"+lid+"/rooms","POST",other,{});
+ assert.equal(ra.status,201);assert.equal(rb.status,201);
+ let date="";
+ for(let i=1;i<=8;i++){
+  const t=new Date(Date.now()+i*86400000);
+  const d=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).format(t);
+  if(new Date(d+"T00:00:00Z").getUTCDay()===6){date=d;break;}
+ }
+ const a="/api/rooms/"+ra.body.id+"/bookings",b="/api/rooms/"+rb.body.id+"/bookings";
+ const result=await Promise.all([
+  api(a,"POST",stranger,{date,time:"13:00"}),
+  api(b,"POST",other,{date,time:"13:00"}),
+ ]);
+ assert.deepEqual(result.map(x=>x.status).sort((x,y)=>x-y),[201,409],JSON.stringify(result));
+ const owned=await api("/api/owner/bookings","GET",owner);
+ const bookings=owned.body.filter(x=>x.listing_id===lid&&x.status==="requested");
+ assert.equal(bookings.length,1);
+});

@@ -5,7 +5,7 @@ import { checkRate } from "@/lib/ratelimit";
 import { parseChatResponse } from "@/lib/meta";
 import {
   REGISTRY_MAX_JSON_BYTES, REGISTRY_MAX_PDF_BYTES,
-  buildRegistryMetaRequest, isPlausiblePdf, mockRegistryDraft, validateRegistryDraft,
+  buildRegistryMetaRequest, isPlausiblePdf, isSyntheticRegistryDemoPdf, mockRegistryDraft, validateRegistryDraft,
 } from "@/lib/registry-draft";
 
 export const runtime = "nodejs";
@@ -57,7 +57,7 @@ export function GET(): Response {
   return json({
     provider,
     enabled: provider === "mock" || (process.env.REGISTRY_AI_ENABLED === "true" && !!process.env.MODEL_API_KEY),
-    sampleOnly: provider === "mock",
+    sampleOnly: true, // Both Mock and Meta accept only hash-verified fictional examples.
   });
 }
 
@@ -100,8 +100,14 @@ async function processImport(req: Request): Promise<Response> {
     return json({ provider: "mock", model: "synthetic-fixture", draft });
   }
 
-  // No file is uploaded to the Files API or persisted. The explicit redacted document is
-  // embedded once in the Meta request. Do not log requests, owner identifiers, or replies.
+  // Critical privacy boundary: field-level output filtering does NOT remove personal
+  // data from the input PDF. Never send arbitrary user-supplied title documents to Meta.
+  // Only cryptographically matched fictional demonstration files are eligible.
+  if (!isSyntheticRegistryDemoPdf(pdf)) {
+    return json({ error: "개인정보 보호를 위해 실제 등기 PDF의 외부 AI 전송을 차단했습니다. 제공된 가상 PDF 예시로만 시연할 수 있습니다." }, 422);
+  }
+  // The exact, fictional sample PDF is embedded in one Meta request; no persistence.
+  // Do not log full requests, owner identifiers, extracted text or model replies.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 40_000);
   try {

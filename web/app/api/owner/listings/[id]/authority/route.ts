@@ -18,7 +18,7 @@ async function owner(req:Request,id:string){
 
 export async function GET(req:Request,{params}:Ctx):Promise<Response>{
  const guard=guardRead(req);if(guard)return guard;
- const auth=await owner(req,params.id);if("error" in auth)return auth.error;
+ const auth=await owner(req,params.id);if("error" in auth && auth.error)return auth.error;
  const r=await getDal().get(
   "SELECT relation,self_attested,attested_at,verification_status FROM listing_authority_claims WHERE listing_id = ? AND claimant_user_id = ?",
   [params.id,auth.userId],
@@ -35,7 +35,7 @@ export async function GET(req:Request,{params}:Ctx):Promise<Response>{
 
 export async function PUT(req:Request,{params}:Ctx):Promise<Response>{
  const guard=guardWrite(req);if(guard)return guard;
- const auth=await owner(req,params.id);if("error" in auth)return auth.error;
+ const auth=await owner(req,params.id);if("error" in auth && auth.error)return auth.error;
  const parsed=await readJson(req);if("err" in parsed)return parsed.err;
  const {relation,attested}=parsed.value;
  if(typeof relation!=="string"||!RELATIONS.has(relation)||attested!==true)

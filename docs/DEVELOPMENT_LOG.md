@@ -62,3 +62,32 @@
 - Vercel Preview READY, Production READY(`92c8294`). 프로덕션 /api/health 200 / PostgreSQL up. 비인증 /api/cron/owner-agent 401. CRON_SECRET은 Production 암호화 환경변수로 구성(값 미공개).
 - 이전 /owner-agent/invoke 도 queue pending/failed/disabled 시 추가 실행 차단. 운영 cron 하루 한 번은 백업 복구이며 즉시 성공을 보장하지 않음.
 - 기술 판정: 집주인 AI 서버 트랜잭션·작업 복구·실패 관리 구현 완료. Vercel Cron의 다음 실제 예약 실행 기록, Supabase 실계정 2명 수동 E2E, 장애 SLA/보안·법률 감사는 미검증.
+
+## 2026-11-01 · Stage 4/6 정리 및 P7 (권리 분석·집톡이 보조 고도화)
+
+### 전달된 기준선과 실제 병합
+- PR #20, `main@94108e1`: 복수 매물 집주인 허브, 방문/AI 요청 요약·매물별 대기 업무, 검색/정렬·거래방 이동. CI verify-fast/e2e PASS.
+- PR #21: 개별 미처리 작업함 개선 **오픈, 미병합**. main에 반영된 것으로 해석하지 않음.
+- PR #22, `main@b82272f`: 실 등기 PDF의 Meta 원본 전송 위험 발견 → SHA-256 허구 샘플 제한, 브라우저 선차단, 응답 필터링을 입력 마스킹으로 오인한 문구 정정. 신설 직거래 광고/게시자 규제와 개인정보·중개업/전자동의 법률 감사.
+- PR #23, `main@41c6ae6`: 본인확인기관용 브리지·서명 콜백(기관 실제 미연결), 게시권한 자기진술, 실제 매물 신고 DB/관리 검토, 로컬 등기 확인 체크리스트; CI-fast PASS. 법률 비해당/소유자 인증 완료 판정 아님.
+
+### 사용자 결정과 이번 P7 목표
+- 정식 서비스 출시 단계가 아니므로 법률 검토·실사용 2인 거래는 보류하고 연구개발을 진행. 법률 결론을 위조하지 말고 확인된 근거와 **나중에 전문가에게 확인할 문제**를 계속 Git에 남기기로 결정.
+- 집톡이는 거래 알선/협상이 아니라 **미확인 조건·다음 절차 안내**만 수행.
+- 권리관계 분석은 핵심 제품 가치로 채택; 실 등기 API 제휴 전에는 합성/사용자 수동 입력을 통한 개인정보 최소화 방식으로 고도화.
+
+### P7 변경 내용 — 코드 및 검증 진입
+- `web/lib/registry-rights-analysis.ts`: 등기 기재의 권리종류, 현행/말소/미확인, 갑구/을구, 접수일, 사용자 입력 순위번호·근저당 채권최고액 구조화. 금액 미입력과 불확실성을 드러내고 **실제 채무잔액/선순위/회수가능액/안전판정 미계산**.
+- `web/app/registry/check/page.tsx`: 기존 수동 체크리스트를 상세 편집, 허구 예시, 발급일·7일 자체 재확인 권고, 관련자 신원/선순위 임차인/세금/건축물대장 확인, 사용자가 직접 결과 메모 복사하는 UX로 확장. 입력을 서버/외부 AI에 보내지 않음.
+- `web/lib/jiptok-support-tasks.ts`, `web/components/TransactionProgressPanel.tsx`: 실제 DB의 읽기전용 projection에서 확인대기·다음 질문·권리관계 확인을 표시. 채팅 자동 발화·가격 절충·임의 동의/승인 없음.
+- `web/components/SiteNav.tsx`, `web/app/globals.css`: 등기 확인 경로 노출과 모바일 입력 UX.
+- `web/tests/registry-rights-analysis.test.mjs`, `web/tests/jiptok-support-tasks.test.mjs`: 누락/말소/미확인/채권최고액/시간, 실제 확정·제안 구분, 협상 금지 회귀. `verify-fast.yml`에 포함.
+- 설계·사유·미해결: [P7 설계/검토 기록](P7_RIGHTS_ANALYSIS_AND_SUPPORT_20261101.md), [등기/API 법률](legal/REGISTRY_PUBLIC_DATA_AND_API_20261101.md), [중개업 기능별 분석](legal/BROKERAGE_CLASSIFICATION_20261101.md).
+
+### 판정 게이트와 남은 일
+- 이 문단은 **코드 작성 기록**이며 아직 배포/법률 검증 완료를 뜻하지 않는다. 해당 브랜치 CI와 PR/main 병합 결과를 후속 검증 기록으로 추가해야 한다.
+- 본인확인기관 계약·실 등기 API 공급계약·실 사용자 법률 실사, 실제 2인 거래 QA는 미완료. 운영 환경의 모델/개인정보 관련 약관·보관/파기 및 현재 P5 PR #21의 충돌·병합 여부도 별도 관리한다.
+
+### 2026-11-01 · 후속 진행 정정 및 P5 병합
+- PR #21 (`feat/owner-hub-bulk-p5-20261101`): 병합 전 head `fbf8025`에서 GitHub verify-fast **PASS**, verify-e2e **PASS**, mergeable 상태 확인 후 `main@44ef644`로 **squash 병합 완료**. 기존 개발로그의 '오픈, 미병합'은 병합 이전 시점의 기록이다.
+- PR #24(P7): 초기 CI에서 `Array.entries()`가 이전 TypeScript target/downlevelIteration 설정과 충돌해 빌드 실패 → 인덱스 루프로 변경. 다음 CI 단위 검증에서 '이용자가 체크한 항목은 공적 검증이 아님' 경고 문구 누락을 잡아 설명을 추가함. 이력과 CI 링크는 PR #24에서 유지.

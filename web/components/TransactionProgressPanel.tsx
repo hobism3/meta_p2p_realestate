@@ -3,6 +3,7 @@ import {useCallback,useEffect,useMemo,useState} from "react";
 import {authHeaders} from "../lib/client-auth";
 import {decideProposal,loadProposals,type ProposalsData} from "../lib/store";
 import type {TransactionSnapshot,TransactionStageKey,TransactionStatus} from "../lib/transaction-projection";
+import {buildCompanionTasks} from "../lib/jiptok-support-tasks";
 
 const statuses:Record<TransactionStatus,string>={
  confirmed:"양측 확인",partial:"일부 확인",pending:"동의 대기",
@@ -31,6 +32,7 @@ export default function TransactionProgressPanel({rid,tradeType,revision=0,onUpd
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const options=useMemo(()=>typeOptions[tradeType]??typeOptions["월세"],[tradeType]);
  const chosen=name||options[0];
+ const companion=useMemo(()=>summary?buildCompanionTasks(summary):[],[summary]);
  const refresh=useCallback(async()=>{
   try{
    const [res,proposals]=await Promise.all([
@@ -40,7 +42,7 @@ export default function TransactionProgressPanel({rid,tradeType,revision=0,onUpd
    const body=await res.json();
    if(!res.ok)throw Error(body.error??"거래 진행 상태 조회 실패");
    setSummary(body);setProposalData(proposals);setError("");
-  }catch(e){setError(e instanceof Error?e.message:"거래 현황 조회 실패");}
+  }catch(e){setSummary(null);setProposalData(null);setError(e instanceof Error?e.message:"거래 현황 조회 실패");}
   finally{setLoading(false);}
  },[rid]);
  useEffect(()=>{void refresh();const t=setInterval(()=>void refresh(),10000);return()=>clearInterval(t);},[refresh,revision]);
@@ -87,8 +89,23 @@ export default function TransactionProgressPanel({rid,tradeType,revision=0,onUpd
      {step.evidence.length?<a href={"#msg-"+step.evidence[0]}>대화 근거 ↗</a>:null}
     </div>
    </div>)}
-  </div><p className="real-next-step"><strong>다음 확인:</strong> {summary.nextStep.title} <span>{summary.nextStep.hint}</span></p></>:null}
-  {proposalData?<div className="real-active-proposals">
+  </div><p className="real-next-step"><strong>다음 확인:</strong> {summary.nextStep.title} <span>{summary.nextStep.hint}</span></p>
+  <aside className="card" aria-label="집톡이의 남은 확인사항" style={{marginTop:16}}>
+   <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+    <span aria-hidden="true">🏠</span><strong>집톡이가 챙긴 확인사항</strong>
+    <small className="meta">거래 현황에서 자동 정리 · 협상하거나 대신 확정하지 않음</small>
+   </div>
+   <p className="meta">사람이 직접 결정·승인한 사실만 거래 상태에 반영합니다. 아래는 다음에 확인할 자료와 대기사항을 안내하는 읽기 전용 메모입니다.</p>
+   <div style={{display:"grid",gap:10}}>
+    {companion.map(task=><div className="card" key={task.id} style={{margin:0}}>
+     <strong>{task.title}</strong>
+     <p className="meta">{task.description}</p>
+     {task.target&&task.actionLabel?<a className="btn ghost" href={task.target}>{task.actionLabel} ↗</a>:null}
+    </div>)}
+   </div>
+   {summary.demo?<p className="meta">시연방의 확인과 일정은 실제 임대인의 승인이나 실제 계약이 아닙니다.</p>:null}
+  </aside></>:null}
+  {proposalData?<div className="real-active-proposals" id="deal-condition-cards">
    <strong>두 사람의 조건 확인 카드</strong>
    {proposalData.proposals.filter(p=>p.status==="proposed"||p.status==="agreed").slice(-8).reverse().map(p=>{
     const approvals=proposalData.approvals[p.id]??[];

@@ -91,7 +91,7 @@ test("월세 조건: 한 사람 동의는 미확정, 두 사람 동의 후 확�
  assert.equal(yes.body.status,"agreed");
  const complete=await api("/api/rooms/"+roomId+"/transaction-state");
  assert.equal(stage(complete.body,"price").status,"confirmed");
- assert.equal(stage(complete.body,"price").confirmedValue,"보증금 3,000만원 / 월세 68만원");
+ assert.equal(stage(complete.body,"price").confirmedValue,"보증금 3,000만원/월세 68만원");
 });
 test("실제 방문은 별도 bookings 예약 승인 후 확정",async()=>{
  let date="";

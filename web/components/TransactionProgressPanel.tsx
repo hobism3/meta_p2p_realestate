@@ -111,7 +111,7 @@ export default function TransactionProgressPanel({rid,tradeType,revision=0,onUpd
      <select value={chosen} onChange={e=>setName(e.target.value)}>{options.map(o=><option key={o} value={o}>{o}</option>)}</select>
     </label>
     <label>조건 내용<input value={value} maxLength={500} onChange={e=>setValue(e.target.value)}
-     placeholder={chosen==="월세 조건"?"예: 보증금 3,000만원 / 월세 68만원":"조건을 구체적으로 입력"}/></label>
+     placeholder={chosen==="월세 조건"?"예: 보증금 3,000만원/월세 68만원":"조건을 구체적으로 입력"}/></label>
     <button type="button" className="btn" disabled={busy||!value.trim()} onClick={()=>void propose()}>
      {busy?"처리 중...":"확인 카드 만들기"}</button>
    </details>

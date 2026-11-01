@@ -25,7 +25,7 @@ test("실제 거래 현황: 양측 확인 카드를 통해서만 월세 조건 �
  await form.locator("select").selectOption("월세 조건");
  await form.locator("input").fill("보증금 3,000만원 / 월세 68만원");
  await form.getByRole("button",{name:"확인 카드 만들기"}).click();
- const card=progress.locator(".real-proposal-card").filter({hasText:"보증금 3,000만원 / 월세 68만원"});
+ const card=progress.locator(".real-proposal-card").filter({hasText:"보증금 3,000만원/월세 68만원"});
  await expect(card).toBeVisible();
  await expect(card).toContainText("양측 확인 대기");
  await card.getByRole("button",{name:"이 조건 동의"}).click();
@@ -34,12 +34,12 @@ test("실제 거래 현황: 양측 확인 카드를 통해서만 월세 조건 �
  await page.addInitScript((v:string)=>localStorage.setItem("directhome.access_token",v),owner);
  await page.goto("/rooms/"+rid);
  const ownerProgress=page.getByRole("region",{name:"거래 진행 요약"});
- const ownerCard=ownerProgress.locator(".real-proposal-card").filter({hasText:"보증금 3,000만원 / 월세 68만원"});
+ const ownerCard=ownerProgress.locator(".real-proposal-card").filter({hasText:"보증금 3,000만원/월세 68만원"});
  await expect(ownerCard.getByRole("button",{name:"이 조건 동의"})).toBeVisible();
  await ownerCard.getByRole("button",{name:"이 조건 동의"}).click();
  await expect(ownerCard).toContainText("양측 동의");
  const price=ownerProgress.locator(".real-stage").filter({hasText:"가격 조건"});
  await expect(price).toContainText("양측 확인");
- await expect(price).toContainText("보증금 3,000만원 / 월세 68만원");
+ await expect(price).toContainText("보증금 3,000만원/월세 68만원");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 });

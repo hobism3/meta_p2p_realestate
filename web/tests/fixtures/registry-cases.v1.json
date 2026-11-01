@@ -119,7 +119,7 @@
             "id": "m1",
             "kind": "mortgage",
             "section": "을구",
-            "status": {},
+            "status": "active",
             "claimMaximumManwon": 12000
           }
         ]

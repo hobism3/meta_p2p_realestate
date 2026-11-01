@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import {authHeaders,getAccessToken} from "../../lib/client-auth";
-type OwnerListing={id:string;title:string;address:string;tradeType:string;deposit:number;rent:number;salePrice:number;aiEnabled:boolean};
+type OwnerListing={id:string;title:string;address:string;tradeType:string;deposit:number;rent:number;salePrice:number;rooms:number;aiEnabled:boolean};
 export default function OwnerPage(){
  const [rows,setRows]=useState<OwnerListing[]>([]);
  const [loading,setLoading]=useState(true);
@@ -24,7 +24,7 @@ export default function OwnerPage(){
    <div className="owner-list-grid">{rows.map(l=><article className="card owner-list-card" key={l.id}>
     <span className="owner-pill">{l.tradeType}</span><h2>{l.title}</h2><p>{l.address}</p>
     <p className="owner-price">{l.tradeType==="월세"?`보증금 ${l.deposit.toLocaleString()} / 월세 ${l.rent.toLocaleString()}만원`:l.tradeType==="전세"?`${l.deposit.toLocaleString()}만원`:`${l.salePrice.toLocaleString()}만원`}</p>
-    <p className="owner-ai-status">{l.aiEnabled?"● AI 설정 켜짐 (응대 엔진 준비 중)":"○ AI 대리인 꺼짐"}</p>
+    <p className="owner-ai-status">문의 거래방 {l.rooms}개 · {l.aiEnabled?"● AI 설정 켜짐 (응대 엔진 준비 중)":"○ AI 대리인 꺼짐"}</p>
     <div><a className="btn" href={`/owner/listings/${l.id}`}>AI·방문 설정 →</a> <a className="btn ghost" href={`/register?edit=${l.id}`}>매물 수정</a></div>
    </article>)}</div>}
  </div>;

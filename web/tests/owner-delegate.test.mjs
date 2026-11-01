@@ -37,3 +37,11 @@ test("등록 정책 없거나 모호하면 확인 요청",()=>{
  assert.equal(answerOwnerInquiry("고양이 키워도 되나요?",listing,absent).kind,"policy_review");
  assert.equal(answerOwnerInquiry("층간소음 심한가요?",listing,policy).handoff,true);
 });
+
+test("금액을 직접 제안하는 요청은 등록 가격 안내로 덮지 않고 승인 요청",()=>{
+  for(const q of ["보증금 3000에 월세 60으로 해주실 수 있나요?", "보증금 5000이면 월세 60 가능해요?"]) {
+    const reply=answerOwnerInquiry(q,listing,policy);
+    assert.equal(reply.handoff,true,q);
+    assert.equal(reply.kind,"price_review",q);
+  }
+});

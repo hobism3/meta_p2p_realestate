@@ -39,7 +39,10 @@ export function answerOwnerInquiry(text:string, listing:DelegateListing, policy:
   const contract=/(계약|가계약|특약|잔금|계약금|보증보험|근저당|등기|보증금 반환|환불|위임|소유권|세금)/;
   const priceOffer=/(할인|깎|네고|인하|낮춰|올리면|내리면|협상|조정|흥정|흥정|맞춰|제안|딜|후려|싼값|에\s*해|만원[에로]\s*가능)/;
   if (contract.test(t)) return handoff("contract_review","계약·권리관계·금전 관련 판단은 AI가 대신 확정하지 않습니다.");
-  if (priceOffer.test(t)) return handoff("price_review","가격이나 보증금 변경 요청은 집주인이 직접 결정합니다.");
+  const numericDeal = /(보증금|월세|전세금|매매가|가격).{0,36}\d[\d,]*(?:\s*만원?)?/.test(t);
+  const askingChangedTerms = /(가능|되나요|될까요|해도|하면|해주|바꿔|조절|원해|희망|안될)/.test(t);
+  if (priceOffer.test(t) || (numericDeal && askingChangedTerms))
+    return handoff("price_review","가격이나 보증금 변경 요청은 집주인이 직접 결정합니다.");
   const askingVisit=/(방문|집\s*보|방\s*보|보러|보여|내일|모레|예약|시간대|일정|몇\s*시)/.test(t);
   const explicitSlot=/(\d{1,2}\s*(?:시|:)|\d{1,2}\s*월\s*\d{1,2}|\d{4}-\d\d-\d\d|이번\s*주|다음\s*주|토요일|일요일|월요일|화요일|수요일|목요일|금요일|내일|모레)/.test(t);
   const booking=/(예약|잡아|확정|갈게|가겠습니다|보러\s*갈|찾아갈|방문하고\s*싶|볼\s*수|가능할까요|괜찮나요|해도\s*되)/.test(t);

@@ -29,11 +29,11 @@ test("비밀번호 불일치와 약한 비밀번호는 요청 전에 차단된�
   await page.getByLabel("비밀번호",{exact:true}).fill("weakpassword");
   await page.getByLabel("비밀번호 확인").fill("weakpassword");
   await page.getByRole("button",{name:"회원가입",exact:true}).click();
-  await expect(page.getByRole("alert")).toContainText("영문과 숫자");
+  await expect(page.locator(".auth-box .error")).toContainText("영문과 숫자");
   await page.getByLabel("비밀번호",{exact:true}).fill("StrongVisitor2026");
   await page.getByLabel("비밀번호 확인").fill("AnotherPassword2026");
   await page.getByRole("button",{name:"회원가입",exact:true}).click();
-  await expect(page.getByRole("alert")).toContainText("일치하지 않습니다");
+  await expect(page.locator(".auth-box .error")).toContainText("일치하지 않습니다");
   expect(requests).toBe(0);
 });
 test("비밀번호 찾기에는 계정 유무를 노출하지 않는 안내가 표시된다",async({page})=>{

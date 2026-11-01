@@ -34,7 +34,7 @@ function proposalsFor(all:RawProposal[],name:string):ProposalView {
          confirmed:rows.find(p=>p.status==="agreed")};
 }
 function evidence(p?:RawProposal,cond?:RawCondition):string[]{
- return [...new Set([...(p?.source_msg_ids??[]),...(cond?.source_msg_ids??[])])].filter(x=>typeof x==="string");
+ return Array.from(new Set([...(p?.source_msg_ids??[]),...(cond?.source_msg_ids??[])])).filter(x=>typeof x==="string");
 }
 function term(input:ProjectionInput,key:TransactionStageKey,label:string,name:string):TransactionStage {
  const q=proposalsFor(input.proposals,name);
@@ -95,7 +95,7 @@ export function buildTransactionSnapshot(input:ProjectionInput):TransactionSnaps
   confirmedValue:agreed.length?agreed.map(v=>v.label==="생활 조건"?`${names[sub.indexOf(v)]}: ${v.confirmedValue}`:v.confirmedValue).join(" · "):null,
   pendingValue:waiting.length?waiting.map(v=>`${names[sub.indexOf(v)]}: ${v.pendingValue}`).join(" · "):null,
   detail:waiting.length?"생활 조건 제안의 양측 확인이 필요해요.":agreed.length?"일부 생활 조건에 양측이 동의했어요. 다른 옵션·관리비도 확인하세요.":hasPetTalk?"대화에 생활 조건이 나왔지만 아직 확인 카드로 확정되지 않았어요.":"반려동물·관리비·수리 조건을 확인하세요.",
-  evidence:[...new Set(sub.flatMap(v=>v.evidence))],
+  evidence:Array.from(new Set(sub.flatMap(v=>v.evidence))),
   confirmedProposalId:null,pendingProposalId:waiting[0]?.pendingProposalId??null,
  };
  const contract=term(input,"contract",type==="매매"?"계약·가계약 여부":"계약일","계약일");
@@ -110,7 +110,7 @@ export function buildTransactionSnapshot(input:ProjectionInput):TransactionSnaps
    confirmedValue:[balance.confirmedValue&&`잔금일: ${balance.confirmedValue}`,other.confirmedValue&&`${type==="매매"?"인도일":"입주일"}: ${other.confirmedValue}`].filter(Boolean).join(" · ")||null,
    pendingValue:[balance.pendingValue&&`잔금일: ${balance.pendingValue}`,other.pendingValue&&`인도/입주일: ${other.pendingValue}`].filter(Boolean).join(" · ")||null,
    detail:"잔금 지급 시점과 실제 인도·입주일을 각각 양측이 확인해야 해요.",
-   evidence:[...new Set([...balance.evidence,...other.evidence])],
+   evidence:Array.from(new Set([...balance.evidence,...other.evidence])),
    confirmedProposalId:null,pendingProposalId:balance.pendingProposalId??other.pendingProposalId,
  };
  const stages=[visit,price,living,contract,earnest,handover];

@@ -102,14 +102,15 @@ export default function LoginPage(){
             <input id="auth-email" type="email" autoComplete="email" inputMode="email" maxLength={254} required
               value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/>
           </label>
-          {mode!=="recover"?<label htmlFor="auth-password">비밀번호
+          {mode!=="recover"?<div className="auth-password-field">
+            <label htmlFor="auth-password">비밀번호</label>
             <div className="auth-password-row"><input id="auth-password" type={showPassword?"text":"password"}
               autoComplete={mode==="signup"?"new-password":"current-password"}
               minLength={mode==="signup"?10:undefined} required value={password}
               onChange={e=>setPassword(e.target.value)} placeholder={mode==="signup"?"영문 + 숫자, 10자 이상":"비밀번호"}/>
               <button type="button" aria-label={showPassword?"비밀번호 숨기기":"비밀번호 보기"} onClick={()=>setShowPassword(v=>!v)}>{showPassword?"숨기기":"보기"}</button>
             </div>
-          </label>:null}
+          </div>:null}
           {mode==="signup"?<label htmlFor="auth-confirm">비밀번호 확인
             <input id="auth-confirm" type={showPassword?"text":"password"} autoComplete="new-password" required
               value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="한 번 더 입력해주세요"/>

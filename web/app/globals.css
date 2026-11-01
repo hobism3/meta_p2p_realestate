@@ -1087,3 +1087,5 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
 .auth-notice{background:#e9f7ed;color:#296847;border:1px solid #bfe0c9;padding:11px;border-radius:10px;font-size:12px;line-height:1.6}
 .auth-footnote{font-size:11px!important;color:#79847e!important}
 @media(max-width:750px){.auth-layout{grid-template-columns:1fr;margin:0 auto 32px;gap:14px}.auth-intro{padding:21px;min-height:0}.auth-intro h1{margin:10px 0;font-size:23px}.auth-role-links{margin-top:12px;display:flex;flex-wrap:wrap;gap:18px}.auth-box{padding:18px}}
+
+.auth-password-field{display:grid;gap:7px}

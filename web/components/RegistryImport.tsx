@@ -21,7 +21,7 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
   const [error, setError] = useState("");
   const [result, setResult] = useState<DraftResponse | null>(null);
   const [applied, setApplied] = useState(false);
-  const [capability, setCapability] = useState<{ provider: "meta" | "mock"; enabled: boolean; sampleOnly: boolean } | null>(null);
+  const [capability, setCapability] = useState<{ provider: "meta" | "mock"; enabled: boolean; sampleOnly: boolean; acceptedHashes?: string[] } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -60,6 +60,16 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
     setApplied(false);
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
+      // Hash the file locally BEFORE any upload. Unknown/real PDFs never leave
+      // this browser through the registry import flow; server rechecks the hash.
+      if (!capability?.acceptedHashes?.length || !globalThis.crypto?.subtle) {
+        throw new Error("가상 PDF 검증 설정을 불러오지 못했습니다. 페이지를 새로고침 후 다시 시도해 주세요.");
+      }
+      const digest = await crypto.subtle.digest("SHA-256", bytes);
+      const fingerprint = Array.from(new Uint8Array(digest)).map((v) => v.toString(16).padStart(2, "0")).join("");
+      if (!capability.acceptedHashes.includes(fingerprint)) {
+        throw new Error("제공된 가상 PDF 예시만 업로드할 수 있습니다. 실제 등기 문서는 전송하지 않았습니다.");
+      }
       const parts: string[] = [];
       for (let i = 0; i < bytes.length; i += 8192) parts.push(String.fromCharCode(...Array.from(bytes.subarray(i, i + 8192))));
       setProgress("서버로 전송 중");
@@ -171,7 +181,7 @@ export default function RegistryImport({ onApply }: { onApply: (suggestion: { ti
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} disabled={busy} />
         <span>제공된 가상 시연 PDF임을 확인합니다. Meta 모드에서는 해당 합성 PDF가 Meta Model API로 1회 전송됩니다. 실제 등기부·개인정보 문서는 허용하지 않습니다.</span>
       </label>
-      <button className="btn" onClick={analyze} disabled={busy || !file || !consent}>{busy ? (capability?.sampleOnly ? "가상 PDF 확인 중..." : "Meta AI 문서 분석 중...") : "AI로 매물 정보 추출하기"}</button>
+      <button className="btn" onClick={analyze} disabled={busy || !file || !consent || !capability?.acceptedHashes?.length || !capability.enabled}>{busy ? (capability?.sampleOnly ? "가상 PDF 확인 중..." : "Meta AI 문서 분석 중...") : "AI로 매물 정보 추출하기"}</button>
       {busy ? <div className="registry-progress" role="status" aria-live="polite"><span className="registry-spinner" aria-hidden="true" /><strong>{progress || "문서 분석 중"}</strong><span>{elapsed}초 경과</span><p>Meta 분석에는 수십 초가 걸릴 수 있습니다. 페이지를 닫지 마세요.</p></div> : null}
       {error ? <p className="error" role="alert">{error}</p> : null}
       {draft ? <div className="registry-review">

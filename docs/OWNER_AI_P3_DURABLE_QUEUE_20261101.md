@@ -29,6 +29,7 @@ authenticated tenant POST message
 - **정책 버전 변경 처리**: enqueue 때 설정 updated_at 기록, 실행 때 비교. 변경·비활성화된 정책으로 늦게 답하는 것을 중단(disabled)하며, 이미 보낸 메시지는 삭제하지 않는다.
 - 시연방, 원래 시연 에이전트 시나리오가 있는 방, 집주인 자신의 메시지, AI가 쓴 메시지에는 작업을 만들지 않는다.
 - 기존 `/owner-agent/invoke`는 이전 클라이언트 호환을 위해 유지하며, runOwnerDelegate는 기존 멱등키를 사용한다. 새 UI에서는 이 후속 호출을 사용하지 않는다.
+- **이전 클라이언트의 수동 invoke 경로도** queued(202)/failed(409)/disabled(200) 상태와 정책 버전을 확인한다. 재시도 제한 우회 금지. completed만 기존 응답 반환. 기존 큐 생성 이전 메시지의 호환 수동 처리는 허용.
 
 ## 2. 권한/운영
 - Cron API: `Authorization: Bearer ${CRON_SECRET}`을 일정 시간 검사한다. 설정이 없으면 503(실패 폐쇄), 키가 틀리면 401. 일반 JWT나 `WRITE_TOKEN`으로 접근할 수 없다.

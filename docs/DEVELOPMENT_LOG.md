@@ -52,9 +52,12 @@
 - 남은 범위: Stage 3 집주인 AI 대리인의 브라우저 독립 실행, 실운영 Supabase 계정 2개 수동 E2E, 실거래 계약/법률 검증.
 
 ## 2026-11-01 · Stage 3 Owner AI Durable Queue
-- **상태: 코드·검증 진행 중** (브랜치 `feat/owner-delegate-durable-p3-20261101`).
+- **상태: 브랜치 구현·격리 검증 완료, PR #19 CI/병합 대기** (브랜치 `feat/owner-delegate-durable-p3-20261101`).
 - 설계: [OWNER_AI_P3_DURABLE_QUEUE_20261101.md](OWNER_AI_P3_DURABLE_QUEUE_20261101.md).
 - 서버 `POST messages`에서 메시지+작업을 **동일 트랜잭션**으로 기록하고 즉시 처리. 브라우저 `invokeOwnerAgent` 후속 요청 제거.
 - `owner_ai_jobs` 버전 정책/중복 방지/lease/재시도/terminal failed 원장; authenticated Vercel Cron 백업 복구; 집주인 수동 retry 및 실패 알림함/거래방 상태 안내.
 - 보류: 실제 Supabase 두 계정 수동 운영 검증, 외부 Push/SMS/이메일, Pro 플랜 단위 분당 Cron 회수, 법률·보안 감사.
-- Next build/CI/Preview/운영 결과와 PR 병합 SHA는 검증 완료 후 기록할 것.
+- Next production build PASS. 신규 owner-ai durable queue+기존 owner-ai+집톡이+SQLite migration 포함 Node API 22/22 PASS. 전체 Playwright 격리 desktop/mobile 82/86 PASS, 4 SKIP.
+- 전체 CI 검증 PR #19 최신 코드 기준 확인 예정. Vercel Preview READY, Production CRON_SECRET은 암호화 환경변수 설정 완료(값을 문서·로그에 남기지 않음).
+- 이전 /owner-agent/invoke 도 queue pending/failed/disabled 시 추가 실행 차단. 운영 cron 하루 한 번은 백업 복구이며 즉시 성공을 보장하지 않음.
+- PR 최종 병합 SHA와 Production READY는 검증 완료 후 기록할 것.

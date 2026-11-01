@@ -97,6 +97,9 @@ test("고장 시 원문 보존·백오프·5회 후 집주인에게 실패 가�
  let row=query("SELECT * FROM owner_ai_jobs WHERE trigger_msg_id=?",r.body.id)[0];
  assert.equal(row.status,"pending");
  assert.equal(row.attempts,1);
+ const pendingInvoke=await api("/api/rooms/"+roomId+"/owner-agent/invoke","POST",visitor,{trigger_message_id:r.body.id});
+ assert.equal(pendingInvoke.status,202);
+ assert.equal(pendingInvoke.body.outcome,"queued");
  assert.ok(row.available_at>row.created_at);
  assert.equal((await api("/api/rooms/"+roomId+"/messages")).body.find(m=>m.id===r.body.id).author_type,"human");
  assert.equal((await cron()).body.processed,0,"backoff respected");
@@ -109,6 +112,8 @@ test("고장 시 원문 보존·백오프·5회 후 집주인에게 실패 가�
   assert.equal(row.attempts,n);
   assert.equal(row.status,n===5?"failed":"pending");
  }
+ const failedInvoke=await api("/api/rooms/"+roomId+"/owner-agent/invoke","POST",visitor,{trigger_message_id:r.body.id});
+ assert.equal(failedInvoke.status,409,"legacy caller cannot bypass terminal job failure");
  const fail=(await api("/api/owner/ai-jobs","GET",owner)).body.find(x=>x.id===row.id);
  assert.ok(fail);assert.equal(fail.status,"failed");
  assert.equal((await api("/api/owner/ai-jobs","GET",outsider)).body.length,0);
@@ -173,6 +178,9 @@ test("설정 변경 뒤 대기 중이던 작업은 새 정책으로 뒤늦게 �
  assert.equal(result.body.disabled,1);
  const after=query("SELECT status FROM owner_ai_jobs WHERE id=?",initial.id)[0];
  assert.equal(after.status,"disabled");
+ const staleInvoke=await api("/api/rooms/"+roomId+"/owner-agent/invoke","POST",visitor,{trigger_message_id:sent.body.id});
+ assert.equal(staleInvoke.status,200);
+ assert.equal(staleInvoke.body.outcome,"disabled");
  const replies=(await api("/api/rooms/"+roomId+"/messages")).body.filter(m=>m.author_type==="owner_agent");
  assert.ok(replies.every(m=>m.text!=="등록된 면적은 40㎡입니다."));
 });

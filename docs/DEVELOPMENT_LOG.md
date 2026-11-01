@@ -43,5 +43,10 @@
 - Next.js production build PASS; 실거래 집톡이 단위·Next API·SQLite 테스트 통과. Playwright 신규 PC·모바일 시나리오 4/4 통과(합의 후 즉시 거래 현황 동기화까지 검증).
 - 명시된 집주인 정책에 기반한 AI 대리인 반려동물 답변도 '제안'으로만 생성. `created_by='owner_agent'` provenance 저장 및 사람 2인 동의 전 confirmed=0.
 - 같은 방의 중복 제안·동시 동의 동작은 방 row lock으로 직렬화; 경합 회귀 테스트 추가.
-- GitHub verify-fast/e2e 및 Preview/운영 배포의 검증 결과와 병합 SHA는 후속 커밋에서 기록.
+- GitHub PR #18 (`feat/real-jiptok-p2-20261101`)의 실제 CI 및 머지 상태는 [PR #18](https://github.com/hobism3/meta_p2p_realestate/pull/18)에서 확인한다.
+- 검증: Next build PASS, 집톡이/합의/시연 격리 Node 회귀 75/75 PASS. P2 신규 Playwright desktop/mobile 4/4 PASS, 추가 이전 커밋 격리 전체 Playwright 82 PASS/4 SKIP.
+- 최종 코드 커밋 `56b7ede9` 기준 GitHub verify-fast·verify-e2e **모두 성공**, Vercel Preview READY. 같은 sandbox에서 마지막 전체 회귀 재실행은 리소스 제한(exit 137)으로 중단됐으나 GitHub e2e 정상 완료로 확인했으며 이를 별도로 기록한다.
+- 기존 검증을 새 요구사항에 맞춰 갱신: 실거래방은 **시연 상대 AI 금지, 집톡이 안내 허용**. room_agents 시연 시나리오가 붙은 커스텀 매물 방은 데모 엔진을 유지.
+- 추가: 같은 방 제안·동의 동시 요청에서 DB 행 잠금으로 중복 제안 및 합의 갱신 유실 방어. 테스트에서 2인 동시 동의 후 agreed 증명.
+- 운영 Production SHA와 PR #18 최종 merge SHA는 GitHub PR 기록을 기준으로 한다.
 - 남은 범위: Stage 3 집주인 AI 대리인의 브라우저 독립 실행, 실운영 Supabase 계정 2개 수동 E2E, 실거래 계약/법률 검증.

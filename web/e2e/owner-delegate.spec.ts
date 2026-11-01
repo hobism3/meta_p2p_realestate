@@ -23,9 +23,13 @@ test("실제 집주인 대리 응대: 방문자 문의를 확인함에서 답변
  const rid=(await room.json()).id as string;
  const speak=await request.post("/api/rooms/"+rid+"/messages",{headers:json(visitor),data:{text:"보증금 올리고 월세 낮춰주실 수 있나요?"}});
  expect(speak.status()).toBe(201);
- const outcome=await request.post("/api/rooms/"+rid+"/owner-agent/invoke",{headers:json(visitor),data:{trigger_message_id:(await speak.json()).id}});
- expect(outcome.ok()).toBeTruthy();
- expect((await outcome.json()).outcome).toBe("handoff");
+ const jobs=await request.get("/api/rooms/"+rid+"/owner-agent/jobs",{headers:json(visitor)});
+ expect(jobs.status()).toBe(200);
+ const jobRows=await jobs.json();
+ expect(jobRows).toHaveLength(1);
+ expect(jobRows[0].status).toBe("completed");
+ const inbox=await request.get("/api/owner/requests",{headers:json(owner)});
+ expect((await inbox.json()).some((x:{status:string;room_id:string})=>x.room_id===rid&&x.status==="pending")).toBeTruthy();
  await page.addInitScript((value:string)=>window.localStorage.setItem("directhome.access_token",value),owner);
  await page.goto("/owner");
  await expect(page.getByRole("heading",{name:/직접 확인할 문의/})).toBeVisible();
@@ -57,7 +61,10 @@ test("실제 거래방은 AI 집주인 대리인을 AI라고 구분해 보여준
  const room=await request.post("/api/deals/"+lid+"/rooms",{headers:headers(visitor),data:{}});
  const rid=(await room.json()).id;
  const m=await request.post("/api/rooms/"+rid+"/messages",{headers:headers(visitor),data:{text:"고양이 키워도 되나요?"}});
- await request.post("/api/rooms/"+rid+"/owner-agent/invoke",{headers:headers(visitor),data:{trigger_message_id:(await m.json()).id}});
+ expect(m.status()).toBe(201);
+ const jobList=await request.get("/api/rooms/"+rid+"/owner-agent/jobs",{headers:headers(visitor)});
+ expect(jobList.status()).toBe(200);
+ expect((await jobList.json())[0].status).toBe("completed");
  await page.addInitScript((v:string)=>localStorage.setItem("directhome.access_token",v),visitor);
  await page.goto("/rooms/"+rid);
  await expect(page.getByRole("log",{name:"거래 대화"})).toContainText("AI 집주인 대리인");

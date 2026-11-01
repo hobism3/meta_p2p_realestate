@@ -4,6 +4,7 @@ import { getDal } from "@/lib/dal";
 import { getRoom, isRoomMember } from "@/lib/rooms";
 import { createProposals, PROPOSABLE } from "@/lib/agreement-service";
 import {parseRentFields,formatRentBundle,formatJeonseDeposit} from "@/lib/rent";
+import {tryRealJiptok} from "@/lib/real-jiptok-service";
 
 /**
  * VS-4C 수동 제안 생성. 집톡이가 돌지 않는 실거래방에서 사람이 직접 카드를 만든다.
@@ -45,5 +46,7 @@ export async function POST(req: Request, { params }: { params: { rid: string } }
   }
   const created = await createProposals(params.rid, [{ name, value, evidence, createdBy: "human" }]);
   if (created.length === 0) return bad("제안 생성 실패");
+  if(created[0].isNew)await tryRealJiptok(params.rid,{kind:"proposal-created",
+    sourceId:created[0].id,actorId:a.identity.userId});
   return ok({ id: created[0].id, status: created[0].status, version: created[0].version }, 201);
 }

@@ -310,7 +310,7 @@ export interface ProposalItem {
   evidence: string[];
   visitId?: string;
   refISO?: string;
-  createdBy: "human" | "demo";
+  createdBy: "human" | "demo" | "owner_agent";
 }
 
 /**
@@ -358,6 +358,8 @@ export async function createProposals(
     : [];
   const aiTexts = aiDated.map((d) => d.text);
   return dal.withTransaction(async (tx) => {
+    // Serialize concurrent proposals on the same room across DB connections.
+    await tx.run("UPDATE deal_rooms SET id=id WHERE id=?", [roomId]);
   const out: CreatedProposal[] = [];
   for (const it of items) {
     if (!PROPOSABLE.includes(it.name) || !it.value) continue;
@@ -519,6 +521,9 @@ export async function decideProposal(
   // 승인·제안·방문 갱신은 한 트랜잭션으로 묶는다. 동시 동의도 복합키가 막는다.
   try {
     return await dal.withTransaction(async (tx) => {
+      // Lock before reading approvals: two simultaneous agree calls must not
+      // independently compute the pending status from stale approval sets.
+      await tx.run("UPDATE deal_rooms SET id=id WHERE id=?", [roomId]);
       const dup = await tx.get("SELECT decision FROM proposal_approvals WHERE proposal_id = ? AND actor_id = ?", [
         proposalId,
         actorId,

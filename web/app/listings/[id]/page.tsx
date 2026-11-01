@@ -9,7 +9,6 @@ import { createRoom, findListing, loadMyRooms } from "../../../lib/store";
 export default function DetailPage({ params }: { params: { id: string } }) {
   const [listing, setListing] = useState<Listing | null>(null);
   const [missing, setMissing] = useState(false);
-  const [reported, setReported] = useState(false);
   const [asking, setAsking] = useState(false);
   const [existingRid, setExistingRid] = useState<string | null>(null);
   const [askError, setAskError] = useState("");
@@ -121,18 +120,14 @@ export default function DetailPage({ params }: { params: { id: string } }) {
       <section className="card detail-info-card">
         <h3>게시자 확인 상태</h3>
         <p>
-          <span className={listing.verification.identity ? "badge ok" : "badge no"}>
-            본인 인증 {listing.verification.identity ? "제출됨" : "미제출"}
-          </span>
-          <span className={listing.verification.ownershipDoc ? "badge ok" : "badge no"}>
-            소유 확인 서류 {listing.verification.ownershipDoc ? "제출됨" : "미제출"}
-          </span>
+          <span className="badge no">게시자 신원 미검증</span>
+          <span className="badge no">소유자·게시권한 관계 미검증</span>
         </p>
-        <p className="meta">게시자: {listing.publisher}. 제출 여부만 표시하며 실제 소유권 인증·거래 안전을 보장하지 않습니다.</p>
+        <p className="meta">게시자 표시명: {listing.publisher}. 이 플랫폼은 현재 신원·소유권·게시권한을 확인하지 않았습니다. 문서 업로드나 이메일 로그인은 소유자 인증이 아닙니다.</p>
         {!isCustom ? <p className="demo-note">이 매물은 합성 데이터입니다. AI 상대방과 조건 협의를 연습할 수 있으며 실제 계약·예약은 진행되지 않습니다.</p> : null}
         <div className="detail-footer-actions">
           {isCustom && <a className="btn ghost" href={`/register?edit=${listing.id}`}>수정하기</a>}
-          {!reported ? <button className="btn ghost" onClick={() => setReported(true)}>정보 오류 신고(시연)</button> : <span className="meta">시연용 신고가 접수됐습니다.</span>}
+          <p className="meta">오류 신고 접수·처리 기능은 아직 제공하지 않습니다. 화면 내 확인만으로 신고가 접수되지 않으며, 게시 정보는 독립적으로 확인해야 합니다.</p>
         </div>
       </section>
     </div>

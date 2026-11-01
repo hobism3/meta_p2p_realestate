@@ -79,7 +79,7 @@ Start with the Mock provider; real Meta calls require server-only `AGENT_PROVIDE
 - [법률·규제·개발 기록 Wiki (Start Here)](docs/legal/README.md)
 - [P7 권리관계 구조화 분석 및 중립 집톡이 개발 기록](docs/P7_RIGHTS_ANALYSIS_AND_SUPPORT_20261101.md)
 - [중앙 누적 개발 로그](docs/DEVELOPMENT_LOG.md)
-- [활성 로드맵](docs/ROADMAP.md)
+- [활성 로드맵](docs/ROADMAP.md)\n- [P8 유형별 등기 권리관계 사례집 — 13개 출처/38개 합성 Golden](docs/registry-cases/CASE_CATALOG_20261101.md)\n- [P8 사례 검증 개발·실험 로그](docs/registry-cases/DEVELOPMENT_LOG_20261101.md)
 
 Historical roadmap and initial product specs are retained for project history; use these linked documents for the current state.
 

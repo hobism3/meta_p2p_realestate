@@ -195,3 +195,38 @@ test("집주인 AI 대리인의 사전 반려동물 정책은 제안으로 남�
  const messages2=(await api("/api/rooms/"+rid+"/messages")).body;
  assert.equal(messages2.filter(m=>m.author_type==="assistant"&&/AI 대리인이 전했어요/.test(m.text)).length,1);
 });
+
+test("동시 중복 가격 제안은 카드 한 개, 동시 양측 동의는 반드시 agreed",async()=>{
+ const listing=await api("/api/listings","POST",owner,{
+  title:"가격 동시성 검증 매물",address:"검증 합성 주소",tradeType:"월세",
+  deposit:2100,rent:75,salePrice:0,fee:0,area:37,moveIn:"2026-12-01",
+  options:[],publisher:"집주인",description:"경합 검증",
+ });
+ assert.equal(listing.status,201,JSON.stringify(listing.body));
+ const lid=listing.body.id;
+ const room=await api("/api/deals/"+lid+"/rooms","POST",visitor,{});
+ assert.equal(room.status,201);
+ const rid=room.body.id,path="/api/rooms/"+rid+"/messages";
+ const content="보증금 2,500만원 / 월세 70만원이면 괜찮습니다.";
+ const sent=await Promise.all([
+  api(path,"POST",owner,{text:content}),
+  api(path,"POST",visitor,{text:content}),
+ ]);
+ assert.deepEqual(sent.map(r=>r.status),[201,201],JSON.stringify(sent));
+ const props=(await api("/api/rooms/"+rid+"/proposals")).body.proposals.filter(p=>p.name==="월세 조건");
+ assert.equal(props.length,1,JSON.stringify(props));
+ assert.equal(props[0].status,"proposed");
+ const cardMsgId=props[0].card_msg_id;
+ assert.ok(cardMsgId);
+ const responsePath="/api/rooms/"+rid+"/proposals/"+props[0].id+"/decide";
+ const approved=await Promise.all([
+  api(responsePath,"POST",owner,{decision:"agree",version:props[0].version}),
+  api(responsePath,"POST",visitor,{decision:"agree",version:props[0].version}),
+ ]);
+ assert.deepEqual(approved.map(x=>x.status),[200,200],JSON.stringify(approved));
+ const final=(await api("/api/rooms/"+rid+"/proposals")).body.proposals.find(x=>x.id===props[0].id);
+ assert.equal(final.status,"agreed","simultaneous approvals must not lose agreement");
+ const guide=(await api(path)).body.filter(m=>m.author_type==="assistant");
+ assert.equal(guide.filter(m=>m.id===cardMsgId).length,1);
+ assert.equal(guide.filter(m=>/월세 조건.*두 분 모두 동의/.test(m.text)).length,1);
+});

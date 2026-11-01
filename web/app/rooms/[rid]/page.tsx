@@ -377,6 +377,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
         try {
           await invokeOwnerAgent(params.rid, id);
           await refresh();
+          await refreshConditions();
+          setTransactionRevision(v=>v+1);
         } catch (e) {
           setAiError(`AI 대리인이 응답하지 못했습니다(${e instanceof Error ? e.message : "오류"}).`);
         } finally {
@@ -400,7 +402,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     if (meta?.demo) await callAi(lastTriggerId);
     else if (meta?.ownerAgentEnabled && meta.viewerRole !== "owner") {
       setAiPending(true);
-      try { await invokeOwnerAgent(params.rid, lastTriggerId); await refresh(); setAiError(""); }
+      try { await invokeOwnerAgent(params.rid, lastTriggerId); await refresh(); await refreshConditions(); setTransactionRevision(v=>v+1); setAiError(""); }
       catch (e) { setAiError(e instanceof Error ? e.message : "재시도 실패"); }
       finally { setAiPending(false); }
     }

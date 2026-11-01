@@ -58,6 +58,7 @@ export default function SiteNav() {
       {me ? (
         <>
           <a href="/rooms">내 거래방</a>
+          <a href="/owner">내 집 관리</a>
           <span className="meta nav-user" title={me.name}>{me.name}</span>
           <button className="btn ghost" onClick={logout}>
             로그아웃

@@ -26,7 +26,10 @@
 - 단계별 근거 메시지·확정자·버전·다음 확인 항목을 표준 형태로 제공. 데모 시연과 실거래는 별도 정합성 규칙 사용.
 
 ## 2026-11-01 · Stage 1 거래 상태 통합
-- **상태: 개발 중** (`feat/transaction-state-p1-20261101`).
+- **상태: 코드·격리 검증 완료, PR #17 CI/병합 대기** (`feat/transaction-state-p1-20261101`).
+- 프로덕션 Next 빌드 PASS, 독립 projection unit 6건 + Next API 4건 = 10/10 통과.
+- 신규 실제 거래방 카드 양측 승인 Playwright desktop/mobile 2건 PASS. GitHub CI·Preview는 PR 최신 SHA로 확인 후 기록.
+- 월세 제안은 입력 공백/쉼표를 받아도 서버에서 **보증금+월세 단일 표준 묶음**으로 저장하며, 한쪽 동의만으로 확정되지 않는다.
 - 설계: `docs/TRANSACTION_STATE_P1_20261101.md`.
 - 구현 범위: read-only room transaction projection, 6개 단계의 근거·확정·제안 상태, 실제 방 수동 카드 양측 승인 UI.
 - 완료 후 실제 테스트 수치/CI/Preview 및 병합 SHA를 추가한다.

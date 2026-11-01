@@ -3,7 +3,7 @@ import { registryDraftTitle } from "../lib/registry-title.ts";
 import assert from "node:assert/strict";
 import { 
   REGISTRY_MAX_PDF_BYTES, REGISTRY_SCHEMA, REGISTRY_PROMPT_VERSION,
-  buildRegistryMetaRequest, isPlausiblePdf, isSyntheticRegistryDemoPdf, makeSampleRegistryPdf,
+  buildRegistryMetaRequest, isPlausiblePdf, isSyntheticRegistryDemoPdf, syntheticRegistryDemoHashes, makeSampleRegistryPdf,
   mockRegistryDraft, validateRegistryDraft,
 } from "../lib/registry-draft.ts";
 
@@ -56,6 +56,9 @@ describe("등기 문서 AI 등록 초안", () => {
   it("개인정보 보호: 가상 샘플 해시만 외부 모델 전송 대상이다", () => {
     const synthetic=makeSampleRegistryPdf();
     assert.equal(isSyntheticRegistryDemoPdf(synthetic), true);
+    const hashes=syntheticRegistryDemoHashes();
+    assert.equal(hashes.length,2);
+    assert.ok(hashes.every(x=>/^[a-f0-9]{64}$/.test(x)));
     const altered=Buffer.from(synthetic);
     altered[100] ^= 1;
     assert.equal(isSyntheticRegistryDemoPdf(altered), false);
@@ -171,6 +174,7 @@ describe("등기 문서 AI 등록 초안", () => {
     assert.ok(q.response_format.json_schema.schema.required.includes("buildingDong"));
     const parts = q.messages[0].content;
     assert.equal(parts[1].type, "file");
+    assert.equal(parts[1].file.filename,"synthetic-registry-demo.pdf");
     assert.ok(parts[1].file.file_data.startsWith("data:application/pdf;base64,"));
     assert.equal(q.model, "muse-spark-1.3");
     assert.equal(typeof REGISTRY_PROMPT_VERSION, "string");

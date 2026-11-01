@@ -6,6 +6,7 @@ import { now } from "@/lib/db";
 import { getRoom, isRoomMember, type Room } from "@/lib/rooms";
 import type { Identity } from "@/lib/auth";
 import {tryRealJiptok} from "@/lib/real-jiptok-service";
+import {enqueueOwnerAiForMessage,drainOwnerAiJobs} from "@/lib/owner-ai-job-service";
 
 async function guard(
   req: Request,
@@ -44,14 +45,27 @@ export async function POST(req: Request, { params }: { params: { rid: string } }
   const text = String(parsed.value.text ?? "").trim();
   if (!text) return bad("내용 필수");
   if (text.length > 2000) return bad("내용 길이 초과");
-  const id = randomUUID();
-  await getDal().run(
-    "INSERT INTO messages (id,listing_id,author,role,user_id,author_type,room_id,text,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
-    [id, r.room.listing_id, r.identity.name, "", r.identity.userId, "human", params.rid, text, now()],
-  );
+  const id = randomUUID(),stamp=now();
+  // Message and owner-AI outbox commit together. Even if the browser closes
+  // before the response, the cron can later recover the accepted job.
+  const queued=await getDal().withTransaction(async tx=>{
+    await tx.run(
+      "INSERT INTO messages (id,listing_id,author,role,user_id,author_type,room_id,text,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+      [id,r.room.listing_id,r.identity.name,"",r.identity.userId,"human",params.rid,text,stamp],
+    );
+    return enqueueOwnerAiForMessage(tx,{
+      roomId:params.rid,listingId:r.room.listing_id,
+      messageId:id,senderId:r.identity.userId,stamp,
+    });
+  });
   // Real-room Jiptok is emitted server-side, not by a browser follow-up.
   // No model call or consent is performed; duplicates are guarded in DB.
   await tryRealJiptok(params.rid,{kind:"message",sourceId:id,actorId:r.identity.userId});
-  // The owner's AI delegate remains a separate, opt-in response mechanism.
-  return ok({ id }, 201);
+  // Best effort first attempt from the server (never a browser follow-up).
+  // Failures are persisted for cron retry and NEVER lose the human message.
+  if(queued){
+    try{await drainOwnerAiJobs({roomId:params.rid,triggerId:id,limit:1});}
+    catch(e){console.warn("[owner-ai] immediate drain failed",e instanceof Error?e.name:"UnknownError");}
+  }
+  return ok({id,ownerAgentQueued:queued},201);
 }

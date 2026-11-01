@@ -4,12 +4,15 @@ import {authHeaders,getAccessToken} from "../lib/client-auth";
 
 type Attention = {id:string;listing_id:string;listing_title:string;room_id:string;
  kind:string;question:string;status:string;created_at:string};
+type FailedJob={id:string;listing_id:string;listing_title:string;room_id:string;
+ status:string;updated_at:string;last_error:string};
 const labels:Record<string,string>={
  price_review:"가격·보증금 변경",visit_review:"방문 일정 승인",
  contract_review:"계약·권리관계",policy_review:"매물 정책 확인",other:"직접 답변 필요",
 };
 export default function OwnerAttentionPanel(){
  const [items,setItems]=useState<Attention[]>([]);
+ const [failedJobs,setFailedJobs]=useState<FailedJob[]>([]);
  const [drafts,setDrafts]=useState<Record<string,string>>({});
  const [busy,setBusy]=useState<string|null>(null);
  const [error,setError]=useState("");
@@ -17,10 +20,15 @@ export default function OwnerAttentionPanel(){
  const load=useCallback(async()=>{
   if(!getAccessToken()){setLoading(false);return;}
   try{
-   const r=await fetch("/api/owner/requests",{headers:authHeaders(),cache:"no-store"});
+   const [r,jobsRes]=await Promise.all([
+    fetch("/api/owner/requests",{headers:authHeaders(),cache:"no-store"}),
+    fetch("/api/owner/ai-jobs",{headers:authHeaders(),cache:"no-store"}),
+   ]);
    const body=await r.json();
    if(!r.ok)throw Error(body.error??"확인 요청 조회 실패");
-   setItems(body);setError("");
+   setItems(body);
+   if(jobsRes.ok){const jobs=await jobsRes.json();setFailedJobs(Array.isArray(jobs)?jobs:[]);}
+   setError("");
   }catch(e){setError(e instanceof Error?e.message:"확인 요청 조회 실패");}
   finally{setLoading(false);}
  },[]);
@@ -42,6 +50,19 @@ export default function OwnerAttentionPanel(){
   }catch(e){setError(e instanceof Error?e.message:"전송 실패");}
   finally{setBusy(null);}
  };
+ const retry=async(job:FailedJob)=>{
+  setBusy(job.id);setError("");
+  try{
+   const w=process.env.NEXT_PUBLIC_WRITE_TOKEN;
+   const r=await fetch(`/api/owner/ai-jobs/${job.id}/retry`,{
+    method:"POST",headers:{"Content-Type":"application/json",...(w?{"x-write-token":w}:{}),...authHeaders()},
+   });
+   const body=await r.json();
+   if(!r.ok)throw Error(body.error??"재시도 실패");
+   await load();
+  }catch(e){setError(e instanceof Error?e.message:"재시도 실패");}
+  finally{setBusy(null);}
+ };
  const pending=items.filter(i=>i.status==="pending");
  return <section className="card owner-attention" aria-label="집주인 확인 요청">
   <div className="owner-attention-heading"><div><span className="eyebrow">OWNER ACTIONS</span>
@@ -59,6 +80,18 @@ export default function OwnerAttentionPanel(){
     <div className="owner-attention-actions"><button className="btn" disabled={!!busy} onClick={()=>void send(item)}>{busy===item.id?"전송 중...":"집주인 답변 전송"}</button>
      <a className="btn ghost" href={`/rooms/${item.room_id}`}>거래방 확인 ↗</a></div>
    </article>)}</div>}
+  {failedJobs.length?<div className="owner-attention-list" aria-label="AI 응대 실패 작업">
+   <h3>AI 응대 실패 · 집주인 확인 필요 ({failedJobs.length})</h3>
+   {failedJobs.map(job=><article className="owner-attention-item" key={job.id}>
+    <div className="owner-attention-top"><strong>{job.listing_title}</strong><span>처리 실패</span></div>
+    <p className="meta">{job.last_error||"자동 응대가 반복 실패했습니다."} 원래 문의는 거래방에 보존돼 있습니다.</p>
+    <div className="owner-attention-actions">
+     <button className="btn" disabled={!!busy} onClick={()=>void retry(job)}>
+      {busy===job.id?"재시도 중...":"AI 응대 다시 실행"}</button>
+     <a className="btn ghost" href={`/rooms/${job.room_id}`}>거래방 확인 ↗</a>
+    </div>
+   </article>)}
+  </div>:null}
   {error?<p role="alert" className="owner-error">{error}</p>:null}
  </section>;
 }

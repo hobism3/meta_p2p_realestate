@@ -4,12 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../../../lib/client-auth";
 import { brokerSnapshot } from "../../../lib/broker-companion";
 import RoomBookingPanel from "../../../components/RoomBookingPanel";
+import OwnerAgentJobStatus from "../../../components/OwnerAgentJobStatus";
 import TransactionProgressPanel from "../../../components/TransactionProgressPanel";
 import { hasNewProposalCue } from "../../../lib/agent";
 import { groupListingFeatures, initialTerms } from "../../../lib/listing-presentation";
 import {
   invokeAgent,
-  invokeOwnerAgent,
   invokeZiptalk,
   reconcileZiptalk,
   decideProposal,
@@ -351,7 +351,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
 
   const onSend = async () => {
     if (!msg.trim() || sending) return;
-    // 시연방은 기존 AI, 실제 매물은 소유자 설정을 켠 경우에만 제한적 대리 응대.
+    // Demo AI runs separately. Live owner AI is enqueued and processed by the server.
     const demo = meta?.demo === true;
     const text = msg.trim();
 
@@ -370,21 +370,10 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     }
     setSending(false);
     if (!demo) {
+      // No browser follow-up invocation: the accepted message and job are
+      // atomically stored on the server, with cron recovery on failure.
+      await refreshConditions();
       setTransactionRevision(v=>v+1);
-      if (meta?.ownerAgentEnabled && meta.viewerRole !== "owner") {
-        setAiPending(true);
-        setAiError("");
-        try {
-          await invokeOwnerAgent(params.rid, id);
-          await refresh();
-          await refreshConditions();
-          setTransactionRevision(v=>v+1);
-        } catch (e) {
-          setAiError(`AI 대리인이 응답하지 못했습니다(${e instanceof Error ? e.message : "오류"}).`);
-        } finally {
-          setAiPending(false);
-        }
-      }
       return;
     }
     const ai = await callAi(id);
@@ -400,12 +389,6 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const onRetry = async () => {
     if (!lastTriggerId || aiPending) return;
     if (meta?.demo) await callAi(lastTriggerId);
-    else if (meta?.ownerAgentEnabled && meta.viewerRole !== "owner") {
-      setAiPending(true);
-      try { await invokeOwnerAgent(params.rid, lastTriggerId); await refresh(); await refreshConditions(); setTransactionRevision(v=>v+1); setAiError(""); }
-      catch (e) { setAiError(e instanceof Error ? e.message : "재시도 실패"); }
-      finally { setAiPending(false); }
-    }
   };
 
   const onTogglePanel = async () => {
@@ -600,6 +583,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               </div>
             ) : null}
           </div>
+          {meta && !meta.demo && meta.ownerAgentEnabled ? <OwnerAgentJobStatus rid={params.rid} revision={transactionRevision}/> : null}
           {meta && !meta.demo ? <TransactionProgressPanel rid={params.rid}
             tradeType={meta.listing?.tradeType??"월세"}
             revision={transactionRevision}

@@ -212,6 +212,9 @@ const KOREAN_EDUCATIONAL_NORMAL_SHA256 = "2ddff3f07aa134c04456685db796ffb8029e00
  * A filename, checkbox, or output filter never means a PDF has been redacted.
  * Unknown uploads must NOT be sent to any external model provider.
  */
+export function syntheticRegistryDemoHashes(): string[] {
+  return [SAMPLE_SHA256, KOREAN_EDUCATIONAL_NORMAL_SHA256];
+}
 export function isSyntheticRegistryDemoPdf(buffer: Buffer): boolean {
   const hash = createHash("sha256").update(buffer).digest("hex");
   return hash === SAMPLE_SHA256 || hash === KOREAN_EDUCATIONAL_NORMAL_SHA256;

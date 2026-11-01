@@ -3,7 +3,7 @@ import { registryDraftTitle } from "../lib/registry-title.ts";
 import assert from "node:assert/strict";
 import { 
   REGISTRY_MAX_PDF_BYTES, REGISTRY_SCHEMA, REGISTRY_PROMPT_VERSION,
-  buildRegistryMetaRequest, isPlausiblePdf, makeSampleRegistryPdf,
+  buildRegistryMetaRequest, isPlausiblePdf, isSyntheticRegistryDemoPdf, makeSampleRegistryPdf,
   mockRegistryDraft, validateRegistryDraft,
 } from "../lib/registry-draft.ts";
 
@@ -52,6 +52,14 @@ describe("등기 문서 AI 등록 초안", () => {
     assert.equal(draft?.address.value, "100 Sillim-ro, Gwanak-gu, Seoul (synthetic)");
     assert.equal(draft?.exclusiveAreaSqm.value, "43.21");
     assert.ok(draft?.cautions.some(x => x.includes("직접 입력")));
+  });
+  it("개인정보 보호: 가상 샘플 해시만 외부 모델 전송 대상이다", () => {
+    const synthetic=makeSampleRegistryPdf();
+    assert.equal(isSyntheticRegistryDemoPdf(synthetic), true);
+    const altered=Buffer.from(synthetic);
+    altered[100] ^= 1;
+    assert.equal(isSyntheticRegistryDemoPdf(altered), false);
+    assert.equal(isSyntheticRegistryDemoPdf(Buffer.from("%PDF-1.4\\nprivate data\\n%%EOF")), false);
   });
   it("Mock은 임의 PDF를 분석한 척하지 않는다", () => {
     const altered = Buffer.from(makeSampleRegistryPdf());

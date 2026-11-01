@@ -28,6 +28,7 @@ Migration 018:
 기본값: 비활성. 실제 토스·NICE·KCB·PASS API 규약을 **추측하여 구현하지 않았음**. 계약된 벤더 어댑터가 벤더의 최종 결과조회/서명검증/복호화를 수행한 뒤 내부 브리지로 연결해야 한다.
 
 서버 환경 설정(실제 비밀값 절대 Git 커밋 금지):
+- IDENTITY_BRIDGE_ENABLED: 실제 벤더와 사내 브리지 보안 검증을 완료한 뒤에만 true로 설정. 기본 비활성.
 - IDENTITY_BRIDGE_START_URL: 계약된 HTTPS 브리지 시작 URL
 - IDENTITY_BRIDGE_API_KEY: 최소 24자 서버 전용 키
 - IDENTITY_BRIDGE_CALLBACK_URL: HTTPS 우리 서버 callback 주소

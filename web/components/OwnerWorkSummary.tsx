@@ -9,6 +9,7 @@ export default function OwnerWorkSummary(){
  const [error,setError]=useState("");
  const [kind,setKind]=useState<"all"|"visit"|"request"|"failed">("all");
  const [listing,setListing]=useState("all");
+ const filtered=data?.actions.filter(a=>(kind==="all"||a.kind===kind)&&(listing==="all"||a.listingId===listing))??[];
  const load=useCallback(async()=>{
   if(!getAccessToken())return;
   try{
@@ -16,7 +17,7 @@ export default function OwnerWorkSummary(){
    const body=await response.json();
    if(!response.ok)throw new Error(body.error||"업무 현황을 불러오지 못했습니다.");
    setData(body as Summary);setError("");
-  }catch(e){setError(e instanceof Error?e.message:"조회 실패");}
+  }catch(e){setData(null);setError(e instanceof Error?e.message:"조회 실패");}
  },[]);
  useEffect(()=>{void load();const timer=setInterval(()=>void load(),15000);return()=>clearInterval(timer);},[load]);
  return <section className="card" aria-label="집주인 미처리 업무">
@@ -25,14 +26,11 @@ export default function OwnerWorkSummary(){
    <button type="button" className="btn ghost" onClick={()=>void load()}>새로고침</button></div>
   {error?<p role="alert">{error}</p>:null}
   {data?<><p>방문 승인 대기 {data.visits}건 · 직접 답변 {data.requests}건 · AI 응대 실패 {data.aiFailures}건</p>
-   {data.total===0?<p>현재 확인이 필요한 업무가 없습니다.</p>:
-    <div className="owner-list-grid">{data.byListing.map(row=><article key={row.listingId} className="card owner-list-card">
-     <h3>{row.listingTitle}</h3>
-     <p>방문 {row.visits}건 · 문의 {row.requests}건 · 응대 실패 {row.aiFailures}건</p>
-     <div style={{display:"flex",flexWrap:"wrap",gap:8}}>{row.visits>0&&row.visitRoomId?<a className="btn ghost" href={`/rooms/${encodeURIComponent(row.visitRoomId)}`}>방문 요청 거래방 →</a>:null}{row.requests>0&&row.requestRoomId?<a className="btn ghost" href={`/rooms/${encodeURIComponent(row.requestRoomId)}`}>답변 요청 거래방 →</a>:null}{row.aiFailures>0&&row.failedRoomId?<a className="btn ghost" href={`/rooms/${encodeURIComponent(row.failedRoomId)}`}>응대 실패 거래방 →</a>:null}</div><p className="meta">처리 버튼은 아래 방문 예약·확인 요청 영역에 있습니다. 거래방 이동은 승인이나 확정을 수행하지 않습니다.</p>
-    </article>)}</div>}
-   <div style={{display:"flex",flexWrap:"wrap",gap:12,marginTop:16}}><label>업무 종류 <select aria-label="업무 종류" value={kind} onChange={e=>setKind(e.target.value as "all"|"visit"|"request"|"failed")}><option value="all">전체</option><option value="visit">방문 승인</option><option value="request">직접 답변</option><option value="failed">AI 응대 실패</option></select></label><label>매물 <select aria-label="업무 매물" value={listing} onChange={e=>setListing(e.target.value)}><option value="all">모든 매물</option>{data.byListing.map(row=><option key={row.listingId} value={row.listingId}>{row.listingTitle}</option>)}</select></label></div>
-   <div className="owner-attention-list">{data.actions.filter(a=>(kind==="all"||a.kind===kind)&&(listing==="all"||a.listingId===listing)).map(action=><article className="owner-attention-item" key={action.kind+":"+action.id}><div className="owner-attention-top"><strong>{action.listingTitle}</strong><span>{action.label}</span></div><a className="btn ghost" href={`/rooms/${encodeURIComponent(action.roomId)}`}>거래방 열기 ↗</a>{action.kind==="visit"?<a className="btn ghost" href="#owner-visits">방문 승인 화면 ↓</a>:<a className="btn ghost" href="#owner-attention">확인 요청 화면 ↓</a>}</article>)}</div>
+   {data.total===0?<p>현재 확인이 필요한 업무가 없습니다.</p>:null}
+   {data.total>0?<div style={{display:"flex",flexWrap:"wrap",gap:12,marginTop:16}}><label>업무 종류 <select aria-label="업무 종류" value={kind} onChange={e=>setKind(e.target.value as "all"|"visit"|"request"|"failed")}><option value="all">전체</option><option value="visit">방문 승인</option><option value="request">직접 답변</option><option value="failed">AI 응대 실패</option></select></label><label>매물 <select aria-label="업무 매물" value={listing} onChange={e=>setListing(e.target.value)}><option value="all">모든 매물</option>{data.byListing.map(row=><option key={row.listingId} value={row.listingId}>{row.listingTitle}</option>)}</select></label></div>:null}
+   {data.total>0?<p role="status">조건에 맞는 업무 {filtered.length}건</p>:null}
+   {data.total>0&&filtered.length===0?<p className="owner-attention-empty">선택한 조건에 해당하는 업무가 없습니다.</p>:null}
+   <div className="owner-attention-list">{filtered.map(action=><article className="owner-attention-item" key={action.kind+":"+action.id}><div className="owner-attention-top"><strong>{action.listingTitle}</strong><span>{action.label}</span></div><a className="btn ghost" href={`/rooms/${encodeURIComponent(action.roomId)}`}>거래방 열기 ↗</a>{action.kind==="visit"?<a className="btn ghost" href="#owner-visits">방문 승인 화면 ↓</a>:<a className="btn ghost" href="#owner-attention">확인 요청 화면 ↓</a>}</article>)}</div>
    <p className="meta">{data.note} 거래방 이동만으로 요청이 승인되거나 답변이 전송되지는 않습니다.</p>
   </>:!error?<p role="status">업무 현황을 확인하는 중...</p>:null}
  </section>;

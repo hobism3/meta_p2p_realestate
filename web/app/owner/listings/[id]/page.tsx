@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useState} from "react";
 import {authHeaders,getAccessToken} from "../../../../lib/client-auth";
+import OwnerAuthorityPanel from "../../../../components/OwnerAuthorityPanel";
 type Slot={weekday:number;start:string;end:string};
 type Policy={aiEnabled:boolean;visitMode:"approval"|"manual";availability:Slot[];answers:{pets:string;parking:string;notes:string};updatedAt:string|null};
 const days=["일","월","화","수","목","금","토"];
@@ -33,6 +34,7 @@ export default function OwnerListingSettings({params}:{params:{id:string}}){
  return <div className="owner-page owner-settings">
   <a href="/owner" className="owner-back">← 내 집 관리 · 확인 요청</a>
   <div className="owner-hero"><span>PROPERTY ASSISTANT</span><h1>{title||"매물"} · AI 대리인</h1><p>집주인이 제공한 정보에만 근거해 답변하도록 준비하는 설정입니다. 설정된 매물 정보로만 AI가 자동 응답합니다. 집주인 판단이 필요한 문의는 내 집 관리에서 확인할 수 있습니다. 방문 예약은 집주인 승인 후 확정되며, 푸시·문자·이메일 알림은 아직 제공하지 않습니다.</p></div>
+  <OwnerAuthorityPanel listingId={params.id}/>
   <section className="card"><h2>AI 대리인</h2><label className="owner-toggle"><input type="checkbox" checked={form.aiEnabled} onChange={e=>setForm(f=>({...f,aiEnabled:e.target.checked}))}/> AI 대리 응대 켜기 (등록된 사실만 자동 안내)</label>
   <p className="meta">집주인의 사전 설정 없이 가격·계약 조건을 바꾸거나 예약을 확정하지 않습니다.</p>
   <h3>사전에 알려줄 내용</h3><label>반려동물 정책<input value={form.answers.pets} maxLength={400} onChange={e=>setAnswer("pets",e.target.value)} placeholder="예: 고양이 가능, 개는 집주인 확인 필요"/></label>

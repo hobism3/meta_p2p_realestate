@@ -302,15 +302,17 @@ describe("VS-2B AI 시연방", () => {
     assert.equal(ais.length, 2);
     assert.ok(ais[1].text.includes("가격은"));
   });
-  it("실거래방에는 AI가 끼지 않는다", async () => {
+  it("실거래방에는 시연 매도자 AI가 끼지 않고 집톡이 안내만 가능하다", async () => {
     const before = (await api(`/api/rooms/${vs2aRoom}/messages`, {}, HUMAN)).body.length;
     const s = await api(`/api/rooms/${vs2aRoom}/messages`, {
       method: "POST", body: JSON.stringify({ text: "매매가 확인합니다" }),
     }, HUMAN);
     assert.equal(s.status, 201);
     const after = (await api(`/api/rooms/${vs2aRoom}/messages`, {}, HUMAN)).body;
-    assert.equal(after.length, before + 1);
-    assert.ok(after.every((m) => m.author_type === "human"));
+    assert.ok(after.length >= before + 1);
+    assert.ok(after.some((m) => m.id === s.body.id && m.author_type === "human"));
+    assert.ok(after.every((m) => m.author_type === "human" || m.author_type === "assistant"));
+    assert.ok(after.every((m) => m.author_type !== "demo_agent" && m.author_type !== "owner_agent"));
   });
   it("시연방도 제삼자는 403이다", async () => {
     assert.equal((await api(`/api/rooms/${vs2bRoom}/messages`, {}, STRANGER)).status, 403);

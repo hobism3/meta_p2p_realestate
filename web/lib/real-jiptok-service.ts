@@ -26,6 +26,10 @@ export async function runRealJiptok(roomId:string,trigger:RealJiptokTrigger):Pro
  if(!room)return {status:"skipped",messageId:null};
  const listing=await listingForDemo(room.listing_id);
  if(!listing||isDemoListing(listing))return {status:"skipped",messageId:null};
+ // Internal test/demo scenarios can attach a simulated buyer/seller to a
+ // custom listing. That remains a demo room, not a live Jiptok room.
+ const simulated=await db.get("SELECT 1 AS present FROM room_agents WHERE room_id=? LIMIT 1",[roomId]);
+ if(simulated)return {status:"skipped",messageId:null};
 
  // Verify the triggering entity is in the SAME room. Caller routes already
  // authenticate the user, but cross-room IDs must not create any notes.

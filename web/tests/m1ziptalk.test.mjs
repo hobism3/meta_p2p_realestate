@@ -297,14 +297,16 @@ describe("VS-3C 방문 일정", () => {
 });
 
 describe("VS-4A 결함 수정", () => {
-  it("실거래방에는 AI가 끼지 않는다", async () => {
+  it("실거래방에는 시연 상대 AI가 없고 집톡이만 별도 진행 안내한다", async () => {
     const t = await say(userRoom, "보증금 협의 가능할까요?");
     const r = await api(`/api/rooms/${userRoom}/agent/invoke`, {
       method: "POST", body: JSON.stringify({ trigger_message_id: t }),
     }, HUMAN);
     assert.equal(r.status, 404);
     const list = await api(`/api/rooms/${userRoom}/messages`, {}, HUMAN);
-    assert.ok(list.body.every((m) => m.author_type === "human"));
+    assert.ok(list.body.every((m) => m.author_type === "human" || m.author_type === "assistant"));
+    assert.ok(list.body.some((m) => m.author_type === "assistant" && m.author === "집톡이"));
+    assert.ok(list.body.every((m) => m.author_type !== "demo_agent" && m.author_type !== "owner_agent"));
   });
   it("AI 답을 트리거로 분석해도 중복 개입하지 않는다", async () => {
     const before = (await assistantBubbles(roomA)).length;

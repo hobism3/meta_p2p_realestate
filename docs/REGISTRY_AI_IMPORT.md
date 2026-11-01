@@ -1,3 +1,5 @@
+> ⚠️ **2026-11-01 법률·개인정보 정정:** 예전 문서의 “redacted PDF” 표현은 실제 코드와 달랐습니다. 종전 구현은 원본 PDF 전체를 외부 Meta 요청에 포함했고, 출력만 사후 필터링했습니다. 현재 법률 보완 브랜치는 **정확히 일치하는 허구 PDF 해시 두 개** 외에는 브라우저 업로드 및 서버 Meta 전송을 모두 차단합니다. 운영 배포 및 법률 적합성 검증은 별도입니다. [심층 법률 검토](legal/LEGAL_DEEP_DIVE_20261101.md).
+
 # Document-to-Listing: Meta AI Registration Draft (hackathon prototype)
 
 **Feature route:** `/register` → "등기 문서로 등록 초안 만들기".
@@ -13,7 +15,7 @@ DirectHome now helps **both sides of a direct transaction**:
 1. Download the provided **completely fictional PDF example**. It is not an official title certificate.
 2. Open `/register`, attach the sample PDF, check the explicit disclosure/consent and click analyze.
 3. In Mock mode, **only the exact supplied sample bytes** are recognized. This makes offline CI/demo deterministic without spending credits.
-4. When enabled, Meta Model API `muse-spark-1.3` receives the **redacted PDF inline** as a file part and returns a structured JSON result.
+4. When enabled, Meta Model API `muse-spark-1.3` may receive **only the exact-byte fictional sample PDF** after independent browser/server SHA-256 allowlist checks. No arbitrary real title-record PDF is accepted or redacted automatically. The original implementation transmitted the raw PDF and filtered only output; this was a critical privacy flaw.
 5. The human sees **document excerpts** for address, explicit exclusive floor area, building type, floor and unit.
 6. Click "비어 있는 등록 항목에 반영하기" to populate **empty** fields. Existing manual input is retained.
 7. The user must still enter and verify sale/deposit/monthly rent, maintenance fee, move-in, amenities and publisher name, then explicitly submit the ordinary listing form.
@@ -54,10 +56,10 @@ For real deployments, consider building ledgers (건축물대장) as an addition
 
 ## Safety, privacy and provider behavior
 
-- This demo **explicitly warns against uploading unredacted real documents.** Property records may contain owner names, identification numbers, liens and other sensitive details.
-- In Meta mode, the UI requires consent to transmission to Meta. `REGISTRY_AI_ENABLED=true` must be enabled **on the server**; `MODEL_API_KEY` remains server-only.
-- A PDF goes **inline in one chat completion request** (no persistent Meta Files API upload). No raw file, owner data, full prompt or response is saved to the application DB or logs by this feature. Handling by Meta itself is governed by its own service terms.
-- `AGENT_PROVIDER=mock` (default): only the exact synthetic example is accepted, and no external API call occurs. Other files receive a clear error, never fabricated extraction.
+- **Do not upload real documents, including manually blacked-out versions.** Real property records may contain owner names, identifiers and other people’s legal interests. This feature does not contain verified PDF redaction. Client SHA-256 guard prevents unknown files from being transmitted by this UI; server guards again.
+- In Meta mode, the UI confirms synthetic-demo transfer to Meta. `REGISTRY_AI_ENABLED=true` must be enabled **on the server**; `MODEL_API_KEY` remains server-only.
+- An allowlisted **fictional demonstration PDF only** goes inline in one chat completion request (no persistent Meta Files API upload). No raw file, owner data, full prompt or response is saved to the application DB or logs by this feature. Handling by Meta itself is governed by its own service terms.
+- `AGENT_PROVIDER=mock` (default): only either of the two exact synthetic examples is accepted, and no external API call occurs. In Meta mode the same allowlist applies. Other files receive a clear error, never fabricated extraction.
 - Server checks authentication, explicit consent, filename and PDF signature, 2 MiB file cap / 3 MiB request cap, rate limiting (3 analyses per user/hour per instance), `READ_ONLY`, `WRITE_TOKEN` and PDF encryption marker.
 - Rate limits are **in-memory per instance**, not distributed/production-grade. A production deployment would require a shared quota store and legal/privacy review.
 - The AI-generated fields are normalized and bounded, but source excerpts are **not machine-verified** against the original PDF. Users must review the draft.
@@ -68,8 +70,8 @@ For real deployments, consider building ledgers (건축물대장) as an addition
 
 ```text
 AGENT_PROVIDER=mock                      # default, no paid calls; synthetic example only
-AGENT_PROVIDER=meta                      # model-backed analysis
-REGISTRY_AI_ENABLED=true                 # explicit extra server flag required for Meta PDF processing
+AGENT_PROVIDER=meta                      # model-backed analysis of EXACT fictional sample only
+REGISTRY_AI_ENABLED=true                 # extra server flag, does NOT allow real PDF processing
 MODEL_API_KEY=<server-only-secret>
 MODEL_MODEL=muse-spark-1.3               # optional
 ```
@@ -88,7 +90,7 @@ Local dev also needs the existing authentication and write-token configuration. 
 ## Future production requirements (outside hackathon MVP)
 
 1. Independent extraction of PDF text and *verbatim verification* of evidence spans, plus scanned/image-only PDF coverage.
-2. Client-side or trusted local redaction/PII detection before third-party transmission. User checkbox alone is not an adequate production privacy control.
+2. Legal clearance + reproducible privacy-safe PDF redaction/PII detection and validation before any real-document feature can be enabled. One uploader checkbox cannot authorize disclosure of third-party identities.
 3. Automated source-type detection, field-by-field provenance with page references, timestamps, duplicate detection and human correction trails.
 4. Shared rate limiting, resource caps, upload malware scanning, accessibility and legal/privacy/security review.
 5. Actual Meta smoke benchmark with synthetic/redacted samples across apartment, detached house, land, scanned and mixed layouts.

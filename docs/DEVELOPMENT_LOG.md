@@ -103,3 +103,15 @@
 
 ### 2026-11-01 · P7 E2E 최종 결과 후속 확인
 - PR #24 최종 코드 커밋 `7630d329`의 GitHub `verify-e2e`가 **completed / SUCCESS**로 끝난 것을 병합 이후 재확인. 동일 커밋 `verify-fast`도 **SUCCESS**. 자동화 테스트는 격리 시연/테스트 환경이며, 사용자가 보류한 실제 2인 거래 QA·실등기 API·법률 승인·Production 배포 검증을 대신하지 않음.
+
+
+## 2026-11-01 · 병렬 Visual Listing Guide — PR #25 (매물 사진 등록 가이드)
+- 기준선 `main@bd7c56f`, 독립 브랜치 `feat/visual-listing-guide-20261101`, [Draft PR #25](https://github.com/hobism3/meta_p2p_realestate/pull/25).
+- 사용자 범위 결정: 3D·가상 투어·사진 채팅 Q&A 제외, 집톡이 실거래방 그대로 유지. 주사용자는 매물 등록자.
+- 개발 구현: 로컬 6장 JPEG/PNG/WebP 미리보기·EXIF 없는 축소 JPEG 변환·dHash 중복 후보·품질 힌트·수동 불투명 마스킹, 선택적으로 Meta VLM 공간/시설/노출 후보 수집. 등록 옵션은 버튼 클릭으로만 반영.
+- 기능 구분: 로컬 결정론적 처리 우선, Meta 유료 호출은 명시 동의와 개별 사진 버튼 필요. SAM 자동 segmentation과 이미지 생성/3D는 이번 패스에서 사용하지 않음.
+- 보안: 서버 인증, 별도 opt-in, 응답 enum allowlist, 용량 제한, VLM 무료 텍스트/개인정보 원문 미노출, 계정당 메모리 기준 시간당 6회. 실물 이미지 공개/영속 저장은 **미구현**.
+- 테스트: Node 단위 테스트/격리 API 인증·동의·용량 테스트 파일 작성 및 `verify-fast` CI 등록. **이 기록 시점 결과 미확인: IMPLEMENTED, NOT DONE**. GitHub CI 결과와 실제 빌드를 확인한 후 상태를 갱신한다.
+- 환경 제약: 외부 네트워크 Git clone에 실패(Could not resolve host: github.com); 로컬 `npm ci`/`npm run build` 테스트를 실행하지 못함. CI 검증으로 대체 확인 필요.
+- 정식 출시 전 누락: 스토리지/게시 사진, 비공개 원본 접근 권한, 사진 복구/삭제, 실제 Meta 유료 호출, 개인정보 노출 자동 탐지 성능, 법률·운영 QA.
+- 설계·잔여 과제: [Visual Listing Guide](VISUAL_LISTING_GUIDE_20261101.md).

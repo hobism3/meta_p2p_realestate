@@ -18,6 +18,7 @@ export default function LoginPage(){
   const [me,setMe]=useState<Me|null>(null);
   const [error,setError]=useState(""),[notice,setNotice]=useState("");
   const [busy,setBusy]=useState(false),[showPassword,setShowPassword]=useState(false);
+  const [hydrated,setHydrated]=useState(false);
   const loadMe=async()=>{
     const token=getAccessToken();
     if(!token){setMe(null);return;}
@@ -33,6 +34,7 @@ export default function LoginPage(){
     else if(e==="provider")setError("지원하지 않는 로그인 방식입니다.");
     else if(e)setError("로그인 과정에서 오류가 발생했습니다.");
     void loadMe();
+    setHydrated(true);
   },[]);
   const switchMode=(m:Mode)=>{setMode(m);setError("");setNotice("");setPassword("");setConfirm("");};
   const submit=async(e:FormEvent<HTMLFormElement>)=>{
@@ -88,8 +90,8 @@ export default function LoginPage(){
         <button className="btn ghost" onClick={()=>void logout()}>로그아웃</button></>:
       <>
         <div className="auth-tabs" role="tablist" aria-label="계정 이용 방법">
-          <button role="tab" aria-selected={mode==="login"} className={mode==="login"?"is-active":""} type="button" onClick={()=>switchMode("login")}>로그인</button>
-          <button role="tab" aria-selected={mode==="signup"} className={mode==="signup"?"is-active":""} type="button" onClick={()=>switchMode("signup")}>회원가입</button>
+          <button role="tab" aria-selected={mode==="login"} disabled={!hydrated} className={mode==="login"?"is-active":""} type="button" onClick={()=>switchMode("login")}>로그인</button>
+          <button role="tab" aria-selected={mode==="signup"} disabled={!hydrated} className={mode==="signup"?"is-active":""} type="button" onClick={()=>switchMode("signup")}>회원가입</button>
         </div>
         <h2>{mode==="signup"?"이메일로 회원가입":mode==="recover"?"비밀번호 재설정":"다시 오신 것을 환영해요"}</h2>
         <p className="meta">{mode==="signup"?"Google 계정 없이도 이메일과 비밀번호로 가입할 수 있습니다.":mode==="recover"?"가입에 사용한 이메일로 재설정 안내를 보내드립니다.":"Google 또는 이메일·비밀번호로 로그인하세요."}</p>
@@ -108,19 +110,19 @@ export default function LoginPage(){
               autoComplete={mode==="signup"?"new-password":"current-password"}
               minLength={mode==="signup"?10:undefined} required value={password}
               onChange={e=>setPassword(e.target.value)} placeholder={mode==="signup"?"영문 + 숫자, 10자 이상":"비밀번호"}/>
-              <button type="button" aria-label={showPassword?"비밀번호 숨기기":"비밀번호 보기"} onClick={()=>setShowPassword(v=>!v)}>{showPassword?"숨기기":"보기"}</button>
+              <button type="button" disabled={!hydrated} aria-label={showPassword?"비밀번호 숨기기":"비밀번호 보기"} onClick={()=>setShowPassword(v=>!v)}>{showPassword?"숨기기":"보기"}</button>
             </div>
           </div>:null}
           {mode==="signup"?<label htmlFor="auth-confirm">비밀번호 확인
             <input id="auth-confirm" type={showPassword?"text":"password"} autoComplete="new-password" required
               value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="한 번 더 입력해주세요"/>
           </label>:null}
-          {mode==="login"?<button type="button" className="auth-text-link" onClick={()=>switchMode("recover")}>비밀번호를 잊으셨나요?</button>:null}
-          <button type="submit" className="btn auth-submit" disabled={busy}>{busy?"처리 중...":mode==="signup"?"회원가입":mode==="recover"?"재설정 메일 보내기":"로그인"}</button>
+          {mode==="login"?<button type="button" disabled={!hydrated} className="auth-text-link" onClick={()=>switchMode("recover")}>비밀번호를 잊으셨나요?</button>:null}
+          <button type="submit" className="btn auth-submit" disabled={busy||!hydrated}>{busy?"처리 중...":mode==="signup"?"회원가입":mode==="recover"?"재설정 메일 보내기":"로그인"}</button>
         </form>
         {error?<p role="alert" className="error">{error}</p>:null}
         {notice?<p role="status" className="auth-notice">{notice}</p>:null}
-        {mode==="recover"?<button type="button" className="auth-text-link" onClick={()=>switchMode("login")}>← 로그인으로 돌아가기</button>:null}
+        {mode==="recover"?<button type="button" disabled={!hydrated} className="auth-text-link" onClick={()=>switchMode("login")}>← 로그인으로 돌아가기</button>:null}
         <div className="auth-divider"><span>또는</span></div>
         <a className="btn ghost auth-google" href="/api/auth/oauth?provider=google">Google로 계속하기 ↗</a>
         <p className="meta auth-footnote">이메일 인증이 활성화된 경우 메일의 확인 링크를 눌러야 로그인할 수 있습니다. 서로 다른 두 계정으로 집주인·방문자 역할을 테스트할 수 있습니다.</p>

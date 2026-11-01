@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../../../lib/client-auth";
 import { brokerSnapshot } from "../../../lib/broker-companion";
+import RoomBookingPanel from "../../../components/RoomBookingPanel";
 import { hasNewProposalCue } from "../../../lib/agent";
 import { groupListingFeatures, initialTerms } from "../../../lib/listing-presentation";
 import {
@@ -34,6 +35,7 @@ function aiName(tradeType: string | undefined): string {
 
 function authorTag(m: DealMessage): string {
   if (m.author_type === "assistant") return " (집톡이)";
+  if (m.author_type === "owner_agent" || m.author_type === "booking_notice") return "";
   if (m.author_type && m.author_type !== "human") return " (AI)";
   return "";
 }
@@ -552,13 +554,14 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             ) : null}
             {messages.map((m) => {
               const jiptok = m.author_type === "assistant";
+              const bookingNotice = m.author_type === "booking_notice";
               const mine = m.author_type === "human" && m.user_id === me;
               return (
-                <div key={m.id} id={"msg-" + m.id} className={"conversation-row " + (jiptok ? "is-jiptok" : mine ? "is-mine" : "is-theirs")}>
-                  {!mine ? <span className={"conversation-small-avatar" + (jiptok ? " jiptok-avatar" : "")} aria-hidden="true">{jiptok ? "✦" : "⌂"}</span> : null}
+                <div key={m.id} id={"msg-" + m.id} className={"conversation-row " + (bookingNotice ? "is-booking-notice" : jiptok ? "is-jiptok" : mine ? "is-mine" : "is-theirs")}>
+                  {!mine ? <span className={"conversation-small-avatar" + (jiptok ? " jiptok-avatar" : "")} aria-hidden="true">{bookingNotice ? "▣" : jiptok ? "✦" : "⌂"}</span> : null}
                   <div className="conversation-message">
-                    {!mine ? <span className="conversation-author">{jiptok ? "집톡이 · 거래 진행 도우미" : m.author + authorTag(m)}</span> : null}
-                    <div className={mine ? "bubble mine" : jiptok ? "bubble jiptok" : "bubble theirs"}>{m.text}</div>
+                    {!mine ? <span className="conversation-author">{bookingNotice ? "방문 일정 · 거래방 알림" : jiptok ? "집톡이 · 거래 진행 도우미" : m.author + authorTag(m)}</span> : null}
+                    <div className={bookingNotice ? "bubble booking-notice" : mine ? "bubble mine" : jiptok ? "bubble jiptok" : "bubble theirs"}>{m.text}</div>
                     {jiptok && propData ? propData.proposals.filter((p) => p.card_msg_id === m.id && p.status !== "superseded" && !dismissed.includes(p.id)).map((p) => (
                       <ProposalCard key={p.id} p={p} approvals={propData.approvals} sides={propData.sides} demo={propData.demo} me={me} onDecide={onDecide} onSuggest={onSuggest} onHold={onHold} onEvidence={scrollToEvidence}/>
                     )) : null}
@@ -588,6 +591,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               </div>
             ) : null}
           </div>
+          {!meta?.demo ? <RoomBookingPanel rid={params.rid} onUpdated={() => void refresh()} /> : null}
           {zipError ? <p className="conversation-inline-error" role="alert">{zipError}</p> : null}
           {zipNotice ? <p className="meta" role="status">{zipNotice}</p> : null}
           {aiError ? (

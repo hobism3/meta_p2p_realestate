@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useState} from "react";
 import {authHeaders,getAccessToken} from "../../lib/client-auth";
 import OwnerAttentionPanel from "../../components/OwnerAttentionPanel";
+import OwnerBookingsPanel from "../../components/OwnerBookingsPanel";
 type OwnerListing={id:string;title:string;address:string;tradeType:string;deposit:number;rent:number;salePrice:number;rooms:number;aiEnabled:boolean};
 export default function OwnerPage(){
  const [rows,setRows]=useState<OwnerListing[]>([]);
@@ -18,7 +19,7 @@ export default function OwnerPage(){
   <div className="owner-hero"><span>OWNER WORKSPACE</span><h1>내 집 관리</h1>
    <p>내 매물의 AI 응대, 문의 확인 요청, 방문 가능 시간을 한곳에서 관리하세요. 방문 예약 확정과 외부 알림 발송은 아직 제공하지 않습니다.</p>
    <a className="btn" href="/register">+ 새 매물 등록</a></div>
-  {getAccessToken()?<OwnerAttentionPanel/>:null}
+  {getAccessToken()?<><OwnerBookingsPanel/><OwnerAttentionPanel/></>:null}
   {!getAccessToken()?<div className="card">내 매물 관리는 로그인이 필요합니다. <a href="/login">로그인</a></div>:
    loading?<p role="status">내 매물을 불러오는 중...</p>:
    error?<p role="alert">{error}</p>:

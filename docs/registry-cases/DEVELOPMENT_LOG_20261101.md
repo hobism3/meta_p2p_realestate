@@ -45,3 +45,11 @@ Date: 2026-11-01 · repository: hobism3/meta_p2p_realestate · branch: feat/p8-r
 
 ## 지속 업데이트 규칙
 매 사례마다 신규 출처/사실과 허구 금액/법적 가정/expected output을 분리한다. 품질 게이트 실패는 원인을 먼저 조사하고 종전 사실/문서를 소급 삭제하지 않고 추가 기록한다. 중앙 DEVELOPMENT_LOG에 P8 PR main 병합의 최종 축약 기록을 남길 때에도 상대 PR #25의 병렬 변경을 우선 확인한다.
+
+## 2026-11-01 · P8 최종 병합 검증 결과 (후속 불변 로그)
+- PR #26 `feat/p8-registry-casebook-benchmark-20261101` head `bb6888bb` 기준 GitHub **verify-fast SUCCESS**. 단계: Next production build PASS, unit + DAL PASS (38개 사례별 사전 정의 golden 포함), API + READ_ONLY PASS.
+- PR #26 **main 병합 성공**, squash commit `52fd46b669b263610bcb616ee9f3242eb9610823`.
+- CI 실패 이력: 최초 TypeScript 취소 상태 불필요 비교 빌드 실패(수정), 사례 note 3개 길이·내용 부족(수정), 압류 사례 제목 길이 부족(수정). 정책·기대값 완화 없이 원인 수정한 뒤 PASS. 테스트의 기대값은 실제 법원 문서로부터 전사한 '공인 정답'이 아니라 소스 유형을 바탕으로 사람 손으로 만든 구조화 골든.
+- `verify-e2e`의 마지막 실행은 **main 병합 당시 in_progress (최종 결과 추후 확인)**; 이 실험은 실거래 2인 QA/진짜 등기부 PDF 판독을 의미하지 않는다.
+- 사진/VLM 별도 PR #25는 head `5fda26ca`에서 verify-fast/e2e SUCCESS였으나 이번 P8 병합 당시 OPEN. 상대 사진 기능 병합 여부는 상대 PR 관리 흐름에 위임. P8과 PR #25 변경 파일은 겹치지 않음.
+- 외부 사업자 등기 API 계약, 본인확인기관 B/소유·위임관계 C 검증, 실제 등기 PDF OCR 및 실제 사용자 거래 검증은 미진행. P8은 사례 기반 **권리 정책 회귀**와 증거 공백 노출 단계만 완료.

@@ -28,6 +28,8 @@ export function displayBookingStatus(b: {status: string; decided_by?: string | n
  * owner confirmation and expiration cannot both win.
  */
 export async function expirePendingBookings(scope: BookingScope, at: Date = new Date()): Promise<number> {
+  // The emergency READ_ONLY guard must also cover incidental writes on GET.
+  if (process.env.READ_ONLY === "true") return 0;
   const cutoff = expirationCutoff(at), stamp = now();
   const listingScope = "listingId" in scope;
   const filter = listingScope ? "b.listing_id = ?" : "l.owner_id = ?";

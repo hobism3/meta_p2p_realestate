@@ -1,7 +1,7 @@
 -- P3 durable owner-AI work. A committed human message owns exactly one job.
 -- Crash recovery: processing has an expiring lease. Execution is safe to replay
 -- because owner_ai_runs uses UNIQUE(room_id, trigger_msg_id).
--- status=failed is terminal but visible to the owner; never silently discard.
+-- status=failed is terminal but visible to the owner. Never silently discard.
 CREATE TABLE IF NOT EXISTS owner_ai_jobs (
   id TEXT PRIMARY KEY,
   room_id TEXT NOT NULL REFERENCES deal_rooms(id) ON DELETE CASCADE,

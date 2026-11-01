@@ -25,7 +25,7 @@ export async function GET(req:Request){
  for(const f of failures)ensure(String(f.listing_id),String(f.listing_title)).aiFailures++;
  return ok({total:requested.length+pending.length+failures.length,
   visits:requested.length,requests:pending.length,aiFailures:failures.length,
-  byListing:[...byListing.values()].sort((a,b)=>(b.visits+b.requests+b.aiFailures)-(a.visits+a.requests+a.aiFailures)),
+  byListing:Array.from(byListing.values()).sort((a,b)=>(b.visits+b.requests+b.aiFailures)-(a.visits+a.requests+a.aiFailures)),
   note:"AI 실패 목록은 최근 최대 40건이며, 집계는 화면에 표시할 업무의 수입니다."
  });
 }

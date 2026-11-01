@@ -114,7 +114,7 @@ export function rowToListing(r: Record<string, unknown>): Record<string, unknown
     publisher: r.publisher,
     ownerId: String(r.owner_id ?? ""),
     verification: { identity: false, ownershipDoc: false },
-    synthetic: true,
+    synthetic: false, // User-submitted listing: not one of the fictional seed listings.
     editable: true,
   };
 }

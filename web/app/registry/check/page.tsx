@@ -87,6 +87,7 @@ export default function RegistryReadingGuide(){
     <label>예정 보증금 (만원·선택)<input aria-label="예정 보증금 만원" type="number" min="0" max="100000000" step="1" placeholder="입력하지 않아도 됩니다" value={deposit??""} onChange={e=>{setDeposit(optionalNumber(e.target.value));setExample(false);}}/></label>
    </div>
    <p className="meta">발급 후 {REVIEW_AGE_REMINDER_DAYS}일 알림은 앱 자체의 확인 권고이며, 법에서 정한 등기부 유효기간이 아닙니다. 보증금만으로 안전성을 계산하지 않습니다.</p>
+   <a className="btn ghost" href="/registry/cases">유형별 38개 교육 사례 보기 ↗</a>{" "}
    <button className="btn ghost" type="button" onClick={loadExample}>가상의 근저당·신탁 사례 보기</button>{" "}
    <button className="btn ghost" type="button" onClick={reset}>모든 선택 초기화</button>
    {example?<p role="status"><strong>가상 시연 데이터입니다.</strong> 실제 매물의 권리관계로 해석하지 마세요.</p>:null}
@@ -124,6 +125,14 @@ export default function RegistryReadingGuide(){
      <label>등기 접수일 (선택)<input type="date" value={entry.registrationDate??""} onChange={e=>updateEntry(entry.id,{registrationDate:e.target.value})}/></label>
      <label>순위번호 (선택)<input type="number" min="1" step="1" value={entry.rankNumber??""} onChange={e=>updateEntry(entry.id,{rankNumber:optionalNumber(e.target.value)})}/></label>
      {entry.kind==="mortgage"?<label>채권최고액 (만원·선택)<input type="number" min="0" max="100000000" step="1" value={entry.claimMaximumManwon??""} onChange={e=>updateEntry(entry.id,{claimMaximumManwon:optionalNumber(e.target.value)})}/></label>:null}
+     {entry.kind==="mortgage"?<label style={{display:"flex",alignItems:"center",gap:8}}>
+      <input type="checkbox" checked={entry.jointCollateralMentioned===true} onChange={e=>updateEntry(entry.id,{jointCollateralMentioned:e.target.checked})}/>
+      공동담보목록 기재 확인 (사용자 입력)
+     </label>:null}
+     <label style={{display:"flex",alignItems:"center",gap:8}}>
+      <input type="checkbox" checked={entry.cancellationPromised===true} onChange={e=>updateEntry(entry.id,{cancellationPromised:e.target.checked})}/>
+      말소하겠다는 약속이 있음 (실제 말소 아님)
+     </label>
     </div>
    </article>)}
    <button className="btn" type="button" disabled={rights.length>=50} onClick={addEntry}>+ 기재 항목 추가 ({rights.length}/50)</button>

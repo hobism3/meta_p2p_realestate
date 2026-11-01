@@ -8,6 +8,7 @@
  */
 export type RightKind =
   "mortgage"|"seizure"|"provisional_seizure"|"trust"|"lease_right"|
+  "lease_registration"|"auction_commencement"|"provisional_registration"|
   "provisional_disposition"|"other";
 export type RightStatus="active"|"cancelled"|"unknown";
 export type RightSection="갑구"|"을구"|"unknown";
@@ -19,6 +20,8 @@ export type RightEntry={
   registrationDate?:string;
   rankNumber?:number|null;
   claimMaximumManwon?:number|null;
+  jointCollateralMentioned?:boolean; // user saw a joint-collateral note; NOT verified
+  cancellationPromised?:boolean;     // a party says it will be cancelled; NOT cancelled
 };
 export type RightsReviewInput={
  issuedOn:string;
@@ -44,7 +47,9 @@ export type RightsReviewResult={
 
 export const RIGHT_LABELS:Record<RightKind,string>={
  mortgage:"근저당권·저당권",seizure:"압류",provisional_seizure:"가압류",
- trust:"신탁등기",lease_right:"전세권·임차권",provisional_disposition:"가처분",other:"그 밖의 기재",
+ trust:"신탁등기",lease_right:"전세권",lease_registration:"임차권등기",
+ auction_commencement:"경매개시결정",provisional_registration:"가등기",
+ provisional_disposition:"가처분",other:"그 밖의 기재",
 };
 export const REVIEW_CHECKS:Record<ReviewCheckKey,{label:string;nextAction:string}>={
  person_authority:{
@@ -83,7 +88,10 @@ function kindAction(kind:RightKind):string{
   case "mortgage":return "실제 대출잔액·말소 조건과 접수 순위, 채권최고액의 의미를 별도 확인하세요.";
   case "seizure":case "provisional_seizure":return "등기 접수·말소 여부, 집행 또는 보전 절차의 진행을 확인하세요.";
   case "trust":return "신탁원부, 수탁자·위탁자의 권한과 임대차 체결·보증금 수령 권한을 확인하세요.";
-  case "lease_right":return "선순위 권리의 내용·순위·말소 여부와 추가 임차관계를 확인하세요.";
+  case "lease_right":return "전세권의 권리자·설정 목적·접수일·말소 조건을 확인하세요. 확정일자에 따른 보호와 혼동하지 마세요.";
+  case "lease_registration":return "임차권등기의 원인과 보증금 반환·말소 상태, 기존 임차인의 권리관계를 확인하세요.";
+  case "auction_commencement":return "경매사건·개시결정의 효력, 진행 상태와 매각 여부를 공식 자료로 확인하세요.";
+  case "provisional_registration":return "가등기 원인과 본등기 가능성, 관련 소유권 변동·대리권 관계를 확인하세요.";
   case "provisional_disposition":return "처분 제한의 현재 효력과 분쟁·말소 여부를 확인하세요.";
   default:return "정확한 권리 종류와 법적 효력을 원문·전문가를 통해 확인하세요.";
  }
@@ -147,6 +155,20 @@ export function reviewRegistryRights(input:RightsReviewInput):RightsReviewResult
     activeMortgageMaximum+=right.claimMaximumManwon;
     details.push(`입력한 채권최고액 ${right.claimMaximumManwon.toLocaleString("ko-KR")}만원`);
    }else mortgageMissing++;
+  }
+  if(right.jointCollateralMentioned===true && right.kind==="mortgage"){
+   findings.push({
+    id:`joint-${index}-${right.id}`,level:"verify",title:"공동담보 관련 기재가 입력됐습니다",
+    detail:"공동담보는 여러 부동산이 하나의 채권을 담보할 수 있으므로 특정 호실의 부담·배당액을 단순 배분하거나 채권최고액을 부동산별 채무로 중복 합산할 수 없습니다.",
+    nextAction:"공동담보목록·관련 부동산·채무의 범위와 변동·말소 여부를 원본 및 관계 자료로 확인하세요.",
+   });
+  }
+  if(right.cancellationPromised===true){ // cancelled records have already continued above
+   findings.push({
+    id:`promise-${index}-${right.id}`,level:"attention",title:"말소 예정이라는 설명은 실제 말소가 아닙니다",
+    detail:"사용자가 말소 약속을 표시했지만 입력된 권리 상태는 현행 또는 미확인입니다. 약속만으로 권리가 소멸하지 않습니다.",
+    nextAction:"실제 말소등기의 접수·완료 및 최신 원문을 확인하고 특약 이행 여부를 별도로 검토하세요.",
+   });
   }
   findings.push({
    id:`right-${index}-${right.id}`,

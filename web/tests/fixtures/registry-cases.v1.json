@@ -1,0 +1,1407 @@
+{
+  "schema": "directhome-registry-casebook-v1",
+  "createdAt": "2026-11-01",
+  "description": "Official guidance/blog-inspired synthetic structured registry fixtures. No real property data, names, addresses, PDF or legal outcomes. External records/identity/timing are explicitly outside what this engine can prove.",
+  "sourceIds": {
+    "DANGDANG": "https://dangdang.io/blog/registry-document-guide",
+    "HUG-TITLE": "https://www.khug.or.kr/jeonse/web/s03/s030105.jsp",
+    "HUG-TYPES": "https://www.khug.or.kr/jeonse/web/s02/s020101.jsp",
+    "HUG-CANCEL": "https://www.khug.or.kr/jeonse/web/s02/s020503.jsp",
+    "HUG-PRIOR": "https://www.khug.or.kr/jeonse/web/s02/s020402.jsp",
+    "HUG-TRUST": "https://www.khug.or.kr/jeonse/web/s02/s020302.jsp",
+    "HUG-FAKE": "https://m.khug.or.kr/jeonse/web/s02/s020301.jsp",
+    "HUG-DOUBLE": "https://www.khug.or.kr/jeonse/web/s02/s020502.jsp",
+    "HUG-TAX": "https://www.khug.or.kr/jeonse/web/s02/s020601.jsp",
+    "HUG-SAMEDAY": "https://www.khug.or.kr/jeonse/web/s02/s020501.jsp",
+    "HUG-CAN": "https://www.khug.or.kr/jeonse/web/s02/s020201.jsp",
+    "TOSS": "https://toss.im/tossfeed/article/house-contract-02",
+    "HANA": "https://blog.hanabank.com/1762"
+  },
+  "fixtures": [
+    {
+      "id": "P8-001",
+      "title": "등기 현행 제한사항이 입력되지 않은 기준",
+      "category": "baseline",
+      "detectability": "title-record",
+      "sourceIds": [
+        "DANGDANG"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": []
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "unread-rights",
+          "check-prior_tenants"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "정상 교육용 샘플이라 해도 근거 없는 안전 인증 금지"
+    },
+    {
+      "id": "P8-002",
+      "title": "발급일 누락의 정상처럼 보이는 문서",
+      "category": "baseline",
+      "detectability": "data-quality",
+      "sourceIds": [
+        "HUG-TITLE"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "",
+        "asOfDate": "2026-11-01",
+        "rights": []
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "document-date",
+          "unread-rights"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "발급일이 입력되지 않아 권리기재의 현재성을 증명할 수 없습니다."
+    },
+    {
+      "id": "P8-003",
+      "title": "법정 유효기간과 혼동하면 안 되는 오래된 등기",
+      "category": "baseline",
+      "detectability": "timing",
+      "sourceIds": [
+        "DANGDANG"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-09-01",
+        "asOfDate": "2026-11-01",
+        "rights": []
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "document-age",
+          "unread-rights"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "앱 자체 재확인 알림"
+    },
+    {
+      "id": "P8-004",
+      "title": "1건의 현행 근저당권",
+      "category": "mortgage",
+      "detectability": "title-record",
+      "sourceIds": [
+        "HUG-TITLE"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "m1",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 12000
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 1,
+        "activeMortgageMaximumManwon": 12000,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-m1"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "채권최고액과 실제 대출원금 구분"
+    },
+    {
+      "id": "P8-005",
+      "title": "근저당 채권최고액이 큰 예시",
+      "category": "mortgage",
+      "detectability": "title-record",
+      "sourceIds": [
+        "DANGDANG"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "m1",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 29000
+          }
+        ],
+        "proposedDepositManwon": 15000
+      },
+      "expected": {
+        "activeMortgageCount": 1,
+        "activeMortgageMaximumManwon": 29000,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-m1"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "비율만으로 안전판정 금지"
+    },
+    {
+      "id": "P8-006",
+      "title": "현행 근저당 3건",
+      "category": "mortgage",
+      "detectability": "title-record",
+      "sourceIds": [
+        "HUG-TITLE"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "m1",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 12000
+          },
+          {
+            "id": "m2",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 4000
+          },
+          {
+            "id": "m3",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 7000
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 3,
+        "activeMortgageMaximumManwon": 23000,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-m1",
+          "right-1-m2",
+          "right-2-m3"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "채권최고액만 합산한 참고 수치"
+    },
+    {
+      "id": "P8-007",
+      "title": "말소된 과거 근저당 포함",
+      "category": "mortgage",
+      "detectability": "title-record",
+      "sourceIds": [
+        "DANGDANG"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "old",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "cancelled",
+            "claimMaximumManwon": 12000
+          },
+          {
+            "id": "now",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 6000
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 1,
+        "activeMortgageMaximumManwon": 6000,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 1,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "cancelled",
+          "right-1-now"
+        ],
+        "forbiddenFindingIds": [
+          "right-0-old"
+        ]
+      },
+      "note": "말소를 현행 채무로 계산하지 않음"
+    },
+    {
+      "id": "P8-008",
+      "title": "말소 예정이라지만 현재 현행",
+      "category": "mortgage",
+      "detectability": "title-record",
+      "sourceIds": [
+        "HUG-CANCEL"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "promised",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 15000,
+            "cancellationPromised": true
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 1,
+        "activeMortgageMaximumManwon": 15000,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "promise-0-promised",
+          "right-0-promised"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "당사자 말소 약속과 실제 말소 구분"
+    },
+    {
+      "id": "P8-009",
+      "title": "말소 예정 + 이미 말소된 등기",
+      "category": "mortgage",
+      "detectability": "title-record",
+      "sourceIds": [
+        "HUG-CANCEL"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "cleared",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "cancelled",
+            "claimMaximumManwon": 7000,
+            "cancellationPromised": true
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 1,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "cancelled"
+        ],
+        "forbiddenFindingIds": [
+          "promise-0-cleared"
+        ]
+      },
+      "note": "실제 말소 입력 이후 말소 예정 경고 반복 금지"
+    },
+    {
+      "id": "P8-010",
+      "title": "현행 근저당 채권최고액 일부 누락",
+      "category": "mortgage",
+      "detectability": "data-quality",
+      "sourceIds": [
+        "HUG-TITLE"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "known",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 11000
+          },
+          {
+            "id": "missing",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": null
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 2,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 1,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-known",
+          "right-1-missing"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "채권최고액이 일부 누락되어 현행 근저당의 전체 합계를 표시하지 않습니다."
+    },
+    {
+      "id": "P8-011",
+      "title": "공동담보 목록 존재",
+      "category": "mortgage",
+      "detectability": "title-record",
+      "sourceIds": [
+        "HUG-PRIOR"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "joint",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 30000,
+            "jointCollateralMentioned": true
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 1,
+        "activeMortgageMaximumManwon": 30000,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "joint-0-joint",
+          "right-0-joint"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "공동담보 주택별 배분/중복 합산 금지"
+    },
+    {
+      "id": "P8-012",
+      "title": "공동담보 + 별도 근저당",
+      "category": "mortgage",
+      "detectability": "composite",
+      "sourceIds": [
+        "HUG-PRIOR"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "joint",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 18000,
+            "jointCollateralMentioned": true
+          },
+          {
+            "id": "another",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 9000
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 2,
+        "activeMortgageMaximumManwon": 27000,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "joint-0-joint",
+          "right-1-another"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "공동담보와 별도 근저당의 기재 금액 합계는 실제 채무잔액·호실별 배당액이 아닙니다."
+    },
+    {
+      "id": "P8-013",
+      "title": "가압류 현행",
+      "category": "dispute",
+      "detectability": "title-record",
+      "sourceIds": [
+        "DANGDANG"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "attach",
+            "kind": "provisional_seizure",
+            "section": "갑구",
+            "status": "active"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-attach"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "실제 보전 절차 확인"
+    },
+    {
+      "id": "P8-014",
+      "title": "갑구에 압류가 현행으로 기재된 경우",
+      "category": "dispute",
+      "detectability": "title-record",
+      "sourceIds": [
+        "HUG-TITLE"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "seize",
+            "kind": "seizure",
+            "section": "갑구",
+            "status": "active"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-seize"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "등기 있다고 즉시 퇴거 판단 금지"
+    },
+    {
+      "id": "P8-015",
+      "title": "가처분 현행",
+      "category": "dispute",
+      "detectability": "title-record",
+      "sourceIds": [
+        "DANGDANG"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "dispose",
+            "kind": "provisional_disposition",
+            "section": "갑구",
+            "status": "active"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-dispose"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "권리제한 법적 효력 별도 확인"
+    },
+    {
+      "id": "P8-016",
+      "title": "경매개시결정 등기",
+      "category": "dispute",
+      "detectability": "title-record",
+      "sourceIds": [
+        "DANGDANG"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "auction",
+            "kind": "auction_commencement",
+            "section": "갑구",
+            "status": "active"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-auction"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "경매사건 진행 상태 별도 확인"
+    },
+    {
+      "id": "P8-017",
+      "title": "소유권 가등기 기재",
+      "category": "dispute",
+      "detectability": "title-record",
+      "sourceIds": [
+        "TOSS"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "prelim",
+            "kind": "provisional_registration",
+            "section": "갑구",
+            "status": "active"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-prelim"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "가등기의 종류/본등기 가능성 별도 확인"
+    },
+    {
+      "id": "P8-018",
+      "title": "분쟁 관련 등기 말소",
+      "category": "dispute",
+      "detectability": "title-record",
+      "sourceIds": [
+        "DANGDANG"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "old",
+            "kind": "provisional_seizure",
+            "section": "갑구",
+            "status": "cancelled"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 1,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "cancelled"
+        ],
+        "forbiddenFindingIds": [
+          "right-0-old"
+        ]
+      },
+      "note": "말소기재를 현행 위험으로 오인 금지"
+    },
+    {
+      "id": "P8-019",
+      "title": "신탁등기 현행",
+      "category": "ownership",
+      "detectability": "title-record",
+      "sourceIds": [
+        "HUG-TRUST"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "trust",
+            "kind": "trust",
+            "section": "갑구",
+            "status": "active"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-trust",
+          "check-person_authority"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "신탁원부·수탁자 권한"
+    },
+    {
+      "id": "P8-020",
+      "title": "신탁 말소 약속 + 실제 현행",
+      "category": "ownership",
+      "detectability": "title-record",
+      "sourceIds": [
+        "HUG-CANCEL"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "trust",
+            "kind": "trust",
+            "section": "갑구",
+            "status": "active",
+            "cancellationPromised": true
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "promise-0-trust",
+          "right-0-trust"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "신탁 말소 예정과 권한 유효는 별개"
+    },
+    {
+      "id": "P8-021",
+      "title": "가짜 임대인이지만 등기상 제한 없어 보임",
+      "category": "ownership",
+      "detectability": "outside-registry",
+      "sourceIds": [
+        "HUG-FAKE"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": []
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "check-person_authority",
+          "unread-rights"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "등기만으로 로그인한 계약자 동일인 확인 불가"
+    },
+    {
+      "id": "P8-022",
+      "title": "적법한 위임을 주장하는 계약 상대",
+      "category": "ownership",
+      "detectability": "cross-document",
+      "sourceIds": [
+        "HUG-FAKE"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [],
+        "checks": {
+          "person_authority": "not_checked"
+        }
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "check-person_authority"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "위임장의 효력·범위·계약 당사자 신원 확인 필요"
+    },
+    {
+      "id": "P8-023",
+      "title": "이미 등록된 전세권",
+      "category": "lease",
+      "detectability": "title-record",
+      "sourceIds": [
+        "HUG-TITLE"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "lease",
+            "kind": "lease_right",
+            "section": "을구",
+            "status": "active"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-lease"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "기존 전세권과 임차권 보호 분리"
+    },
+    {
+      "id": "P8-024",
+      "title": "기존 임차권등기",
+      "category": "lease",
+      "detectability": "title-record",
+      "sourceIds": [
+        "TOSS"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "tenant",
+            "kind": "lease_registration",
+            "section": "을구",
+            "status": "active"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-tenant"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "보증금 반환사정과 말소 여부 확인"
+    },
+    {
+      "id": "P8-025",
+      "title": "이중 임대차계약 (등기에는 나타나지 않을 수 있음)",
+      "category": "lease",
+      "detectability": "outside-registry",
+      "sourceIds": [
+        "HUG-DOUBLE"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": []
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "check-prior_tenants",
+          "unread-rights"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "계약서/점유/전입 조사 필요"
+    },
+    {
+      "id": "P8-026",
+      "title": "다가구 선순위 임차인 보증금 미확인",
+      "category": "lease",
+      "detectability": "outside-registry",
+      "sourceIds": [
+        "HUG-PRIOR"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [],
+        "checks": {
+          "prior_tenants": "not_checked"
+        }
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "check-prior_tenants"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "다가구 다른 세대 선순위 보증금은 등기에 없을 수 있음"
+    },
+    {
+      "id": "P8-027",
+      "title": "세금 체납은 등기부만으로 미확인",
+      "category": "external",
+      "detectability": "outside-registry",
+      "sourceIds": [
+        "HUG-TAX"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": []
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "check-tax_arrears",
+          "unread-rights"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "체납/임금채권 법적 우선순위 계산 금지"
+    },
+    {
+      "id": "P8-028",
+      "title": "건축물대장 위반/용도 정보 미확인",
+      "category": "external",
+      "detectability": "cross-document",
+      "sourceIds": [
+        "DANGDANG"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": []
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "check-building_register"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "건축물대장과 건물 정보 별도"
+    },
+    {
+      "id": "P8-029",
+      "title": "표제부 주소·동호수 불일치 가능성",
+      "category": "external",
+      "detectability": "cross-document",
+      "sourceIds": [
+        "HANA"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": []
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "unread-rights"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "이 엔진은 주소를 받지 않으므로 매칭 불가 - TODO"
+    },
+    {
+      "id": "P8-030",
+      "title": "같은 날 새 근저당 설정의 시간차 위험",
+      "category": "timing",
+      "detectability": "timing",
+      "sourceIds": [
+        "HUG-SAMEDAY"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "new",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 18000,
+            "registrationDate": "2026-10-30"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 1,
+        "activeMortgageMaximumManwon": 18000,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-new"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "전입신고 효력시점 등은 추가 날짜/증빙 없이는 판정 불가"
+    },
+    {
+      "id": "P8-031",
+      "title": "등기 외 시세 불충분, 보증금이 높은 구조",
+      "category": "external",
+      "detectability": "outside-registry",
+      "sourceIds": [
+        "HUG-CAN"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [],
+        "proposedDepositManwon": 20000
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "unread-rights"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "시세/실거래가 없이 깡통 여부 판단 금지"
+    },
+    {
+      "id": "P8-032",
+      "title": "등기정보 오래됨 + 신탁 + 압류 + 근저당 여러 건",
+      "category": "composite",
+      "detectability": "composite",
+      "sourceIds": [
+        "DANGDANG"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-01-01",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "trust",
+            "kind": "trust",
+            "section": "갑구",
+            "status": "active"
+          },
+          {
+            "id": "seizure",
+            "kind": "seizure",
+            "section": "갑구",
+            "status": "active"
+          },
+          {
+            "id": "first",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 9000
+          },
+          {
+            "id": "second",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 7000
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 2,
+        "activeMortgageMaximumManwon": 16000,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "document-age",
+          "right-0-trust",
+          "right-1-seizure",
+          "right-2-first",
+          "right-3-second"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "복합 신호 모두 남기고 안전/사기 확정 금지"
+    },
+    {
+      "id": "P8-033",
+      "title": "말소 2건 + 현행 1건 + 미확인 1건",
+      "category": "composite",
+      "detectability": "composite",
+      "sourceIds": [
+        "DANGDANG"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "past1",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "cancelled",
+            "claimMaximumManwon": 7000
+          },
+          {
+            "id": "past2",
+            "kind": "seizure",
+            "section": "갑구",
+            "status": "cancelled"
+          },
+          {
+            "id": "active",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 6500
+          },
+          {
+            "id": "pending",
+            "kind": "trust",
+            "section": "갑구",
+            "status": "unknown"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 1,
+        "activeMortgageMaximumManwon": 6500,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 2,
+        "unknownStatusRecords": 1,
+        "requiredFindingIds": [
+          "cancelled",
+          "right-2-active",
+          "right-3-pending"
+        ],
+        "forbiddenFindingIds": [
+          "right-0-past1",
+          "right-1-past2"
+        ]
+      },
+      "note": "현행/말소/미확인 정확히 분리"
+    },
+    {
+      "id": "P8-034",
+      "title": "임차권등기와 신탁 등기 동시 존재",
+      "category": "composite",
+      "detectability": "composite",
+      "sourceIds": [
+        "HUG-TRUST"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "trust",
+            "kind": "trust",
+            "section": "갑구",
+            "status": "active"
+          },
+          {
+            "id": "lease",
+            "kind": "lease_registration",
+            "section": "을구",
+            "status": "active"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-trust",
+          "right-1-lease"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "원부/권한·기존 임차권 별도"
+    },
+    {
+      "id": "P8-035",
+      "title": "공동담보·말소 예정·금액 누락이 함께 존재",
+      "category": "composite",
+      "detectability": "composite",
+      "sourceIds": [
+        "HUG-PRIOR"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "joint",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 12000,
+            "jointCollateralMentioned": true,
+            "cancellationPromised": true
+          },
+          {
+            "id": "missing",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": null
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 2,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 1,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "joint-0-joint",
+          "promise-0-joint",
+          "right-1-missing"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "금액 누락으로 합계 숨기고 독립 경고"
+    },
+    {
+      "id": "P8-036",
+      "title": "계약서에는 말소 약속, 등기 상태 미확인",
+      "category": "timing",
+      "detectability": "cross-document",
+      "sourceIds": [
+        "HUG-CANCEL"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "unknown",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "unknown",
+            "claimMaximumManwon": 11000,
+            "cancellationPromised": true
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 1,
+        "requiredFindingIds": [
+          "promise-0-unknown",
+          "right-0-unknown"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "계약 약속만으로 말소·효력 자동 승격 금지"
+    },
+    {
+      "id": "P8-037",
+      "title": "임대인이 설명한 선순위 보증금은 확인되지 않음",
+      "category": "lease",
+      "detectability": "outside-registry",
+      "sourceIds": [
+        "HUG-PRIOR"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "mortgage",
+            "kind": "mortgage",
+            "section": "을구",
+            "status": "active",
+            "claimMaximumManwon": 5000
+          }
+        ],
+        "checks": {
+          "prior_tenants": "not_checked"
+        }
+      },
+      "expected": {
+        "activeMortgageCount": 1,
+        "activeMortgageMaximumManwon": 5000,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "check-prior_tenants",
+          "right-0-mortgage"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "선순위 임차인 정보 독립 증거 필요"
+    },
+    {
+      "id": "P8-038",
+      "title": "경매개시 + 임차권등기 + 압류",
+      "category": "composite",
+      "detectability": "composite",
+      "sourceIds": [
+        "HUG-TYPES"
+      ],
+      "provenance": "synthetic_derived_pattern",
+      "input": {
+        "issuedOn": "2026-10-30",
+        "asOfDate": "2026-11-01",
+        "rights": [
+          {
+            "id": "auction",
+            "kind": "auction_commencement",
+            "section": "갑구",
+            "status": "active"
+          },
+          {
+            "id": "lease",
+            "kind": "lease_registration",
+            "section": "을구",
+            "status": "active"
+          },
+          {
+            "id": "attachment",
+            "kind": "seizure",
+            "section": "갑구",
+            "status": "active"
+          }
+        ]
+      },
+      "expected": {
+        "activeMortgageCount": 0,
+        "activeMortgageMaximumManwon": null,
+        "activeMortgageAmountsMissing": 0,
+        "cancelledRecords": 0,
+        "unknownStatusRecords": 0,
+        "requiredFindingIds": [
+          "right-0-auction",
+          "right-1-lease",
+          "right-2-attachment"
+        ],
+        "forbiddenFindingIds": []
+      },
+      "note": "경매 진행 확인, 실제 배당 순위 단정 금지"
+    }
+  ]
+}

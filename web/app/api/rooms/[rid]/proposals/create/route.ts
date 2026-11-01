@@ -3,6 +3,7 @@ import { authenticate } from "@/lib/auth";
 import { getDal } from "@/lib/dal";
 import { getRoom, isRoomMember } from "@/lib/rooms";
 import { createProposals, PROPOSABLE } from "@/lib/agreement-service";
+import {parseRentFields,formatRentBundle,formatJeonseDeposit} from "@/lib/rent";
 
 /**
  * VS-4C 수동 제안 생성. 집톡이가 돌지 않는 실거래방에서 사람이 직접 카드를 만든다.
@@ -19,9 +20,20 @@ export async function POST(req: Request, { params }: { params: { rid: string } }
   const parsed = await readJson(req);
   if ("err" in parsed) return parsed.err;
   const name = String(parsed.value.name ?? "").trim();
-  const value = String(parsed.value.value ?? "").trim();
+  let value = String(parsed.value.value ?? "").trim();
   if (!name || !PROPOSABLE.includes(name)) return bad("조건명 오류");
   if (!value || value.length > 500) return bad("값 오류");
+  // Manual user input may contain natural spaces or commas. Canonicalize
+  // rent as an ATOMIC deposit/monthly bundle before versioned agreement.
+  if(name==="월세 조건"){
+    const fields=parseRentFields(value);
+    if(fields.deposit===null||fields.monthlyRent===null)
+      return bad("보증금과 월세 두 금액을 모두 입력해주세요. 예: 보증금 3,000만원/월세 68만원");
+    value=formatRentBundle(fields.deposit,fields.monthlyRent);
+  }else if(name==="최종 전세보증금"){
+    const fields=parseRentFields(value);
+    if(fields.deposit!==null)value=formatJeonseDeposit(fields.deposit);
+  }
   const ev = Array.isArray(parsed.value.source_msg_ids) ? parsed.value.source_msg_ids.filter((x: unknown) => typeof x === "string") : [];
   let evidence: string[] = [];
   if (ev.length > 0) {

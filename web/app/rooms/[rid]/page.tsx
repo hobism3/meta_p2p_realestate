@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getAccessToken } from "../../../lib/client-auth";
 import { brokerSnapshot } from "../../../lib/broker-companion";
 import RoomBookingPanel from "../../../components/RoomBookingPanel";
+import TransactionProgressPanel from "../../../components/TransactionProgressPanel";
 import { hasNewProposalCue } from "../../../lib/agent";
 import { groupListingFeatures, initialTerms } from "../../../lib/listing-presentation";
 import {
@@ -236,6 +237,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   const [zipNotice, setZipNotice] = useState("");
   const [me] = useState(() => myId());
   const [propData, setPropData] = useState<ProposalsData | null>(null);
+  const [transactionRevision,setTransactionRevision] = useState(0);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const msgsRef = useRef<HTMLDivElement | null>(null);
   const zipBusy = useRef(false);
@@ -504,7 +506,9 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           </div>
           <p>{meta?.demo
             ? "집톡이도 그룹채팅에 참여해 조건과 남은 확인 절차를 챙깁니다."
-            : "이 거래방은 참여자가 직접 대화합니다. AI 임대인은 참여하지 않습니다."}</p>
+            : meta?.ownerAgentEnabled
+              ? "집주인이 설정한 AI 대리인이 등록된 사실을 안내합니다. 가격 변경과 계약 확정은 당사자가 확인해야 합니다."
+              : "집주인과 방문자가 직접 대화합니다. 거래 조건은 두 사람이 각각 확인해야 합니다."}</p>
         </div>
         <div className="deal-hero-symbol" aria-hidden="true">
           <span className="deal-hero-house">⌂</span>
@@ -519,7 +523,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               <div>
                 <strong>{meta?.demo ? participant + " · 집톡이" : participant}</strong>
                 <span className="conversation-status"><i aria-hidden="true" />
-                  {meta?.demo ? "그룹채팅 · 임대인·임차인·집톡이 (AI 시연)" : "개인 거래 · 참여자 간 메시지"}
+                  {meta?.demo ? "그룹채팅 · 임대인·임차인·집톡이 (AI 시연)" : meta?.ownerAgentEnabled ? "실거래 · 집주인 AI 대리 응대" : "실거래 · 당사자 직접 대화"}
                 </span>
               </div>
             </div>
@@ -591,7 +595,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               </div>
             ) : null}
           </div>
-          {!meta?.demo ? <RoomBookingPanel rid={params.rid} onUpdated={() => void refresh()} /> : null}
+          {meta && !meta.demo ? <TransactionProgressPanel rid={params.rid}
+            tradeType={meta.listing?.tradeType??"월세"}
+            revision={transactionRevision}
+            onUpdated={() => { void refreshConditions(); setTransactionRevision(x=>x+1); }} /> : null}
+          {meta && !meta.demo ? <RoomBookingPanel rid={params.rid}
+            onUpdated={() => { void refresh(); setTransactionRevision(x=>x+1); }} /> : null}
           {zipError ? <p className="conversation-inline-error" role="alert">{zipError}</p> : null}
           {zipNotice ? <p className="meta" role="status">{zipNotice}</p> : null}
           {aiError ? (

@@ -1055,3 +1055,35 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
 .owner-visit-item .owner-visit-date{color:#466a53;font-weight:700}
 .owner-visit-item .owner-booking-status{justify-self:start}
 @media(max-width:680px){.owner-booking-card{padding:12px}.owner-visit-list{grid-template-columns:1fr}.owner-booking-form{display:grid;grid-template-columns:1fr 1fr}.owner-booking-form .btn{grid-column:1/-1}.owner-booking-form>.meta{grid-column:1/-1}.owner-visit-console{padding:15px}}
+
+/* Email signup / password recovery: complements existing Google OAuth */
+.auth-layout{max-width:1020px;margin:16px auto 55px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+.auth-layout.auth-single{grid-template-columns:minmax(0,520px);justify-content:center}
+.auth-intro{border-radius:22px;min-height:310px;padding:36px 30px;background:linear-gradient(140deg,#eaf4e9,#fbf3e5);border:1px solid #e2e9dd}
+.auth-intro h1{font-size:clamp(25px,3.3vw,34px);letter-spacing:-.04em;line-height:1.35;color:#294734;margin:20px 0}
+.auth-intro p{line-height:1.75;font-size:14px;color:#66776b}
+.auth-role-links{display:grid;gap:8px;margin-top:30px}
+.auth-role-links a{color:#326f4f;font-weight:750;font-size:13px}
+.auth-box{padding:26px;display:grid;gap:12px;border-radius:18px}
+.auth-box h2,.auth-box h1{font-size:22px;margin:4px 0;color:#283e31}
+.auth-box>.meta{margin:0;color:#7a807c;font-size:12px;line-height:1.6}
+.auth-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));background:#f1f4ef;border-radius:12px;padding:4px;gap:4px}
+.auth-tabs button{border:0;border-radius:9px;padding:10px 12px;background:transparent;font-weight:750;color:#728076;cursor:pointer;font:inherit;font-size:13px}
+.auth-tabs button.is-active{background:#fff;color:#245b41;box-shadow:0 2px 7px #253e281c}
+.auth-form{display:grid;gap:13px;margin-top:10px}
+.auth-form label{display:grid;gap:7px;font-size:12px;font-weight:750;color:#3d5945}
+.auth-form input{width:100%;padding:12px;border:1px solid #c9d8cd;border-radius:10px;background:#fff;min-width:0;font:inherit;color:#293f31}
+.auth-form input:focus-visible{outline:2px solid #569677;outline-offset:1px}
+.auth-password-row{display:grid;grid-template-columns:minmax(0,1fr) auto;border:1px solid #c9d8cd;border-radius:10px;overflow:hidden}
+.auth-password-row:focus-within{outline:2px solid #569677;outline-offset:1px}
+.auth-password-row input{border:0;outline:none!important}
+.auth-password-row button{border:0;background:#f1f7f2;padding:0 13px;cursor:pointer;color:#427558;font-size:11px;font-weight:700}
+.auth-submit{width:100%;min-height:44px;justify-content:center}
+.auth-actions{display:flex;gap:9px;flex-wrap:wrap}
+.auth-divider{display:flex;align-items:center;gap:10px;color:#8c988f;font-size:11px;margin:5px 0}
+.auth-divider:before,.auth-divider:after{content:"";height:1px;flex:1;background:#e5ebe5}
+.auth-google{justify-content:center;display:flex;align-items:center;min-height:42px}
+.auth-text-link{justify-self:end;background:transparent;border:0;padding:0;color:#367456;cursor:pointer;text-decoration:underline;font-size:12px;font-weight:650}
+.auth-notice{background:#e9f7ed;color:#296847;border:1px solid #bfe0c9;padding:11px;border-radius:10px;font-size:12px;line-height:1.6}
+.auth-footnote{font-size:11px!important;color:#79847e!important}
+@media(max-width:750px){.auth-layout{grid-template-columns:1fr;margin:0 auto 32px;gap:14px}.auth-intro{padding:21px;min-height:0}.auth-intro h1{margin:10px 0;font-size:23px}.auth-role-links{margin-top:12px;display:flex;flex-wrap:wrap;gap:18px}.auth-box{padding:18px}}

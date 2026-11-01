@@ -72,7 +72,7 @@ export default function RegistryReadingGuide(){
    setCopyNotice("분석 메모를 복사했습니다. 외부로 공유하기 전 정보와 개인정보 포함 여부를 확인하세요.");
   }catch{setCopyNotice("복사 기능을 사용할 수 없습니다. 화면에서 직접 내용을 확인해 주세요.");}
  };
- return <div className="grid owner-page">
+ return <div className="grid owner-page registry-review-page">
   <div className="owner-hero"><span>REGISTRY REVIEW · LOCAL ONLY</span>
    <h1>등기부 권리관계 읽기</h1>
    <p>공식 등기부의 확인 내용을 바탕으로, 선순위 권리와 추가 서류 확인에 필요한 체크리스트를 만듭니다. 이 화면에서 원본 PDF·소유자명·주소·주민등록번호를 입력받거나 서버에 전송하지 않습니다.</p>

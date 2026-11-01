@@ -50,13 +50,13 @@ test("실제 매물 60분 예약은 집주인 승인 후 확정되고 방문자�
  await panel.getByLabel("방문 시간").selectOption("13:00");
  await panel.getByRole("button",{name:"방문 예약 요청"}).click();
  await expect(panel.getByText("집주인 승인 대기").first()).toBeVisible();
- await page.evaluate((x:string)=>localStorage.setItem("directhome.access_token",x),owner);
+ await page.addInitScript((x:string)=>localStorage.setItem("directhome.access_token",x),owner);
  await page.goto("/owner");
  const bookings=page.getByRole("region",{name:"방문 예약 관리"});
  await expect(bookings.getByText("E2E 방문 예약 테스트")).toBeVisible();
  await bookings.getByRole("button",{name:"승인"}).click();
  await expect(bookings.getByText("방문 확정")).toBeVisible();
- await page.evaluate((x:string)=>localStorage.setItem("directhome.access_token",x),visitor);
+ await page.addInitScript((x:string)=>localStorage.setItem("directhome.access_token",x),visitor);
  await page.goto("/rooms/"+roomId);
  await expect(page.getByRole("region",{name:"방문 예약"}).getByText("방문 확정")).toBeVisible();
  await panel.getByRole("button",{name:"예약 취소"}).click();

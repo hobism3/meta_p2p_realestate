@@ -21,6 +21,11 @@ export default function AuthCallbackPage() {
       return;
     }
     setAccessToken(token);
+    // Password recovery email links carry a short-lived recovery access token.
+    if(hash.get("type")==="recovery"){
+      window.location.replace("/auth/reset");
+      return;
+    }
     window.location.replace("/");
   }, []);
 

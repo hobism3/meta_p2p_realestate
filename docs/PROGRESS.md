@@ -2,7 +2,7 @@
 최신 개발 방향과 완료 판정: [활성 로드맵](ROADMAP.md) · [누적 개발 기록](DEVELOPMENT_LOG.md).
 
 ## 출시 기준선
-- `main`: `110927deb099b3564d02117bb15ff9eb0aff4e37` (PR #17 거래 상태 통합 병합).
+- `main`: `fd05290752be169f83be3ecc150a6d0f89bfaef2` (PR #18 실거래 집톡이 병합).
 - 기본: 지도·매물 검색, 집주인 관리, AI 대리 응대, 이메일/Google 가입, 예약 요청·승인·취소, 시연 집톡이 조건 카드.
 - P0: 미승인 방문 요청 24시간 lazy 만료, 슬롯 반환, 동일 방문자 활성 예약 제한, SQLite 트랜잭션 직렬화. CI 확인 후 main 병합, 프로덕션 READY.
 - P1: 거래 단계 정형 상태·실거래 2인 확인 카드·실제 방문 승인 반영 완료 (PR #17, CI 검증·main 병합·Production READY).
@@ -13,3 +13,6 @@
 ## 작업 방식
 기능별 브랜치 → 문서/테스트 → Next build → API/Playwright → GitHub CI → Preview → main.
 기존 방·합의·예약 기록을 보존하고, 명시적 양측 동의/소유자 승인이 없는 상태는 절대 확정하지 않는다.
+
+## Stage 3 개발
+- [집주인 AI 내구 작업 원장](OWNER_AI_P3_DURABLE_QUEUE_20261101.md) 구현 진행. `main` 병합/Production 완료 전까지 기능은 브랜치에서만 확인할 것.

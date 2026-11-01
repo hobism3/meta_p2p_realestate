@@ -78,5 +78,14 @@
 |기본 권리관계 분석|코드 반영|registry-rights-analysis.ts|
 |실거래방 중립 확인메모|코드 반영|jiptok-support-tasks.ts, TransactionProgressPanel.tsx|
 |권리분석/집톡이 회귀|작성/CI 등록|verify-fast.yml|
-|main 병합|대기|PR 번호 및 SHA 기록 예정|
+|main 병합|**완료: PR #24 / `ec08853ed`**|GitHub squash merge. Production 배포는 미검증|
 |실등기 API·법률자문|미착수·외부 의존|OPEN 이슈 원장|
+|verify-fast (브랜치 `7630d329`)|**SUCCESS**|Next build + unit/DAL + API/READ_ONLY|
+|verify-e2e|병합 당시 실행 중 / 최종 미확인|사용자 요청으로 참고 게이트|
+
+### 검증 회고 / 기록 보존
+- 첫 빌드 실패: TypeScript의 downlevelIteration 미지원 → `Array.entries()`를 인덱스 반복으로 교체.
+- 첫 단위 실패: 247/248 통과, 자기 체크가 공적 검증이 아니라는 경고 문구 부족 → 엔진 note 보강, 재검증 성공. **테스트 완화 없음**.
+- `verify-fast` 성공 head: `7630d329`. `main` 병합: `ec08853ed`. 이후 문서만 기록한 commit은 코드 재검증이 아니라 문서 추적이다.
+- E2E(실사용자가 아닌 격리 Playwright)는 최신 head 실행 당시 아직 진행 중. 실제 2인 거래 검증, Meta 실 데이터, 법적 소유권 확인, Production 배포는 완료 판정하지 않는다.
+- PR #21 개별 집주인 업무 작업함도 `main@44ef644`로 병합됨. P7은 이후 변경과 충돌 없이 main 병합 완료.

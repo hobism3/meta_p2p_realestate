@@ -91,3 +91,12 @@
 ### 2026-11-01 · 후속 진행 정정 및 P5 병합
 - PR #21 (`feat/owner-hub-bulk-p5-20261101`): 병합 전 head `fbf8025`에서 GitHub verify-fast **PASS**, verify-e2e **PASS**, mergeable 상태 확인 후 `main@44ef644`로 **squash 병합 완료**. 기존 개발로그의 '오픈, 미병합'은 병합 이전 시점의 기록이다.
 - PR #24(P7): 초기 CI에서 `Array.entries()`가 이전 TypeScript target/downlevelIteration 설정과 충돌해 빌드 실패 → 인덱스 루프로 변경. 다음 CI 단위 검증에서 '이용자가 체크한 항목은 공적 검증이 아님' 경고 문구 누락을 잡아 설명을 추가함. 이력과 CI 링크는 PR #24에서 유지.
+
+### 2026-11-01 · P7 확정 병합 기록
+
+- **PR #24**: [권리관계 구조화 분석 + 집톡이 중립 절차 지원](https://github.com/hobism3/meta_p2p_realestate/pull/24). Head `7630d329`에서 GitHub `verify-fast` **SUCCESS** (Next 빌드, Node unit·DAL, API/READ_ONLY regression); **main squash merge `ec08853ed`**.
+- **검증 중 발견한 결함**: 첫 빌드에서 ES5/downlevelIteration과 `Array.entries()` 비호환 → 인덱스 반복으로 수정. 첫 단위 검증 247 PASS/1 FAIL에서 '자기 체크는 공식 인증이 아님' 경고 누락 발견 → 문구 추가 후 전체 fast 성공. 실패 이력을 삭제하거나 테스트 기대치를 완화하지 않음.
+- 사용자 2계정 실제 거래 검증, 외부 등기 API 실제 호출, 법무 승인, 본인확인기관 B/매물 권한 C 실제 인증은 **미검증**. `verify-e2e`의 PR 최신 커밋 결과는 병합 당시 **실행 중(최종 결과 미확인)**이었으며 정식 출시 게이트로 판정하지 않음.
+- **Production 배포 SHA/환경 검증은 수행하지 않음**: `main` 코드 병합과 Production 운영 반영을 혼동하지 않는다.
+- 개발 방향 보전: 안전등급/채권최고액을 실제 대출로 계산하지 않는 구조화 권리점검 + 대화 중간 안내/남은 조건 확인만 수행하는 집톡이; 실사용자 거래와 법률 실사는 사용자 요청에 따라 후속으로 미룸.
+- 후속 구현 과제 후보: 로컬 검토 내용의 사용자 선택형 저장·복구(서버 PII 저장 없이), 등기 API 공급계약 후 비동기 결과/원본 발급시점 어댑터, 신원(B)과 권한(C)의 상호 검증, 집톡이 근거/확인 처리 동선, 관리자 허위매물 처리 프로세스.

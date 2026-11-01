@@ -4,7 +4,7 @@
 
 **Live demo:** https://meta-p2p-realestate.vercel.app/  
 **Repository:** https://github.com/hobism3/meta_p2p_realestate  
-**Verified baseline:** `main@80a3378` (2026-10-30, before the proposed final UI pass)
+**2026-11-01 legal review baseline:** `main@94108e1` (legal patch branch changes are not verified production releases)
 
 > **Problem:** Finding a property is only the beginning. Buyers and sellers negotiate price, deposits, rent, visits, handover, and move-in dates in free-form messages. A wish, a counteroffer, and an accepted condition can be easily confused.
 >
@@ -35,7 +35,7 @@ AI landlord: "네, 보증금 5,000만원과 월세 65만원으로 조정 가능�
 
 Owners and landlords can now open **매물 등록** and try the optional **등기 PDF → AI 등록 초안** experience. Muse Spark can extract document-supported address and explicitly identified unit area to an editable preview; the user must still provide prices, management fee, move-in and options and press the final listing-submit button. A completely fictional PDF is downloadable for a no-credit Mock demonstration.
 
-**Privacy and integrity:** The demo warns against uploading real unredacted title records. The actual Meta PDF path requires server configuration and explicit user consent; no PDF is stored by the app. Extraction is **not** ownership verification or automatic publication. See [Document-to-Listing technical guide](docs/REGISTRY_AI_IMPORT.md).
+**Privacy and integrity:** The demo warns against uploading real unredacted title records. The Meta PDF path is now restricted to **exact-hash fictional demonstration PDFs only** with client and server checks; arbitrary real registry PDFs are forbidden. Server configuration and explicit acknowledgement are still required; no PDF is stored by this feature in the app database. Extraction is **not** ownership verification or automatic publication. See [Document-to-Listing technical guide](docs/REGISTRY_AI_IMPORT.md).
 
 ## Why two AI roles?
 
@@ -74,7 +74,9 @@ Start with the Mock provider; real Meta calls require server-only `AGENT_PROVIDE
 - [Tests, limitations and live-model proof](docs/VERIFICATION.md)
 - [Submission-ready copy](docs/SUBMISSION_TEXT.md)
 - [Meta-assisted document-to-listing draft (seller flow)](docs/REGISTRY_AI_IMPORT.md)
+- [한국 직거래 법률 심층 검토](docs/legal/LEGAL_DEEP_DIVE_20261101.md)
+- [법률 보완 추적 원장](docs/legal/LEGAL_ISSUES_20261101.md)
 
 Historical roadmap and initial product specs are retained for project history; use these linked documents for the current state.
 
-**Limitations:** All seed listings are synthetic. No real ownership/title verification, escrow/payment, binding contract generation, legal advice, or real booking confirmation is provided. User agreement cards are product-level acknowledgments, not contract signatures.
+**Limitations:** Seed listings are synthetic, but user-created listings can also appear and have **not** been verified for ownership, posting rights or truthfulness. No escrow/payment, electronic contract signing, title verification or legal advice is provided. Actual owner-approved visit booking records can exist, but do not guarantee a visit occurs. Bilateral cards record in-app acknowledgments and are not an electronic-contract service; actual chat/acceptance may nevertheless have legal effects depending on the facts. See [Korean legal deep dive](docs/legal/LEGAL_DEEP_DIVE_20261101.md).

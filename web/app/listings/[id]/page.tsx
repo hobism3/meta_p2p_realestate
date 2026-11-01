@@ -118,6 +118,13 @@ export default function DetailPage({ params }: { params: { id: string } }) {
           );
         })()}
       </section>
+      <section className="card detail-info-card" aria-label="권리관계 독립 확인">
+        <h2>거래 전 권리관계 확인</h2>
+        <p>등기사항증명서는 소유자가 아니어도 직접 열람할 수 있습니다. 주소를 대법원 인터넷등기소에 입력해 발급 시점이 최근인지 확인하세요. 매물 게시자가 실제 계약 권한을 가진 사람인지는 별도 신원·위임장 대조가 필요합니다.</p>
+        <p className="meta">표제부: 주소·건물·면적 / 갑구: 소유권·압류·가압류·신탁 / 을구: 근저당·전세권 등. 선순위 임차인 보증금, 세금 체납, 건축물대장 등은 등기부만으로 확인되지 않을 수 있습니다.</p>
+        <a className="btn ghost" href="https://www.iros.go.kr/" target="_blank" rel="noopener noreferrer">대법원 인터넷등기소에서 직접 열람 ↗</a>
+        <p className="meta">이 링크는 공식 사이트로 이동할 뿐, 플랫폼이 등기기록을 조회하거나 진위·안전을 보증하는 것이 아닙니다.</p>
+      </section>
       <section className="card detail-info-card">
         <h3>게시자 확인 상태</h3>
         <p>

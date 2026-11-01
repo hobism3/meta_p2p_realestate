@@ -4,9 +4,9 @@ import {authHeaders,getAccessToken} from "../lib/client-auth";
 
 type Booking={
  id:string;listing_id:string;listing_title:string;room_id:string;visit_date:string;visit_time:string;
- requester_id:string;status:"requested"|"confirmed"|"declined"|"cancelled";
+ requester_id:string;status:"requested"|"confirmed"|"declined"|"cancelled"|"expired";
 };
-const status:Record<Booking["status"],string>={requested:"승인 대기",confirmed:"방문 확정",declined:"거절",cancelled:"취소"};
+const status:Record<Booking["status"],string>={requested:"승인 대기",confirmed:"방문 확정",declined:"거절",cancelled:"취소",expired:"자동 만료"};
 function headers(){
  const token=process.env.NEXT_PUBLIC_WRITE_TOKEN;
  return {"Content-Type":"application/json",...(token?{"x-write-token":token}:{}),...authHeaders()};
@@ -49,7 +49,7 @@ export default function OwnerBookingsPanel(){
     <h2>방문 예약 관리 <span className="owner-attention-count">{pending.length}</span></h2></div>
    <button type="button" className="btn ghost" onClick={()=>void load()}>새로고침</button>
   </div>
-  <p className="meta">예약 신청과 승인 상태를 이 페이지에서 확인하세요. 현재 외부 푸시·문자·이메일 알림은 발송하지 않습니다.</p>
+  <p className="meta">예약 신청과 승인 상태를 이 페이지에서 확인하세요. 승인 대기가 24시간을 넘으면 다음 조회 때 자동 만료됩니다. 외부 푸시·문자·이메일 알림은 발송하지 않습니다.</p>
   {loading?<p role="status">예약 정보를 불러오는 중...</p>:items.length===0?<p className="owner-attention-empty">아직 신청된 방문 예약이 없습니다.</p>:
   <div className="owner-visit-list">
    {[...pending,...upcoming].map(b=><article className="owner-visit-item" key={b.id}>

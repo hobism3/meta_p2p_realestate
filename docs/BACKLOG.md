@@ -1,5 +1,7 @@
 # DirectHome 백로그
 
+> **최신 단계별 계획:** [활성 로드맵](ROADMAP.md), [누적 개발 기록](DEVELOPMENT_LOG.md). 아래는 과거 시점의 누적 태스크 로그로, 이미 구현된 항목이 미완료로 표시됐을 수 있습니다.
+
 ## P0 개발 프로세스 정립 — DONE
 
 - [x] AGENTS.md·BACKLOG·QUALITY_GATES·DECISIONS 정비.

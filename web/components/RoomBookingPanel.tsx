@@ -2,10 +2,10 @@
 import {useCallback,useEffect,useState} from "react";
 import {authHeaders} from "../lib/client-auth";
 
-type VisitBooking={id:string;visit_date:string;visit_time:string;status:"requested"|"confirmed"|"declined"|"cancelled";requester_id:string};
+type VisitBooking={id:string;visit_date:string;visit_time:string;status:"requested"|"confirmed"|"declined"|"cancelled"|"expired";requester_id:string};
 type VisitState={bookings:VisitBooking[];availability:{weekday:number;start:string;end:string}[];mode:"approval"|"manual";isOwner:boolean;available:string[]};
 const labels:Record<VisitBooking["status"],string>={
- requested:"집주인 승인 대기",confirmed:"방문 확정",declined:"거절됨",cancelled:"취소됨",
+ requested:"집주인 승인 대기",confirmed:"방문 확정",declined:"거절됨",cancelled:"취소됨",expired:"24시간 초과 · 자동 만료",
 };
 function todaySeoul(offset=0){
  const d=new Date(Date.now()+offset*86400000);
@@ -49,6 +49,7 @@ export default function RoomBookingPanel({rid,onUpdated}:{rid:string;onUpdated?:
   }catch(e){setError(e instanceof Error?e.message:"방문 일정 처리 실패");}
   finally{setPending(false);}
  };
+ const hasActive=!!state?.bookings.some(b=>b.status==="requested"||b.status==="confirmed");
  if(loading)return <section className="card owner-booking-card"><h3>방문 일정</h3><p role="status">방문 가능한 시간을 확인하고 있습니다.</p></section>;
  if(!state)return <section className="card owner-booking-card"><h3>방문 일정</h3><p role="alert">{error||"조회 실패"}</p></section>;
  return <section className="owner-booking-card" aria-label="방문 예약">
@@ -56,8 +57,8 @@ export default function RoomBookingPanel({rid,onUpdated}:{rid:string;onUpdated?:
    <div><span className="eyebrow">VISIT SCHEDULE</span><h3>방문 예약 · 일정 확인</h3></div>
    <span className="owner-booking-kst">한국 시간 · KST</span>
   </div>
-  <p className="meta">등록된 방문 가능 시간에서 60분 단위로 신청합니다. 집주인이 승인하기 전에는 예약 확정이 아닙니다. 앱·푸시 알림 없이 이 페이지에서 진행 상태를 확인합니다.</p>
-  {!state.isOwner&&state.mode==="approval"&&state.availability.length>0?(
+  <p className="meta">등록된 방문 가능 시간에서 60분 단위로 신청합니다. 집주인이 승인하기 전에는 예약 확정이 아닙니다. 승인 대기는 최대 24시간 유지됩니다. 앱·푸시 알림 없이 이 페이지에서 진행 상태를 확인합니다.</p>
+  {!state.isOwner&&state.mode==="approval"&&state.availability.length>0&&!hasActive?(
    <div className="owner-booking-form">
     <label>방문 날짜 <input aria-label="방문 날짜" type="date" min={todaySeoul()} value={date} onChange={e=>setDate(e.target.value)}/></label>
     <label>방문 시간
@@ -69,7 +70,8 @@ export default function RoomBookingPanel({rid,onUpdated}:{rid:string;onUpdated?:
     <button className="btn" disabled={!time||pending} type="button" onClick={()=>void send("request")}>{pending?"처리 중...":"방문 예약 요청"}</button>
     {state.available.length===0?<span className="meta">선택한 날짜에는 예약 가능한 시간이 없습니다.</span>:null}
    </div>
-  ):!state.isOwner?<p className="meta">방문 예약 시간이 아직 등록되지 않았거나 집주인이 직접 일정을 관리합니다. 채팅에서 문의해주세요.</p>:null}
+  ):!state.isOwner&&hasActive?<p className="meta">이미 신청하거나 확정한 예약이 있습니다. 변경하려면 아래 예약을 먼저 취소해 주세요.</p>
+  :!state.isOwner?<p className="meta">방문 예약 시간이 아직 등록되지 않았거나 집주인이 직접 일정을 관리합니다. 채팅에서 문의해주세요.</p>:null}
   {state.bookings.length>0?<div className="owner-booking-history">
    <strong>신청·확정 내역</strong>
    {state.bookings.slice(0,15).map(b=><div className="owner-booking-row" key={b.id}>

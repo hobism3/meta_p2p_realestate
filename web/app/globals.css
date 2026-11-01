@@ -990,3 +990,19 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
 .owner-error{color:#a32f25}
 .owner-success{color:#256b3d}
 @media(max-width:650px){.owner-list-grid{grid-template-columns:1fr}.owner-slot{grid-template-columns:1fr 1fr}.owner-slot>span{display:none}.owner-slot>button{grid-column:1/-1}.owner-hero{padding:20px}}
+
+/* Owner AI delegate: in-app owner decision inbox */
+.owner-attention{padding:24px;display:grid;gap:12px}
+.owner-attention-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.owner-attention-heading h2{font-size:19px;margin:6px 0}
+.owner-attention-count{display:inline-grid;place-items:center;min-width:26px;padding:3px 7px;background:#f4e8d1;color:#876129;border-radius:999px;font-size:12px}
+.owner-attention-empty{border:1px dashed #cbd9cb;background:#f7faf7;padding:15px;border-radius:10px;color:#53725a;font-size:13px}
+.owner-attention-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.owner-attention-item{background:#fffdf7;border:1px solid #e9ddc7;border-radius:14px;padding:15px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.owner-attention-top{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;font-size:13px}
+.owner-attention-top span{font-size:10px;background:#f8eacf;color:#8b6323;padding:3px 8px;border-radius:999px}
+.owner-question{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;border-left:3px solid #e9c995;padding:9px;color:#514a3c;background:#fff6e5}
+.owner-attention-item label{font-size:12px;font-weight:700;color:#536458}
+.owner-attention-item textarea{min-height:76px;resize:vertical;width:100%;border:1px solid #d4ded7;border-radius:10px;padding:9px;font:inherit;color:#233e33;background:white}
+.owner-attention-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+@media(max-width:700px){.owner-attention-list{grid-template-columns:1fr}.owner-attention{padding:15px}}

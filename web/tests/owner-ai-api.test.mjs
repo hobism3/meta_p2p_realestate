@@ -50,3 +50,64 @@ test("소유자만 설정을 조회·수정하고 기본 AI는 꺼져 있다",as
  const afterInvalid=await api(path);assert.equal(afterInvalid.body.availability.length,1);
  assert.equal((await api(path,"GET",null)).status,401);
 });
+
+test("실제 매물: 등록 사실 응답 → 직접 확인 요청 → 집주인 답변 → 비활성화",async()=>{
+ const create=await api("/api/deals/"+listingId+"/rooms","POST",stranger,{});
+ assert.equal(create.status,201,JSON.stringify(create.body));
+ const roomId=create.body.id;
+ const meta=await api("/api/rooms/"+roomId,"GET",stranger);
+ assert.equal(meta.body.demo,false);
+ assert.equal(meta.body.ownerAgentEnabled,true);
+ assert.equal(meta.body.viewerRole,"visitor");
+
+ const send=async(text)=>{
+  const x=await api("/api/rooms/"+roomId+"/messages","POST",stranger,{text});
+  assert.equal(x.status,201,JSON.stringify(x.body));return x.body.id;
+ };
+ const invoke=async(trigger,who=stranger)=>api("/api/rooms/"+roomId+"/owner-agent/invoke","POST",who,{trigger_message_id:trigger});
+ const pet=await send("고양이 키워도 되나요?");
+ const answered=await invoke(pet);
+ assert.equal(answered.status,200,JSON.stringify(answered.body));
+ assert.equal(answered.body.outcome,"replied");
+ assert.equal(answered.body.requestId,null);
+ const dup=await invoke(pet);
+ assert.equal(dup.body.messageId,answered.body.messageId);
+ const msgs=await api("/api/rooms/"+roomId+"/messages","GET",stranger);
+ assert.equal(msgs.body.filter(m=>m.author_type==="owner_agent").length,1);
+ assert.match(msgs.body.find(m=>m.id===answered.body.messageId).text,/고양이 가능/);
+
+ const price=await send("보증금 올려서 월세 깎아줄 수 있나요?");
+ const review=await invoke(price);
+ assert.equal(review.body.outcome,"handoff");
+ assert.ok(review.body.requestId);
+ assert.match((await api("/api/rooms/"+roomId+"/messages","GET",stranger)).body.find(m=>m.id===review.body.messageId).text,/집주인/);
+ assert.equal((await invoke(price)).body.requestId,review.body.requestId);
+ const inbox=await api("/api/owner/requests","GET",owner);
+ assert.equal(inbox.status,200);
+ assert.ok(inbox.body.some(r=>r.id===review.body.requestId && r.status==="pending"));
+ const otherInbox=await api("/api/owner/requests","GET",stranger);
+ assert.equal(otherInbox.body.length,0);
+ const answerPath="/api/owner/requests/"+review.body.requestId+"/answer";
+ assert.equal((await api(answerPath,"POST",stranger,{answer:"안 됩니다."})).status,404);
+ const reply=await api(answerPath,"POST",owner,{answer:"보증금 2,000만원 / 월세 75만원을 제안합니다. 확정은 별도 확인해 주세요."});
+ assert.equal(reply.status,200,JSON.stringify(reply.body));
+ assert.equal((await api(answerPath,"POST",owner,{answer:"중복"})).status,409);
+ const latest=await api("/api/rooms/"+roomId+"/messages","GET",stranger);
+ const ownerReply=latest.body.find(m=>m.id===reply.body.messageId);
+ assert.equal(ownerReply.author_type,"human");
+ assert.equal(ownerReply.user_id,"owner-a");
+ assert.match(ownerReply.text,/75만원/);
+ assert.equal((await api("/api/owner/requests","GET",owner)).body.find(r=>r.id===review.body.requestId).status,"answered");
+ assert.equal((await invoke(reply.body.messageId)).status,403);
+ assert.equal((await invoke(price,owner)).status,403);
+ assert.equal((await invoke(price,null)).status,401);
+
+ const disable=await api("/api/owner/listings/"+listingId+"/ai","PUT",owner,{
+  aiEnabled:false,visitMode:"approval",availability:[],answers:{pets:"",parking:"",notes:""},
+ });
+ assert.equal(disable.status,200);
+ const last=await send("주차 가능해요?");
+ const paused=await invoke(last);
+ assert.equal(paused.body.outcome,"disabled");
+ assert.equal(paused.body.messageId,null);
+});

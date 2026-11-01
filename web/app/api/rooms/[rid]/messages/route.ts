@@ -5,6 +5,7 @@ import { getDal } from "@/lib/dal";
 import { now } from "@/lib/db";
 import { getRoom, isRoomMember, type Room } from "@/lib/rooms";
 import type { Identity } from "@/lib/auth";
+import {tryRealJiptok} from "@/lib/real-jiptok-service";
 
 async function guard(
   req: Request,
@@ -48,6 +49,9 @@ export async function POST(req: Request, { params }: { params: { rid: string } }
     "INSERT INTO messages (id,listing_id,author,role,user_id,author_type,room_id,text,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
     [id, r.room.listing_id, r.identity.name, "", r.identity.userId, "human", params.rid, text, now()],
   );
-  // 사람 메시지를 먼저 저장하고 끝낸다. AI 생성은 POST agent/invoke가 별도 단계로 처리한다.
+  // Real-room Jiptok is emitted server-side, not by a browser follow-up.
+  // No model call or consent is performed; duplicates are guarded in DB.
+  await tryRealJiptok(params.rid,{kind:"message",sourceId:id,actorId:r.identity.userId});
+  // The owner's AI delegate remains a separate, opt-in response mechanism.
   return ok({ id }, 201);
 }

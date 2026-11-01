@@ -270,7 +270,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
     void refreshConditions();
     // 상대방 메시지를 5초마다 갱신한다.
     const t = setInterval(refresh, 5000);
-    return () => clearInterval(t);
+    const condTimer=setInterval(()=>{void refreshConditions();}, 8000);
+    return () => {clearInterval(t);clearInterval(condTimer);};
   }, [params.rid, refresh, refreshConditions]);
 
   useEffect(() => {
@@ -507,8 +508,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           <p>{meta?.demo
             ? "집톡이도 그룹채팅에 참여해 조건과 남은 확인 절차를 챙깁니다."
             : meta?.ownerAgentEnabled
-              ? "집주인이 설정한 AI 대리인이 등록된 사실을 안내합니다. 가격 변경과 계약 확정은 당사자가 확인해야 합니다."
-              : "집주인과 방문자가 직접 대화합니다. 거래 조건은 두 사람이 각각 확인해야 합니다."}</p>
+              ? "집톡이가 그룹채팅에서 다음 거래 절차를 챙기고, 집주인 AI 대리인은 등록된 사실만 안내합니다. 양측의 조건 확인은 직접 진행합니다."
+              : "집주인·방문자·집톡이가 함께 대화합니다. 집톡이는 절차를 안내하고, 실제 합의는 두 분의 확인 카드로만 확정됩니다."}</p>
         </div>
         <div className="deal-hero-symbol" aria-hidden="true">
           <span className="deal-hero-house">⌂</span>
@@ -521,9 +522,9 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             <div className="conversation-identity">
               <span className="conversation-avatar" aria-hidden="true">⌂</span>
               <div>
-                <strong>{meta?.demo ? participant + " · 집톡이" : participant}</strong>
+                <strong>{meta?.demo ? participant + " · 집톡이" : participant + " · 집톡이"}</strong>
                 <span className="conversation-status"><i aria-hidden="true" />
-                  {meta?.demo ? "그룹채팅 · 임대인·임차인·집톡이 (AI 시연)" : meta?.ownerAgentEnabled ? "실거래 · 집주인 AI 대리 응대" : "실거래 · 당사자 직접 대화"}
+                  {meta?.demo ? "그룹채팅 · 임대인·임차인·집톡이 (AI 시연)" : meta?.ownerAgentEnabled ? "실거래 그룹채팅 · 집주인 AI 대리인 · 집톡이" : "실거래 그룹채팅 · 집주인 · 방문자 · 집톡이"}
                 </span>
               </div>
             </div>
@@ -536,7 +537,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           {error ? <p className="error" role="alert">{error}</p> : null}
           <div className="msgs conversation-feed" ref={msgsRef} role="log" aria-label="거래 대화" aria-relevant="additions text">
             <div className="conversation-day-label"><span>메시지 · {meta?.demo ? "그룹채팅 시연"
-  : meta?.ownerAgentEnabled ? "실제 매물 · 집주인 AI 대리 응대" : "개인 간 거래"}</span></div>
+  : meta?.ownerAgentEnabled ? "실거래 · 집주인 AI · 집톡이" : "실거래 · 집톡이와 함께"}</span></div>
             {meta?.demo ? (
               <section className="jiptok-progress" aria-label="집톡이 진행 현황">
                 <strong>✦ 집톡이가 챙기는 거래 진행</strong>
@@ -637,8 +638,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           <p className="conversation-privacy">{meta?.demo
             ? "집톡이는 남은 확인 사항을 챙깁니다. 조건과 방문은 당사자 확인 후 확정되며, AI 시연 동의는 실제 계약이 아닙니다."
             : meta?.ownerAgentEnabled
-              ? "AI 대리인은 집주인이 등록한 사실만 안내합니다. 가격 변경·방문 예약·계약은 AI가 확정하지 않으며, 확인이 필요한 사항은 집주인에게 전달됩니다."
-              : "이 거래방은 두 당사자가 직접 대화합니다. 거래 조건과 일정의 확정은 양측이 확인해야 합니다."}</p>
+              ? "집주인 AI 대리인은 등록된 사실만 안내합니다. 집톡이는 대화의 다음 확인 사항을 챙기고, 두 분의 동의나 집주인 승인 없이 합의를 확정하지 않습니다."
+              : "집톡이는 미확인 조건과 다음 절차를 안내합니다. 가격·생활 조건은 양측의 확인 카드 동의, 방문은 집주인 승인 이후에만 확정됩니다."}</p>
         </section>
         {panelOpen ? (
           <aside className="card drawer open" aria-label="거래 현황 상세">

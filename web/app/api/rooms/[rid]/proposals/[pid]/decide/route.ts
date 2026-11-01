@@ -2,6 +2,7 @@ import { bad, guardWrite, notFound, ok, readJson } from "@/lib/api";
 import { authenticate } from "@/lib/auth";
 import { getRoom, isRoomMember } from "@/lib/rooms";
 import { decideProposal } from "@/lib/agreement-service";
+import {tryRealJiptok} from "@/lib/real-jiptok-service";
 
 /**
  * VS-4C 합의 응답. 인증 토큰의 사용자 ID로만 기록한다(타인 위조 금지).
@@ -28,5 +29,7 @@ export async function POST(req: Request, { params }: { params: { rid: string; pi
     typeof version === "number" ? version : undefined,
   );
   if (!r.ok) return ok({ error: r.error }, r.status);
+  if(r.status==="agreed"||r.status==="refused")
+    await tryRealJiptok(params.rid,{kind:"proposal-decided",sourceId:params.pid,actorId:a.identity.userId});
   return ok({ id: params.pid, status: r.status, version: r.version });
 }

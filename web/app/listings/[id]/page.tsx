@@ -5,6 +5,7 @@ import { formatPrice, type Listing } from "../../../lib/listings";
 import { groupListingFeatures, initialTerms, listingPhoto, listingPhotoAlt } from "../../../lib/listing-presentation";
 import { getAccessToken } from "../../../lib/client-auth";
 import { createRoom, findListing, loadMyRooms } from "../../../lib/store";
+import ListingReportPanel from "../../../components/ListingReportPanel";
 
 export default function DetailPage({ params }: { params: { id: string } }) {
   const [listing, setListing] = useState<Listing | null>(null);
@@ -117,6 +118,14 @@ export default function DetailPage({ params }: { params: { id: string } }) {
           );
         })()}
       </section>
+      <section className="card detail-info-card" aria-label="권리관계 독립 확인">
+        <h2>거래 전 권리관계 확인</h2>
+        <p>등기사항증명서는 소유자가 아니어도 직접 열람할 수 있습니다. 주소를 대법원 인터넷등기소에 입력해 발급 시점이 최근인지 확인하세요. 매물 게시자가 실제 계약 권한을 가진 사람인지는 별도 신원·위임장 대조가 필요합니다.</p>
+        <p className="meta">표제부: 주소·건물·면적 / 갑구: 소유권·압류·가압류·신탁 / 을구: 근저당·전세권 등. 선순위 임차인 보증금, 세금 체납, 건축물대장 등은 등기부만으로 확인되지 않을 수 있습니다.</p>
+        <a className="btn ghost" href="https://www.iros.go.kr/" target="_blank" rel="noopener noreferrer">대법원 인터넷등기소에서 직접 열람 ↗</a>
+        <a className="btn ghost" href="/registry/check">등기부 확인 항목 체크리스트 →</a>
+        <p className="meta">이 링크는 공식 사이트로 이동할 뿐, 플랫폼이 등기기록을 조회하거나 진위·안전을 보증하는 것이 아닙니다.</p>
+      </section>
       <section className="card detail-info-card">
         <h3>게시자 확인 상태</h3>
         <p>
@@ -127,7 +136,7 @@ export default function DetailPage({ params }: { params: { id: string } }) {
         {!isCustom ? <p className="demo-note">이 매물은 합성 데이터입니다. AI 상대방과 조건 협의를 연습할 수 있으며 실제 계약·예약은 진행되지 않습니다.</p> : null}
         <div className="detail-footer-actions">
           {isCustom && <a className="btn ghost" href={`/register?edit=${listing.id}`}>수정하기</a>}
-          <p className="meta">오류 신고 접수·처리 기능은 아직 제공하지 않습니다. 화면 내 확인만으로 신고가 접수되지 않으며, 게시 정보는 독립적으로 확인해야 합니다.</p>
+          <ListingReportPanel listingId={listing.id}/>
         </div>
       </section>
     </div>

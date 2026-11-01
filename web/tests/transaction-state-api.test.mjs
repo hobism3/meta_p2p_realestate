@@ -54,13 +54,21 @@ test("고양이 대화는 미확정, 옵션 카드 양쪽 동의 후에만 일�
  const endpoint="/api/rooms/"+roomId+"/transaction-state";
  assert.equal((await api("/api/rooms/"+roomId+"/messages","POST",owner,{text:"고양이 한 마리는 괜찮습니다."})).status,201);
  const before=await api(endpoint);
- assert.equal(stage(before.body,"living").status,"discussing");
+ // Stage 2: an explicit owner allowance creates a PENDING card automatically.
+ // This is still not an agreement until both human participants click agree.
+ assert.equal(stage(before.body,"living").status,"pending");
  assert.equal(stage(before.body,"living").confirmedValue,null);
+ const generated=await api("/api/rooms/"+roomId+"/proposals");
+ const auto=generated.body.proposals.find(p=>p.name==="옵션");
+ assert.ok(auto);
+ assert.equal(auto.status,"proposed");
+ assert.ok(auto.card_msg_id);
  const proposed=await api("/api/rooms/"+roomId+"/proposals/create","POST",tenant,{
   name:"옵션",value:"고양이 한 마리 허용",
  });
  assert.equal(proposed.status,201,JSON.stringify(proposed.body));
  const p=proposed.body;
+ assert.equal(p.id,auto.id,"duplicate manual request reuses the pending card");
  const pending=await api(endpoint);
  assert.equal(stage(pending.body,"living").status,"pending");
  assert.equal(stage(pending.body,"living").confirmedValue,null);

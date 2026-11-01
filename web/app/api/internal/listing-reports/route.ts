@@ -13,7 +13,7 @@ async function moderator(req:Request){
 
 export async function GET(req:Request):Promise<Response>{
  const guard=guardRead(req);if(guard)return guard;
- const mod=await moderator(req);if("error" in mod)return mod.error;
+ const mod=await moderator(req);if("error" in mod && mod.error)return mod.error;
  const rows=await getDal().all(
   `SELECT r.id,r.listing_id,r.category,r.status,r.created_at,r.updated_at,l.title AS listing_title
    FROM listing_reports r LEFT JOIN custom_listings l ON l.id=r.listing_id
@@ -25,7 +25,7 @@ export async function GET(req:Request):Promise<Response>{
 }
 export async function PATCH(req:Request):Promise<Response>{
  const guard=guardWrite(req);if(guard)return guard;
- const mod=await moderator(req);if("error" in mod)return mod.error;
+ const mod=await moderator(req);if("error" in mod && mod.error)return mod.error;
  const parsed=await readJson(req);if("err" in parsed)return parsed.err;
  const b=parsed.value;
  if(typeof b.id!=="string"||!["triaged","closed"].includes(String(b.status)))

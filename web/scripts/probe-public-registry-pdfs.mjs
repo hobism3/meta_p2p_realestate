@@ -13,6 +13,7 @@ import {createHash} from "node:crypto";
 import {getDocument} from "pdfjs-dist/legacy/build/pdf.mjs";
 import {reconstructPdfText,PDF_TEXT_MAX_BYTES,PDF_TEXT_MAX_PAGES,PDF_TEXT_MAX_ITEMS_PER_PAGE} from "../lib/registry-pdf-layout.ts";
 import {extractRegistryText} from "../lib/registry-text-extraction.ts";
+import {auditIndependentRightsRows} from "../lib/registry-independent-row-audit.ts";
 
 const manifest=JSON.parse(await readFile(new URL("../tests/fixtures/registry-public-sources.v1.json",import.meta.url),"utf8"));
 const corpus=[
@@ -78,6 +79,7 @@ async function probePdf(bytes){
   if(!result.text)
    return {status:"nonreconstructable",pages:doc.numPages,textPages};
   const parsed=extractRegistryText(result.text);
+  const independentAudit=auditIndependentRightsRows(result.text,parsed);
   // Metamorphic check on real, publisher-hosted PDFs: the geometry-to-row
   // projection MUST not depend on input glyph enumeration order or absolute
   // x/y coordinate origins. Uses the same source bytes, no external labels.
@@ -108,6 +110,10 @@ async function probePdf(bytes){
    amountsWithExactManwon:parsed.candidates.filter(c=>c.entry.kind==="mortgage"&&c.entry.claimMaximumManwon!==null).length,
    mortgageTotalManwon,
    kinds,documentKind:parsed.documentKind,
+   independentObservedRightRows:independentAudit.observedRightRows,
+   independentMissingInPrimary:independentAudit.missingInPrimary,
+   independentNotConfirmed:independentAudit.notIndependentlyConfirmed,
+   independentComplexSubranks:independentAudit.complexSubrankRows,
    metamorphic:{reorderStable,offsetStable}};
  }catch(err){
   // Only a safe JavaScript error class and this script's stack line are
@@ -134,6 +140,8 @@ function evaluatePublisherExpectation(source,measured){
   return {status:"FAIL",reason:"missing_text_page"};
  if(!measured.metamorphic?.reorderStable||!measured.metamorphic?.offsetStable)
   return {status:"FAIL",reason:"pdf_layout_transform_instability"};
+ if(measured.independentMissingInPrimary>0)
+  return {status:"FAIL",reason:"independent_visible_right_omitted"};
  if(Number.isSafeInteger(expectation.totalCandidates)&&measured.candidates!==expectation.totalCandidates)
   return {status:"FAIL",reason:"unexpected_candidates"};
  for(const [kind,min] of Object.entries(expectation.atLeast??{})){

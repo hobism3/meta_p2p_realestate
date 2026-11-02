@@ -6,6 +6,7 @@ import "./registry-casebook.test.mjs";
 import "./registry-text-extraction.test.mjs";
 import "./registry-extraction-transfer.test.mjs";
 import "./registry-pdf-layout.test.mjs";
+import "./registry-published-format.test.mjs";
 
 const base=()=>({issuedOn:"2026-11-01",asOfDate:"2026-11-01",rights:[]});
 const entry=(overrides={})=>({

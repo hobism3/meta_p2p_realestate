@@ -30,7 +30,7 @@ export function sanitizeSharedRights(raw:unknown):SharedRight[]|null{
 export function safePublicBriefRow(row:Record<string,unknown>|undefined):{
  available:boolean;source:string;verified:false;issuedOn:string;sharedAt:string;rights:SharedRight[];note:string;
 }{
- const base={available:false,source:BRIEF_SOURCE,verified:false,issuedOn:"",sharedAt:"",rights:[] as SharedRight[],note:MISSING_RIGHTS_NOTE};
+ const base={available:false,source:BRIEF_SOURCE,verified:false as const,issuedOn:"",sharedAt:"",rights:[] as SharedRight[],note:MISSING_RIGHTS_NOTE};
  if(!row)return base;
  try{
   const parsed=JSON.parse(String(row.rights_json??"[]")) as unknown;

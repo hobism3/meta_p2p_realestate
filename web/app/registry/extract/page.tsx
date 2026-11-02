@@ -1,5 +1,6 @@
 "use client";
-import {useEffect,useMemo,useState} from "react";
+import {useEffect,useMemo,useRef,useState} from "react";
+import {extractRegistryPdfLocally} from "../../../lib/registry-pdf-local-reader";
 import samples from "../../../tests/fixtures/registry-text-layer.v1.json";
 import {
  extractRegistryText,REGISTRY_TEXT_MAX_CHARS,
@@ -52,6 +53,11 @@ export default function LocalRegistryTextExtractor(){
  const [error,setError]=useState("");
  const [chosenExample,setChosenExample]=useState("");
  const [busy,setBusy]=useState(false);
+ const [pdfProgress,setPdfProgress]=useState("");
+ const [pdfWarnings,setPdfWarnings]=useState<string[]>([]);
+ const [pdfStats,setPdfStats]=useState("");
+ const [incompletePdf,setIncompletePdf]=useState(false);
+ const requestId=useRef(0);
  useEffect(()=>{
   if(!pdf){setLocalUrl("");return;}
   const url=URL.createObjectURL(pdf);
@@ -63,26 +69,54 @@ export default function LocalRegistryTextExtractor(){
  const loadSample=(id:string)=>{
   const sample=sampleCases.find(c=>c.id===id);
   if(!sample)return;
+  requestId.current++;
   setPdf(null);setChosenExample(id);setText(sample.text);
-  setParsed(null);setReviews({});setError("");
+  setParsed(null);setReviews({});setError("");setBusy(false);
+  setPdfProgress("");setPdfWarnings([]);setPdfStats("");setIncompletePdf(false);
  };
  const clear=()=>{
+  requestId.current++;
   setPdf(null);setLocalUrl("");setText("");setParsed(null);setReviews({});
-  setChosenExample("");setError("");
+  setChosenExample("");setError("");setBusy(false);setPdfProgress("");
+  setPdfWarnings([]);setPdfStats("");setIncompletePdf(false);
  };
  const choosePdf=async(file:File|null)=>{
-  setPdf(null);setError("");setParsed(null);setReviews({});setChosenExample("");
-  if(!file)return;
+  const ticket=++requestId.current;
+  setPdf(null);setText("");setError("");setParsed(null);setReviews({});setChosenExample("");
+  setPdfProgress("");setPdfWarnings([]);setPdfStats("");setIncompletePdf(false);
+  if(!file){setBusy(false);return;}
   if(!/\.pdf$/i.test(file.name)||file.size>8*1024*1024||file.size<100){
    setError("8MB 이하의 PDF만 브라우저에서 열 수 있습니다. 파일은 전송되지 않았습니다.");
    return;
   }
-  const header=new Uint8Array(await file.slice(0,5).arrayBuffer());
-  if(String.fromCharCode(...Array.from(header))!=="%PDF-"){
-   setError("PDF 파일의 기본 형식이 일치하지 않습니다.");
-   return;
+  setPdf(file);setBusy(true);setPdfProgress("PDF.js 로컬 텍스트층 준비 중");
+  try{
+   const layout=await extractRegistryPdfLocally(file,(n,total)=>{
+    if(requestId.current===ticket)setPdfProgress(n+"/"+total+"페이지 텍스트 복원 중");
+   });
+   if(requestId.current!==ticket)return;
+   setPdfWarnings(layout.warnings);
+   setPdfStats(layout.pages+"페이지 · "+layout.items+"개 문자 객체 · "+layout.lines+"개 복원 행");
+   if(!layout.text.trim()||layout.items===0){
+    setError("PDF에서 선택 가능한 글자를 찾지 못했습니다. 스캔형 문서는 현재 OCR을 지원하지 않습니다.");
+    return;
+   }
+   setText(layout.text);
+   if(layout.pagesWithoutText.length>0){
+    setIncompletePdf(true);
+    setError("텍스트층이 없는 페이지가 있습니다. 누락된 권리관계를 배제할 수 없어 자동 분석·전달을 중단합니다.");
+    return;
+   }
+   const result=extractRegistryText(layout.text);
+   setParsed(result);
+   if(result.documentKind==="unrecognized")
+    setError("PDF 텍스트는 추출했지만 갑구·을구 구조를 확인하지 못했습니다. 원문을 직접 확인하세요.");
+   setPdfProgress("브라우저 로컬 텍스트 추출 완료");
+  }catch{
+   if(requestId.current===ticket)setError("PDF 로컬 텍스트 추출에 실패했습니다. 암호화·파손·스캔본이거나 지원하지 않는 PDF일 수 있습니다.");
+  }finally{
+   if(requestId.current===ticket)setBusy(false);
   }
-  setPdf(file);
  };
  const parse=()=>{
   if(busy)return;

@@ -1,0 +1,97 @@
+{
+  "schema": "public-registry-corpus-sources-v1",
+  "collectedAt": "2026-11-02",
+  "handling": "External training PDFs are fetched into ephemeral CI memory only. No raw PDF, owner/person name, address, national ID, extracted page text or image is committed or printed.",
+  "references": [
+    {
+      "id": "DANGDANG-NORMAL",
+      "publisher": "당당",
+      "url": "https://dangdang.io/blog/registry-samples/normal.pdf",
+      "landing": "https://dangdang.io/blog/registry-document-guide",
+      "kind": "explicit_educational_fiction",
+      "structure": "normal",
+      "expectedDescription": "교육용 가상 무담보 정상 예시",
+      "sha256": "2ddff3f07aa134c04456685db796ffb8029e007159eabc3c07c6c0fad1e87b50",
+      "priorObservedBytes": 908854,
+      "distribution": "source-link-only"
+    },
+    {
+      "id": "DANGDANG-PROVISIONAL",
+      "publisher": "당당",
+      "url": "https://dangdang.io/blog/registry-samples/provisional-attachment.pdf",
+      "landing": "https://dangdang.io/blog/registry-document-guide",
+      "kind": "explicit_educational_fiction",
+      "structure": "provisional_seizure",
+      "expectedDescription": "교육용 가압류 예시",
+      "distribution": "source-link-only"
+    },
+    {
+      "id": "DANGDANG-MORTGAGE",
+      "publisher": "당당",
+      "url": "https://dangdang.io/blog/registry-samples/mortgage-60.pdf",
+      "landing": "https://dangdang.io/blog/registry-document-guide",
+      "kind": "explicit_educational_fiction",
+      "structure": "mortgage_multi",
+      "expectedDescription": "교육용 가상 근저당 채권최고액 합계 예시(블로그의 가정: 2억9천만원)",
+      "distribution": "source-link-only"
+    },
+    {
+      "id": "DANGDANG-MULTI",
+      "publisher": "당당",
+      "url": "https://dangdang.io/blog/registry-samples/multi-risk.pdf",
+      "landing": "https://dangdang.io/blog/registry-document-guide",
+      "kind": "explicit_educational_fiction",
+      "structure": "compound",
+      "expectedDescription": "교육용 가압류·경매·복수 근저당 혼합 예시",
+      "distribution": "source-link-only"
+    },
+    {
+      "id": "DANGDANG-FIXED-DATE",
+      "publisher": "당당",
+      "url": "https://dangdang.io/blog/registry-samples/lease-fixed-date-only.pdf",
+      "landing": "https://dangdang.io/blog/registry-document-guide",
+      "kind": "explicit_educational_fiction",
+      "structure": "fixed_date_not_recorded",
+      "expectedDescription": "교육용 확정일자와 등기 권리의 차이 예시",
+      "distribution": "source-link-only"
+    }
+  ],
+  "otherPublicPdfExamples": [
+    {
+      "id": "EBS-LEGAL-2008",
+      "publisher": "EBS",
+      "url": "https://wdown.ebsi.co.kr/W61001/01exam/20080604/s_bns_mun.pdf",
+      "kind": "published_educational_exam",
+      "scope": "2009학년도 6월 법과사회 모의평가 중 등기부 가상 발문; PDF 전체는 시험지이므로 실제 증명서로 오인 금지",
+      "distribution": "source-link-only"
+    },
+    {
+      "id": "JOBGO-GA-2017",
+      "publisher": "부동산등기실무 교육",
+      "url": "https://cont0.jobgo.ne.kr/contents/K353TQ/pc/down/66.pdf",
+      "kind": "published_educational_training",
+      "scope": "가등기·담보가등기·말소·본등기 등기기록례; 제3자 자료 저작권 확인 전 원문 재배포 금지",
+      "distribution": "source-link-only"
+    },
+    {
+      "id": "KOCW-HANSUNG",
+      "publisher": "한성대학교 KOCW",
+      "url": "https://kocw-n.xcache.kinxcdn.com/data/document/2025/hansung/kimhyunju0623/12-2.pdf",
+      "kind": "published_educational_training",
+      "scope": "표제부/갑구/을구 사진 또는 이미지가 포함된 교육용 PDF; 표 이미지는 텍스트층이 아닐 수 있음",
+      "distribution": "source-link-only"
+    },
+    {
+      "id": "EDUSPA-RECORDS",
+      "publisher": "임의섭 공시법 강의자료",
+      "url": "https://att.eduspa.com/EtcData/board/4052/2017%20%EC%9E%84%EC%9D%98%EC%84%AD%20%EA%B3%B5%EC%8B%9C%EB%B2%95%20%EA%B0%95%EC%9D%98%EB%85%B8%ED%8A%B8.pdf",
+      "kind": "published_educational_training",
+      "scope": "부동산 등기기록례와 예제 테이블, 소유권/말소/근저당 실무 서식 형태 참고용",
+      "distribution": "source-link-only"
+    }
+  ],
+  "excludedActualRecords": {
+    "reason": "공개 검색에 실재 부동산 등기사항증명서 PDF도 있으나 개인 신원·주소·채권자 관계 등 개인정보/사생활이 드러날 수 있어 자동 수집·원본 재배포·Git 추적 대상으로 삼지 않음.",
+    "policy": "실제 파일을 적법하게 보유한 사용자가 로컬 P10에 직접 제공하는 경로와 공개 검색 결과의 임의 전송은 다름."
+  }
+}

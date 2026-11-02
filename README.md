@@ -88,6 +88,8 @@ Start with the Mock provider; real Meta calls require server-only `AGENT_PROVIDE
 - [P10 개발·실패 수정·병합/CI 기록](docs/registry-cases/P10_DEVELOPMENT_LOG_20261102.md)
 - [P11 공개 교육용 등기 원본 7개 확보·SHA 및 5/5 권리 타입 게이트 보고서](docs/registry-cases/P11_PUBLIC_PDF_SOURCE_AUDIT_20261102.md)
 - [P11 개발·검증·실패 수정 및 PR #31 병합 로그](docs/registry-cases/P11_DEVELOPMENT_LOG_20261102.md)
+- [P12 사용자 직접 라벨 없이 공개 웹 근거·교차 검증 설계](docs/registry-cases/P12_WEB_EVIDENCE_VALIDATION_20261102.md)
+- [P12 수집·검증·실패 수정 및 PR #32 병합 기록](docs/registry-cases/P12_DEVELOPMENT_LOG_20261102.md)
 
 > **배포 확인 필요 (2026-11-02):** P10 PR #29는 Git main 병합 및 CI 검증을 완료했지만 Vercel READY Production의 확인된 Git SHA는 그 이전입니다. [배포 정합성 Issue #30](https://github.com/hobism3/meta_p2p_realestate/issues/30) 해결 전까지 라이브 사이트에 최신 기능이 반영되었다고 보장하지 않습니다.
 

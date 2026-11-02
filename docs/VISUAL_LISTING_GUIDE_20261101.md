@@ -88,3 +88,14 @@
 - 최신 공식 문서 공개 기준 Muse Image 성공 출력 이미지 1장 $0.01, Muse Spark 1.3 입력 1M tokens $1.25 / 출력 $4.25(가격·이미지 토큰 사용량에 따라 달라짐). **상한 요금 보장이 아닌 참고 단가**. $15 예산을 소진하지 않도록 최초 1회 Vision만 관찰 후 나머지 실행 여부 결정.
 - 사용 문서: https://dev.meta.ai/docs/pricing-rate-limits / https://dev.meta.ai/docs/image-generation
 - 현재 상태: 스크립트 작성 IMPLEMENTED; 유료 모델 검증 BLOCKED(실행 환경에 키 없음). 기존 기능 CI 성공과 구분한다.
+
+
+## 2026-11-02 12:04 KST · Muse 실제 호출 요청 / 실행 상태
+- Meta 과금 호출 **0회**. 현재 세션 컨테이너에서 api.meta.ai DNS 연결 불가. Vercel 환경에는 MODEL_API_KEY가 있으나 이 도구가 안전한 인증 POST를 보내는 기능은 없음.
+- 비밀 URL/GET 기반 유료 호출 경로 생성 시도는 안전 정책상 차단됨. 배포하거나 공개 엔드포인트를 만들지 않음. '실 Muse 검증 완료' 주장 금지.
+- 단독 Visual Preview 브랜치에만 PHOTO_AI_ENABLED=true, PHOTO_AI_MAX_HOURLY=1 구성. Production 영향 없음. PHOTO_EMPTY_VIEW_ENABLED 미설정(비활성).
+- Vercel Preview dpl_2ZMThJzciremZGXxYEjXHyTnmcHG (commit 8f9dc76) READY. Preview GET /api/listings/photo-review 실확인: enabled=true, provider=meta, maxImagesPerHour=1. GET는 무과금.
+- 커밋 2989f1e의 Next 빌드에서 HOURLY_LIMIT 식별자 오류 발견, 8f9dc76에서 hourlyLimit()으로 수정하여 READY. 실패 빌드에서 모델 호출 0.
+- 사진 등록 흐름에 합성 시연 이미지 직접 가져오기 기능 추가: web/public/images/demo-living-warm.webp. 사진 선택/마스킹/동의 전 Meta 호출 0회 검증 E2E 추가. 최신 commit 7edb6a5의 CI는 실행 중, PASS 확정 전.
+- 실제 1회 Muse 호출은 사용자 인증된 Preview UI에서 '가상 시연 사진 불러오기' → 외부 전송 동의 → '사진에서 옵션·공간 자동 정리'로 요청 가능. **실행자 로그인을 요구하며, 본 세션에서는 실행하지 못함**. 추가 재시도 및 Muse Image 호출 없음.
+- 서버리스 인스턴스별 quota는 전역 과금 상한이 아니므로 여러 인스턴스에 걸친 1회 절대보장은 아님. 모델 품질·사용량 미측정.

@@ -28,6 +28,9 @@ export interface Listing {
   verification: Verification;
   synthetic: boolean;
   editable: boolean;
+  /** Only owner-approved, re-encoded published photo; absent when none. */
+  coverPhotoUrl?: string;
+  photoCount?: number;
 }
 
 export interface Filters {

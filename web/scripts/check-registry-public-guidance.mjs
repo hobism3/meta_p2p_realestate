@@ -17,6 +17,8 @@ const required=[
 ];
 const optional=[
  {id:"HF-CHECKLIST",hostname:"corp.hf.go.kr",literals:["등기부등본","근저당","가압류"]},
+ {id:"HUG-TRUST",hostname:"www.khug.or.kr",literals:["신탁등기","갑구","신탁회사","동의"]},
+ {id:"HUG-PROMISED-REMOVAL",hostname:"m.khug.or.kr",literals:["근저당","신탁","말소","특약"]},
 ];
 async function readPublicHtml(source,expectedHost){
  const url=new URL(source.url);

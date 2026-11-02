@@ -42,3 +42,27 @@ P8의 권리관계 사례집과 P8 규칙 분석 앞에 **PDF에서 읽을 수 �
 - Python pypdf로 해당 합성 PDF의 텍스트층 **293자** 추출, 위 항목 한국어 Unicode 매칭 확인.
 - 이 과정에서 법원·당당 등의 외부 PDF 파일을 가져오거나 검증한 것이 아니다. 로컬 생성 합성 문서 기반 **PDF 텍스트층 추출 가능성**을 확인한 것이다. Git에는 PDF·폰트/원문 텍스트를 업로드하지 않았다.
 - CI 최초 빌드 오류: React 화면에서 `claimMaximumManwon?: number|null`를 `===null`만 체크해 `undefined` 타입 가능성을 놓침. `==null`로 처리하도록 수정(commit `012df79b`). 다음 CI로 재검증한다.
+
+## 2026-11-02 · P9 검증 및 main 병합 확정
+
+- P9 PR: [#27](https://github.com/hobism3/meta_p2p_realestate/pull/27). 브랜치 `feat/p9-local-registry-evidence-extraction-20261102`, 테스트된 HEAD `1be8a13a`; `main` squash merge commit **`079ac0a747be4d514bd2539cf975273fd0f27ced`**.
+- HEAD `1be8a13a`의 `verify-fast` **SUCCESS**: Next.js production build PASS, Node unit + DAL **320/320 PASS**, API + READ_ONLY **206/206 PASS**. 신규 text-layer 15개 골든과 개인정보 차단·상태 수동확정·1회성 전달 테스트 포함.
+- E2E는 `main` 병합 시점 GitHub에서 **in_progress**였으며, 사용자 요청에 따라 실제 2인 거래/실서비스 검증을 병합의 필수 조건으로 두지 않았다. 최종 자동 E2E 결과는 별도 조회해 후속 기록한다.
+- 병합 전 실제 Git PR #25(사진 가이드)와 #27(P9)의 changed filenames 비교에서 **교집합 0개**. P9는 사진 관련 코드, Meta 사진 전송 경로, 공유 `verify-fast.yml` 및 중앙 `DEVELOPMENT_LOG.md`를 수정하지 않음.
+
+### CI 실패/수정 이력 보존
+1. 브라우저의 `claimMaximumManwon?: number|null`를 null만 체크하여 TS compile fail → nullable optional 핸들링 수정 `012df79b`.
+2. PDF signature Uint8Array 스프레드에 ES5/downlevelIteration 제약 → `Array.from` 사용 `9859cf48`.
+3. 추출기 생성 코드의 주석 안에 잘못 들어간 literal backslash-n으로 변수가 주석처리되는 문제 → 실제 줄바꿈 교정 `e7c7878e`, `87f043bf`.
+4. Node strip TypeScript 실행에서 `registry-rights-analysis` 확장자 없는 런타임 의존성을 찾지 못함 → 타입 전용 import로 변경하고 명시적인 허용 권리종류 집합 적용 `1be8a13a`. 이후 320+206 PASS.
+5. 테스트를 통과시키기 위해 출처/금액/상태 관련 golden 기대값을 낮추거나 삭제하지 않았다.
+
+### 오프라인 자체 생성 PDF 검증
+- ReportLab 합성 PDF 1페이지(진짜 등기부/개인정보가 아님)를 렌더링하고 육안 검토. pypdf Unicode 텍스트 추출 성공, 권리 표 한국어 유지.
+- 같은 PDF를 `registry_pdf_text_local.py`의 로컬 실행 구조로 재검증: PDF 1페이지/텍스트 302자 출력, `0600` 파일 권한, 덮어쓰기 거부, 동의 플래그 없으면 실행 거부 확인. 테스트 출력 텍스트는 로컬에서 삭제했으며 Git에 원문 PDF/폰트를 올리지 않았다.
+- 원본 외부 교육용 PDF 5종의 실제 판독, 스캔본 OCR/취소선, 부동산의 법적 위험 판정, 정식 Meta 외부 모델 분석은 **미완료**.
+
+### 다음 최우선 개발 후보
+- 사용·재배포가 허용된 별도 합성 한국어 PDF를 정식 fixture로 확보해 **PDF 텍스트층 정확도**와 **의미 추출 정확도**를 분리 측정.
+- 가압류/압류/근저당/신탁/말소 취소선을 실제 이미지 레이아웃 좌표와 비교할 수 있는 브라우저 로컬 PDF 라이브러리 도입 및 검증. 현재 PDF 파서/추출 자리에 외부 CDN script를 주입하지 않음.
+- 원본 개인정보의 수집/외부전송 적법성, 실 본인·소유권 독립 인증, 실제 거래 E2E, 서비스 운영/법률 자문은 출시 전 별도 게이트로 유지.

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
 import { authHeaders } from "../lib/client-auth";
+import { PHOTO_DEMO_ASSETS } from "../lib/photo-demo-assets";
 import {
   imageDifferenceHash, nearDuplicateHash, photoQualityHints, recommendedPhotoRooms,
   photoCoverageMessages, photoOptionCandidates,
@@ -148,15 +149,20 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
     e.target.value = "";
     void addFiles(files);
   };
-  const loadSyntheticDemo = async () => {
+  const loadSyntheticDemo = async (example: typeof PHOTO_DEMO_ASSETS[number]) => {
     if (locked || items.length >= 6) return;
+    if (items.some((item) => item.name === example.fileName)) {
+      setError("이미 추가한 예시 사진입니다."); return;
+    }
     try {
-      const response = await fetch("/images/demo-living-warm.webp", { cache: "force-cache" });
-      if (!response.ok) throw new Error("합성 시연 이미지를 불러오지 못했어요.");
+      const response = await fetch(example.src, { cache: "force-cache" });
+      if (!response.ok || !(response.headers.get("content-type") ?? "").includes("image/jpeg")) {
+        throw new Error("예시 사진을 불러오지 못했어요.");
+      }
       const bytes = await response.blob();
-      await addFiles([new File([bytes], "synthetic-demo-living.webp", { type: "image/webp" })]);
+      await addFiles([new File([bytes], example.fileName, { type: "image/jpeg" })]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "시연 이미지를 사용할 수 없어요.");
+      setError(err instanceof Error ? err.message : "예시 사진을 사용할 수 없어요.");
     }
   };
 
@@ -349,8 +355,19 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
         <input type="file" aria-label="우리 집 사진 추가" accept="image/jpeg,image/png,image/webp"
           multiple onChange={upload} disabled={locked} />
       </label>
-      <button type="button" className="btn ghost" disabled={locked || items.length >= 6}
-        onClick={() => void loadSyntheticDemo()}>가상 시연 사진 불러오기</button>
+      <div className="photo-guide-sample-list" aria-label="매물 사진 예시">
+        {PHOTO_DEMO_ASSETS.map((example) => (
+          <button key={example.id} type="button" className="photo-guide-sample"
+            aria-label={example.label + " 예시 사진 추가"}
+            disabled={locked || items.length >= 6 || items.some((item) => item.name === example.fileName)}
+            onClick={() => void loadSyntheticDemo(example)}>
+            <img src={example.src} alt="" loading="lazy" />
+            <strong>{example.label} 예시</strong>
+            <span>{example.hint}</span>
+          </button>
+        ))}
+      </div>
+      <p className="meta">사진은 실제 매물이 아닌 서로 다른 주택의 무료 스톡 이미지입니다. 예시를 고르는 것만으로 AI 분석은 시작되지 않습니다.</p>
       <p className="meta">선택한 사진은 자동으로 저장·게시되지 않아요. 등록된 매물의 집주인 관리 페이지에서 개인정보를 확인하고 게시용 사진만 따로 공개할 수 있습니다. AI 빈 공간 이미지는 게시하지 않습니다.</p>
 
       <div className="photo-guide-grid">

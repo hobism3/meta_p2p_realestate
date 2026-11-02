@@ -87,6 +87,8 @@ Start with the Mock provider; real Meta calls require server-only `AGENT_PROVIDE
 - [P10 PDF.js 로컬 자동 텍스트층·좌표 복원 개발 설계](docs/registry-cases/P10_PDF_AUTOMATIC_TEXTLAYER_20261102.md)
 - [P10 개발·실패 수정·병합/CI 기록](docs/registry-cases/P10_DEVELOPMENT_LOG_20261102.md)
 
+> **배포 확인 필요 (2026-11-02):** P10 PR #29는 Git main 병합 및 CI 검증을 완료했지만 Vercel READY Production의 확인된 Git SHA는 그 이전입니다. [배포 정합성 Issue #30](https://github.com/hobism3/meta_p2p_realestate/issues/30) 해결 전까지 라이브 사이트에 최신 기능이 반영되었다고 보장하지 않습니다.
+
 Historical roadmap and initial product specs are retained for project history; use these linked documents for the current state.
 
 **Limitations:** Seed listings are synthetic, but user-created listings can also appear and have **not** been verified for ownership, posting rights or truthfulness. No escrow/payment, electronic contract signing, title verification or legal advice is provided. Actual owner-approved visit booking records can exist, but do not guarantee a visit occurs. Bilateral cards record in-app acknowledgments and are not an electronic-contract service; actual chat/acceptance may nevertheless have legal effects depending on the facts. See [Korean legal deep dive](docs/legal/LEGAL_DEEP_DIVE_20261101.md).

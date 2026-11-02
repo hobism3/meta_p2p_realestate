@@ -148,7 +148,9 @@ export default function LocalRegistryTextExtractor(){
    if(payload.rights.length!==approved.length)throw new Error("정형 입력 검증 실패");
    // Not a source document, text, name or address: only allowlisted right fields.
    sessionStorage.setItem(REGISTRY_TRANSFER_KEY,JSON.stringify(payload));
-   window.location.assign("/registry/check");
+   const target=new URLSearchParams(window.location.search).get("listingId");
+   const valid=target&&/^[a-f0-9-]{36}$/i.test(target);
+   window.location.assign("/registry/check"+(valid?"?listingId="+encodeURIComponent(target):""));
   }catch{
    setError("이 브라우저에서 동일 탭의 입력 전달이 불가능합니다. 개인 정보가 있는 복사 텍스트를 별도로 저장하지 마세요.");
   }

@@ -169,6 +169,10 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
   };
 
   const remove = (id: number) => {
+    if (publishedIds.includes(id)) {
+      setError("이미 공개한 사진은 매물 관리의 갤러리에서 삭제할 수 있어요.");
+      return;
+    }
     const target = items.find((v) => v.id === id);
     untrack(target?.url); untrack(target?.emptyPreview);
     setItems((old) => old.filter((v) => v.id !== id));
@@ -324,7 +328,7 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
       const answer=await response.json() as {error?:string};
       if(!response.ok)throw new Error(answer.error||"사진 게시에 실패했습니다.");
       setPublishedIds(old=>[...old,item.id]);
-      setPublishMessage("게시용 변환 사진을 저장했습니다. 공개 매물 상세 페이지에서 확인할 수 있습니다.");
+      setPublishMessage("실제 매물 갤러리에 사진을 공개했어요. 삭제하거나 변경하려면 매물 관리로 이동해 주세요.");
       onPublished?.();
     }catch(e){setError(e instanceof Error?e.message:"사진 게시 실패");}
     finally{setPublishingId(null);}
@@ -468,7 +472,9 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
                 <button type="button" className="btn ghost" disabled={locked} onClick={() => { setMaskId(item.id); setMasks([]); }}>
                   개인 물품 가리기
                 </button>
-                <button type="button" className="btn ghost" disabled={locked} onClick={() => remove(item.id)}>{publishedIds.includes(item.id) ? "목록에서 제거" : "사진 제거"}</button>
+                {publishedIds.includes(item.id) && listingId ?
+                  <a className="btn ghost" href={"/owner/listings/" + encodeURIComponent(listingId) + "#owner-gallery"}>게시된 사진 관리 →</a> :
+                  <button type="button" className="btn ghost" disabled={locked} onClick={() => remove(item.id)}>사진 제거</button>}
                 {listingId ? <button type="button" className="btn photo-guide-publish"
                   disabled={locked||!publicationConsent||publishedIds.includes(item.id)||item.name.startsWith("synthetic-demo-")}
                   onClick={()=>void publishPhoto(item)}>

@@ -39,3 +39,33 @@
 - Meta 실호출/과금, 개인정보 보호 성능, 실제 사용자 E2E, 영속 사진 보관, 매물 상세 이미지 렌더는 **미완료**.
 - 사진 저장은 운영 스토리지 및 파일 접근제어 설계 후 별도 PR로 연결. 이번 컴포넌트의 객체 URL은 임시 로컬 값이며 공유·지속 불가.
 - 다음 단계: owner/listing 접근 권한 있는 비공개 스토리지, 제출 전 사진 관리, 자동 segmentation 선택적 추가, 이미지 기반 테스트셋/비전 성능 평가.
+
+
+## 2026-11-02 · 사용자 피드백 반영: 사진으로 옵션 추천 + 공간 누락 안내 + 가구 없는 모습
+
+### 사용자 경험 결정
+- 기존 'AI 공간·옵션 분석' 사진별 버튼/Meta 분석 독립 메뉴 **폐지**. 사용자는 사진 여러 장을 고른 후 '사진에서 옵션·공간 자동 정리' 한 번으로 안내를 받는다.
+- 추출 결과는 공간/보이는 물건/개인정보 노출 후보. 집주인에게 **사진에 보이는 가전·가구가 실제 제공 옵션인지** 확인받고 선택한 후보만 기존 '그 밖의 옵션' 필드에 반영한다.
+- 집에 없는 방을 단정하지 않고 **"욕실 사진은 아직 확인되지 않았어요. 해당 공간이 있다면 사진을 추가하면 좋아요."**처럼 조심스러운 촬영 가이드를 제공한다. 원룸 등은 거실과 침실을 별개 필수공간으로 가정하지 않는다. 일부 사진만 분석됐으면 범위 불완전 경고.
+- 기존 로컬 사진품질/중복검사는 부기능, 개인정보 불투명 사각형 가리기는 유지.
+- 별도 '가구 없는 모습 미리보기'는 **Meta Muse Image 단일 이미지 편집**으로 구현. 원본 vs AI 생성 결과 비교 + AI 가상 이미지 라벨 + 실제 면적/하자/벽/창문 등 사실 증거 아님 경고. 3D/가상 투어/집톡이 사진 채팅은 제외.
+- 가구 시뮬레이션은 AI에게 '고정 건축구조/손상/카메라 시점은 바꾸지 말라'고 지시하지만 기하 정확성을 보증할 수 없다. 가림 처리 영역을 생성 결과에 브라우저에서 다시 덮어 개인 정보 복원 위험을 완화한다. 완전 자동 가림/SAM은 검증 전 미구현.
+
+### 기술 구현 / 인터페이스
+- 기존 PR #25 브랜치 내 사진 시스템에만 수정을 적용. P8 [VISUAL_PARALLEL_INTERFACE_20261101](registry-cases/VISUAL_PARALLEL_INTERFACE_20261101.md) 준수. P8 권리/등기법칙, registry-check, 권리 goldens, 거래방은 전혀 변경하지 않는다.
+- \`web/lib/photo-guide.ts\`: 옵션 후보 허용목록, '사진에서 찾지 못한 공간' 결정적 메시지.
+- \`web/components/ListingPhotoGuide.tsx\`: 일괄 VLM 분석, 옵션 후보 체크 후 반영, 공간 누락 안내, 수동 가림, 전송별 동의, 원본/가구 제거 이미지 비교. 모든 픽셀과 생성 결과는 브라우저 임시 메모리에만 존재.
+- \`web/lib/photo-image.ts\`: JPEG data URL, 제한형 JSON, 안전한 WEBP 출력 검증, 이미지 편집 고정 프롬프트.
+- \`web/app/api/listings/photo-review/route.ts\`: 사진 1장당 VLM + 서버인증 + 요청 크기/전송 동의/enum 검증(기존 경로 유지). 클라이언트가 순차 호출. \`PHOTO_AI_ENABLED=true\`와 \`MODEL_API_KEY\` 필요, 계정/인스턴스 기준 시간당 6장.
+- \`web/app/api/listings/photo-empty-view/route.ts\`: 서버 전용 Muse Image \`POST /v1/images/edits\` JSON \`images:[{image_url: dataURL}]\`, \`muse-image-1.0\`, WEBP base64. \`PHOTO_EMPTY_VIEW_ENABLED=true\`와 \`MODEL_API_KEY\` 필요. 사진별 유료 버튼, 별도 동의, 계정/인스턴스 기준 2회/시간. 웹·이미지 검색 및 shell tool을 명시적으로 비활성화. 출력 최대 6MB 제한, 외부 URL/SVG를 브라우저에 노출하지 않음. 유료 분석 자동 재시도 없음.
+- 파일 영구보관/공개 사진 업로드, DB/매물 상세 갤러리 연결, 외부 실사 이미지 자동 판독, 실제 모델 호출은 **이번 범위 아님**. 현재 사진이 등록 시 저장된다고 착각하지 않도록 UX 설명을 유지.
+- 동의 없는 외부 전송 금지. 모델 입력에 주소, 소유자 신상, 등기 문서 원문 전달 금지. 이 동의는 등기부 PDF 외부 전송 동의가 아니다.
+
+### 검증 / 게이트
+- \`web/tests/photo-guide.test.mjs\`: 공간누락·원룸/복합 공간·옵션 허용목록.
+- \`web/tests/photo-image.test.mjs\`: 입력 JPEG/출력 WEBP / 외부 URL 거부 / 용량 / 마스킹 프롬프트.
+- \`web/tests/photo-empty-view-api.test.mjs\`: 독립 Mock Meta HTTP Server, 인증/동의/용량/정상 이미지 편집/호출한도; 실과금 0.
+- \`web/e2e/visual-listing-guide.spec.ts\`: Playwright 가상 이미지+route mock, 옵션선택/욕실 누락/원본/AI 비교 및 별도 동의. CI로 실행 전에는 PASS 미확정.
+- \`verify-fast\`에 신규 Node + API 스위트 등록, E2E는 전체 자동 실행.
+- 현재 단계 표기는 **IMPLEMENTED**. NEXT/빌드/Playwright/GitHub CI 종료코드 및 마지막 SHA 확인 후 DONE 승격.
+- 실제 Muse Spark 이미지 인식 정확도와 Muse Image 구조 보존/개인정보 악화 여부는 **별도 벤치마크 필요**. CI Mock/E2E 성공을 실제 VLM 정확도 증명으로 간주하지 않음.

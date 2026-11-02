@@ -1,9 +1,9 @@
-import {RIGHT_LABELS,type RightEntry,type RightKind,type RightStatus,type RightSection} from "./registry-rights-analysis";
+import type {RightEntry,RightKind,RightStatus,RightSection} from "./registry-rights-analysis";
 
 /** Only de-identified, user-approved structured rights cross a same-tab navigation. */
 export const REGISTRY_TRANSFER_KEY="directhome.registry.verified-input-transfer.v1";
 export type TransferPayload={schema:"local-reviewed-rights-v1";rights:RightEntry[]};
-const ALLOWED_KINDS=new Set(Object.keys(RIGHT_LABELS));
+const ALLOWED_KINDS=new Set<RightKind>(["mortgage","seizure","provisional_seizure","trust","lease_right","lease_registration","auction_commencement","provisional_registration","provisional_disposition","other"]);
 const ALLOWED_STATUSES=new Set<RightStatus>(["active","cancelled","unknown"]);
 const ALLOWED_SECTIONS=new Set<RightSection>(["갑구","을구","unknown"]);
 const safeNum=(n:unknown,max:number):number|null=>

@@ -122,6 +122,10 @@ try{
    x.fillStyle="#625651";x.fillRect(110,505,45,55);x.fillRect(460,505,45,55);
    x.fillStyle="#f3e8d7";x.fillRect(300,335,125,50);
    x.fillStyle="#434f57";x.fillRect(740,380,115,170);
+   // Avoid the byte-identical synthetic fixture hash used by prior rehearsals.
+   // A small canvas watermark makes this test file unique without personal data.
+   x.fillStyle="#2b4050";x.font="bold 16px sans-serif";
+   x.fillText("FICTIONAL DEMO IMAGE "+Date.now().toString(36),25,32);
    return c.toDataURL("image/jpeg",0.9).split(",")[1];
  });
  emptyPreview=await page.evaluate(()=>{

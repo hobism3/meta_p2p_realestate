@@ -11,6 +11,7 @@ import {
 } from "../../lib/register-wizard";
 import RegistryImport from "../../components/RegistryImport";
 import ListingPhotoGuide from "../../components/ListingPhotoGuide";
+import { useUiLocale } from "../../lib/ui-locale";
 
 const STORAGE_KEY = "directhome.register.wizard.v1";
 const NUMBER_FIELDS = new Set<keyof RegisterDraft>(["deposit", "rent", "salePrice", "fee", "area"]);
@@ -21,7 +22,14 @@ const STAGE_CONTENT = [
   { kicker: "03 · THE DETAILS", title: "생활 정보를 조금 더 알려주세요.", desc: "입주 일정과 옵션을 추가하면 더 좋은 문의로 이어질 수 있어요." },
   { kicker: "04 · ONE LAST LOOK", title: "등록 전에 한 번만 확인해 주세요.", desc: "입력한 정보를 검토하세요. 마지막 버튼을 누르기 전에는 게시되지 않습니다." },
 ] as const;
-
+const STAGE_EN = [
+  ["The easiest way to introduce your home","If you have a registry PDF, prefill draft fields. You can also start without one."],
+  ["Tell us about the space","Enter the basic property information visitors need."],
+  ["What are your terms?","Choose a transaction type and enter your preferred amounts."],
+  ["Add details and photos","Show availability, amenities, and room photos."],
+  ["Review before saving","Check each field. Nothing is published until you submit."],
+] as const;
+const STEPS_EN = ["Get started","Home","Price","Details & photos","Review"] as const;
 function labelValue(value: string, empty = "아직 입력 전"): string {
   return value.trim() || empty;
 }
@@ -43,6 +51,7 @@ function FormField({
 }
 
 export default function RegisterPage({ searchParams }: { searchParams: { edit?: string } }) {
+  const {tr,en} = useUiLocale();
   const editId = searchParams.edit ?? "";
   const [form, setForm] = useState<RegisterDraft>(EMPTY_REGISTER_DRAFT);
   const [stage, setStage] = useState<RegisterStep>(editId ? 1 : 0);
@@ -208,11 +217,11 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
     document.getElementById("listing-wizard-content")?.scrollIntoView({ block: "start" });
   };
 
-  if (loading || !hydrated) return <div className="wizard-loading card" role="status">매물 정보를 준비하고 있어요...</div>;
-  if (editId && !isCustom) return <div className="card">시연용 기본 매물은 수정할 수 없습니다. <a href="/register">새 매물 등록하기</a></div>;
+  if (loading || !hydrated) return <div className="wizard-loading card" role="status">{tr("매물 정보를 준비하고 있어요...","Preparing your listing...")}</div>;
+  if (editId && !isCustom) return <div className="card">시연용 기본 매물은 수정할 수 없습니다. <a href="/register">{tr("새 매물 등록하기","Create a new listing")}</a></div>;
 
   const filled = [form.title, form.address, form.area, form.moveIn, form.publisher].filter((value) => value.trim()).length;
-  const stageInfo = STAGE_CONTENT[stage];
+  const stageInfo = en ? {...STAGE_CONTENT[stage],title:STAGE_EN[stage][0],desc:STAGE_EN[stage][1]} : STAGE_CONTENT[stage];
 
   return (
     <div className="listing-wizard-page">
@@ -221,16 +230,16 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
       <div className="wizard-hero">
         <div>
           <span className="wizard-hero-label"><span className="wizard-label-dot" /> DIRECTHOME STUDIO</span>
-          <h1>{editId ? "우리 집 정보를 더 정확하게." : <>집을 소개하는 일이<br /><em>더 쉬워지도록.</em></>}</h1>
-          <p>필요한 정보만 하나씩. 복잡한 등록을 간결한 과정으로 바꿨어요.</p>
+          <h1>{editId ? tr("우리 집 정보를 더 정확하게.","Improve your home details") : <>{tr("집을 소개하는 일이","Introducing your home")}<br /><em>{tr("더 쉬워지도록.","made easy.")}</em></>}</h1>
+          <p>{tr("필요한 정보만 하나씩. 복잡한 등록을 간결한 과정으로 바꿨어요.","Just the essentials, one step at a time.")}</p>
         </div>
         <div className="wizard-hero-actions">
-          <a href="/" className="wizard-back-link">← 매물 둘러보기</a>
-          {!editId ? <button type="button" className="wizard-clear" onClick={resetDraft}>입력 내용 초기화</button> : null}
+          <a href="/" className="wizard-back-link">{tr("← 매물 둘러보기","← Explore homes")}</a>
+          {!editId ? <button type="button" className="wizard-clear" onClick={resetDraft}>{tr("입력 내용 초기화","Clear draft")}</button> : null}
         </div>
       </div>
 
-      <nav className="wizard-steps" aria-label="매물 등록 진행 단계">
+      <nav className="wizard-steps" aria-label={tr("매물 등록 진행 단계","Listing progress")}>
         {REGISTER_STEPS.map((item, index) => {
           const current = stage === index;
           const unlocked = (editId ? index >= 1 : true) && index <= maxVisited;
@@ -242,7 +251,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
               onClick={() => navigate(index as RegisterStep)}>
               <span className="wizard-step-rail" aria-hidden="true" />
               <span className="wizard-step-index">{complete ? "✓" : String(index + 1).padStart(2, "0")}</span>
-              <span className="wizard-step-label">{item.label}</span>
+              <span className="wizard-step-label">{en?STEPS_EN[index]:item.label}</span>
             </button>
           );
         })}
@@ -256,21 +265,21 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
             <div className="wizard-success wizard-success--inline" role="status" aria-live="polite">
               <div className="wizard-success-mark" aria-hidden="true">✓</div>
               <span className="eyebrow">LISTING SAVED</span>
-              <h1>{editId ? "매물 정보를 수정했어요." : "매물 등록을 마쳤어요."}</h1>
-              <p>이제 사진도 마무리해 볼까요? 선택했던 사진은 이 화면에 그대로 남아 있어요. 원한다면 지금 추가할 수도 있습니다.</p>
+              <h1>{editId ? tr("매물 정보를 수정했어요.","Listing updated.") : tr("매물 등록을 마쳤어요.","Listing saved.")}</h1>
+              <p>{tr("이제 사진도 마무리해 볼까요? 선택했던 사진은 이 화면에 그대로 남아 있어요. 원한다면 지금 추가할 수도 있습니다.","Finish your photos now. The ones you selected are still here.")}</p>
               <div className="wizard-success-next">
                 <span className="wizard-success-next-num" aria-hidden="true">02</span>
                 <div>
-                  <strong>사진 확인 · 공개</strong>
-                  <small>개인정보를 확인하고, 공개할 사진만 직접 선택해 주세요.</small>
+                  <strong>{tr("사진 확인 · 공개","Review & publish photos")}</strong>
+                  <small>{tr("개인정보를 확인하고, 공개할 사진만 직접 선택해 주세요.","Choose only photos you have reviewed for public display.")}</small>
                 </div>
-                <a className="btn" href="#after-register-photos">사진 마무리하기 ↓</a>
+                <a className="btn" href="#after-register-photos">{tr("사진 마무리하기 ↓","Finish photos ↓")}</a>
               </div>
               <div className="wizard-success-actions">
-                {doneId ? <a className="btn ghost" href={"/listings/" + doneId}>완성된 매물 보기 ↗</a> : null}
-                {doneId ? <a className="btn ghost" href={"/owner/listings/" + doneId}>집주인 관리 · AI 설정 →</a> : null}
+                {doneId ? <a className="btn ghost" href={"/listings/" + doneId}>{tr("완성된 매물 보기 ↗","View listing ↗")}</a> : null}
+                {doneId ? <a className="btn ghost" href={"/owner/listings/" + doneId}>{tr("집주인 관리 · AI 설정 →","Owner hub →")}</a> : null}
               </div>
-              <p className="wizard-success-disclaimer">사진은 현재 탭에서만 유지됩니다. 창을 닫거나 새로고침하면 다시 선택해야 합니다. 공개하기 전에는 사진이 게시되지 않습니다.</p>
+              <p className="wizard-success-disclaimer">{tr("사진은 현재 탭에서만 유지됩니다. 창을 닫거나 새로고침하면 다시 선택해야 합니다. 공개하기 전에는 사진이 게시되지 않습니다.","Unsaved photos remain only in this tab. Reloading requires selecting them again.")}</p>
             </div>
           ) : (
           <div className="wizard-content" key={stage}>
@@ -284,8 +293,8 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
               <div className="wizard-start">
                 <div className="wizard-ai-intro">
                   <span className="wizard-ai-sigil">✦</span>
-                  <div><strong>등기 PDF가 있다면, AI로 더 빠르게</strong>
-                    <p>주소와 전유면적을 추출해 초안을 채워드려요. 반드시 직접 확인한 뒤 반영합니다.</p></div>
+                  <div><strong>{tr("등기 PDF가 있다면, AI로 더 빠르게","Start from a registry PDF")}</strong>
+                    <p>{tr("주소와 전유면적을 추출해 초안을 채워드려요. 반드시 직접 확인한 뒤 반영합니다.","Extract editable address and area candidates. Always review them.")}</p></div>
                 </div>
                 <RegistryImport onApply={(draft) => {
                   setForm((previous) => ({
@@ -296,10 +305,10 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
                   }));
                   navigate(1);
                 }} />
-                <div className="wizard-divider"><span>또는</span></div>
+                <div className="wizard-divider"><span>{tr("또는","OR")}</span></div>
                 <button type="button" className="wizard-manual-cta" onClick={() => navigate(1)}>
                   <span className="wizard-manual-icon" aria-hidden="true">⌨</span>
-                  <span><strong>직접 입력해서 시작할게요</strong><small>PDF 없이도 모든 항목을 편하게 작성할 수 있어요.</small></span>
+                  <span><strong>{tr("직접 입력해서 시작할게요","Start from scratch")}</strong><small>{tr("PDF 없이도 모든 항목을 편하게 작성할 수 있어요.","Complete the listing without a PDF.")}</small></span>
                   <span aria-hidden="true">→</span>
                 </button>
               </div>
@@ -307,16 +316,16 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
 
             {stage === 1 ? (
               <div className="wizard-fields-grid">
-                <FormField id="title" title="매물 제목 *" value={form.title}
-                  placeholder="예: 신림역 도보 5분 원룸" className="is-wide" onChange={(v) => set("title", v)}
+                <FormField id="title" title={tr("매물 제목 *","Title *")} value={form.title}
+                  placeholder={tr("예: 신림역 도보 5분 원룸","E.g. Sunny apartment near station")} className="is-wide" onChange={(v) => set("title", v)}
                   hint="짧고 구체적으로 작성하면 좋아요." />
-                <FormField id="address" title="집 주소 *" value={form.address}
-                  placeholder="예: 서울 관악구 신림로 100 (가상)" className="is-wide" onChange={(v) => set("address", v)}
+                <FormField id="address" title={tr("집 주소 *","Address *")} value={form.address}
+                  placeholder={tr("예: 서울 관악구 신림로 100 (가상)","E.g. Fictional Seoul address")} className="is-wide" onChange={(v) => set("address", v)}
                   hint="시연용 가상 주소를 사용해 주세요." />
-                <FormField id="area" title="전용 면적 *" value={form.area}
-                  placeholder="예: 23" onChange={(v) => set("area", v)} inputMode="decimal"
-                  hint="㎡ 단위 · PDF를 분석했다면 자동으로 입력됩니다." />
-                <div className="wizard-field-note"><span aria-hidden="true">✓</span><p>AI가 채운 내용도 등록 전 직접 확인하세요. 정보가 정확할수록 문의가 명확해집니다.</p></div>
+                <FormField id="area" title={tr("전용 면적 *","Area *")} value={form.area}
+                  placeholder={tr("예: 23","E.g. 23")} onChange={(v) => set("area", v)} inputMode="decimal"
+                  hint={tr("㎡ 단위 · PDF를 분석했다면 자동으로 입력됩니다.","Square meters (㎡); PDF can prefill.")} />
+                <div className="wizard-field-note"><span aria-hidden="true">✓</span><p>{tr("AI가 채운 내용도 등록 전 직접 확인하세요. 정보가 정확할수록 문의가 명확해집니다.","Check AI-prefilled details before saving.")}</p></div>
               </div>
             ) : null}
 
@@ -335,20 +344,20 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
                         disabled={!!editId} aria-pressed={form.tradeType === choice.name}
                         onClick={() => set("tradeType", choice.name as TradeType)}>
                         <span className="wizard-trade-icon">{choice.sign}</span>
-                        <strong>{choice.name}</strong>
-                        <small>{choice.desc}</small>
+                        <strong>{tr(choice.name,choice.name==="월세"?"Monthly rent":choice.name==="전세"?"Jeonse":"Sale")}</strong>
+                        <small>{tr(choice.desc,choice.name==="월세"?"Deposit + rent":choice.name==="전세"?"Lump-sum deposit":"Purchase price")}</small>
                         <span className="wizard-radio-indicator" aria-hidden="true" />
                       </button>
                     ))}
                   </div>
                 </fieldset>
                 <div className="wizard-fields-grid">
-                  {form.tradeType !== "매매" ? <FormField id="deposit" title="보증금 *" value={form.deposit}
-                    placeholder="예: 1000" hint="단위: 만원" onChange={(v) => set("deposit", v)} inputMode="numeric" /> : null}
-                  {form.tradeType === "월세" ? <FormField id="rent" title="월세 *" value={form.rent}
-                    placeholder="예: 65" hint="단위: 만원 / 월" onChange={(v) => set("rent", v)} inputMode="numeric" /> : null}
-                  {form.tradeType === "매매" ? <FormField id="salePrice" title="매매가 *" value={form.salePrice}
-                    placeholder="예: 85000" hint="단위: 만원" onChange={(v) => set("salePrice", v)} inputMode="numeric" /> : null}
+                  {form.tradeType !== "매매" ? <FormField id="deposit" title={tr("보증금 *","Deposit *")} value={form.deposit}
+                    placeholder={tr("예: 1000","E.g. 1000")} hint={tr("단위: 만원","In ₩10,000")} onChange={(v) => set("deposit", v)} inputMode="numeric" /> : null}
+                  {form.tradeType === "월세" ? <FormField id="rent" title={tr("월세 *","Monthly rent *")} value={form.rent}
+                    placeholder={tr("예: 65","E.g. 65")} hint={tr("단위: 만원 / 월","₩10,000 per month")} onChange={(v) => set("rent", v)} inputMode="numeric" /> : null}
+                  {form.tradeType === "매매" ? <FormField id="salePrice" title={tr("매매가 *","Sale price *")} value={form.salePrice}
+                    placeholder={tr("예: 85000","E.g. 85000")} hint={tr("단위: 만원","In ₩10,000")} onChange={(v) => set("salePrice", v)} inputMode="numeric" /> : null}
                 </div>
                 <div className="wizard-tip"><span aria-hidden="true">ⓘ</span> 가격은 문서에서 자동 추출하지 않습니다. 희망 거래 조건을 직접 입력해 주세요.</div>
               </div>
@@ -357,16 +366,16 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
             {stage === 3 ? (
               <div className="wizard-details">
                 <div className="wizard-fields-grid">
-                  <FormField id="moveIn" title="입주 가능일 *" value={form.moveIn}
-                    placeholder="예: 2026-11-10 또는 즉시 입주" onChange={(v) => set("moveIn", v)}
-                    hint="정해진 날짜가 없다면 '협의 가능'이라고 적어도 됩니다." />
-                  <FormField id="fee" title="관리비" value={form.fee}
-                    placeholder="예: 8" onChange={(v) => set("fee", v)} inputMode="decimal"
-                    hint="단위: 만원 / 월 · 없다면 비워두세요." />
+                  <FormField id="moveIn" title={tr("입주 가능일 *","Available date *")} value={form.moveIn}
+                    placeholder={tr("예: 2026-11-10 또는 즉시 입주","E.g. 2026-12-01, flexible")} onChange={(v) => set("moveIn", v)}
+                    hint={tr("정해진 날짜가 없다면 '협의 가능'이라고 적어도 됩니다.","Write flexible if negotiable.")} />
+                  <FormField id="fee" title={tr("관리비","Fee")} value={form.fee}
+                    placeholder={tr("예: 8","E.g. 8")} onChange={(v) => set("fee", v)} inputMode="decimal"
+                    hint={tr("단위: 만원 / 월 · 없다면 비워두세요.","₩10,000 per month; leave blank if none.")} />
                 </div>
                 <div className="wizard-features">
-                  <div className="wizard-mini-heading"><strong>이 집만의 옵션</strong><span>복수 선택 가능</span></div>
-                  <p>설치된 가전이나 주거 특성을 선택하세요.</p>
+                  <div className="wizard-mini-heading"><strong>{tr("이 집만의 옵션","Home amenities")}</strong><span>{tr("복수 선택 가능","Select multiple")}</span></div>
+                  <p>{tr("설치된 가전이나 주거 특성을 선택하세요.","Select included appliances and home features.")}</p>
                   <div className="feature-picker-chips">
                     {FEATURE_SUGGESTIONS[form.tradeType].map((option) => (
                       <button type="button" key={option}
@@ -378,22 +387,22 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
                     ))}
                   </div>
                   <div className="field wizard-field wizard-options-raw">
-                    <label htmlFor="options">그 밖의 옵션</label>
-                    <input id="options" value={form.options} placeholder="예: 에어컨, 냉장고, 반려동물 가능"
+                    <label htmlFor="options">{tr("그 밖의 옵션","Other amenities")}</label>
+                    <input id="options" value={form.options} placeholder={tr("예: 에어컨, 냉장고, 반려동물 가능","E.g. air conditioner, refrigerator")}
                       onChange={(e) => set("options", e.target.value)} />
-                    <span className="hint">쉼표로 구분해 자유롭게 추가할 수 있습니다.</span>
+                    <span className="hint">{tr("쉼표로 구분해 자유롭게 추가할 수 있습니다.","Separate multiple amenities with commas.")}</span>
                   </div>
                 </div>
                 <div className="wizard-fields-grid">
                   <div className="field wizard-field is-wide">
-                    <label htmlFor="description">집 소개 (선택)</label>
+                    <label htmlFor="description">{tr("집 소개 (선택)","Home description (optional)")}</label>
                     <textarea id="description" rows={4} value={form.description}
-                      placeholder="예: 남향이라 밝고, 대중교통 이용이 편리해요."
+                      placeholder={tr("예: 남향이라 밝고, 대중교통 이용이 편리해요.","E.g. Bright, close to transit.")}
                       onChange={(e) => set("description", e.target.value)} />
                   </div>
-                  <FormField id="publisher" title="게시자명 *" value={form.publisher}
-                    placeholder="예: 홍길동" className="is-wide" onChange={(v) => set("publisher", v)}
-                    hint="실제 신원 인증이 아닌 시연용 표시 이름입니다." />
+                  <FormField id="publisher" title={tr("게시자명 *","Display name *")} value={form.publisher}
+                    placeholder={tr("예: 홍길동","E.g. Demo owner")} className="is-wide" onChange={(v) => set("publisher", v)}
+                    hint={tr("실제 신원 인증이 아닌 시연용 표시 이름입니다.","Demo display name only; not identity verification.")} />
                 </div>
               </div>
             ) : null}
@@ -401,34 +410,34 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
             {stage === 4 ? (
               <div className="wizard-review">
                 <div className="wizard-review-section">
-                  <div><span>01</span><h3>공간 정보</h3></div>
+                  <div><span>01</span><h3>{tr("공간 정보","Property details")}</h3></div>
                   <button type="button" onClick={() => navigate(1)}>수정 ↗</button>
                   <dl>
-                    <div><dt>매물명</dt><dd>{labelValue(form.title)}</dd></div>
-                    <div><dt>주소</dt><dd>{labelValue(form.address)}</dd></div>
-                    <div><dt>전용 면적</dt><dd>{form.area ? form.area + "㎡" : "—"}</dd></div>
+                    <div><dt>{tr("매물명","Title")}</dt><dd>{labelValue(form.title)}</dd></div>
+                    <div><dt>{tr("주소","Address")}</dt><dd>{labelValue(form.address)}</dd></div>
+                    <div><dt>{tr("전용 면적","Floor area")}</dt><dd>{form.area ? form.area + "㎡" : "—"}</dd></div>
                   </dl>
                 </div>
                 <div className="wizard-review-section">
-                  <div><span>02</span><h3>거래 조건</h3></div>
+                  <div><span>02</span><h3>{tr("거래 조건","Deal terms")}</h3></div>
                   <button type="button" onClick={() => navigate(2)}>수정 ↗</button>
-                  <dl><div><dt>거래유형</dt><dd>{form.tradeType}</dd></div>
-                    <div><dt>희망 가격</dt><dd>{listingPriceLabel(form)}</dd></div></dl>
+                  <dl><div><dt>{tr("거래유형","Trade type")}</dt><dd>{form.tradeType}</dd></div>
+                    <div><dt>{tr("희망 가격","Asking price")}</dt><dd>{listingPriceLabel(form)}</dd></div></dl>
                 </div>
                 <div className="wizard-review-section">
-                  <div><span>03</span><h3>생활 정보</h3></div>
+                  <div><span>03</span><h3>{tr("생활 정보","Living details")}</h3></div>
                   <button type="button" onClick={() => navigate(3)}>수정 ↗</button>
                   <dl>
-                    <div><dt>입주 가능일</dt><dd>{labelValue(form.moveIn)}</dd></div>
-                    <div><dt>관리비</dt><dd>{form.fee ? Number(form.fee).toLocaleString("ko-KR") + "만원" : "미입력"}</dd></div>
-                    <div><dt>선택 옵션</dt><dd>{selectedOptions.length ? selectedOptions.join(", ") : "없음"}</dd></div>
-                    <div><dt>게시자명</dt><dd>{labelValue(form.publisher)}</dd></div>
-                    {form.description ? <div><dt>소개</dt><dd>{form.description}</dd></div> : null}
+                    <div><dt>{tr("입주 가능일","Move-in availability")}</dt><dd>{labelValue(form.moveIn)}</dd></div>
+                    <div><dt>{tr("관리비","Monthly fee")}</dt><dd>{form.fee ? Number(form.fee).toLocaleString("ko-KR") + "만원" : "미입력"}</dd></div>
+                    <div><dt>{tr("선택 옵션","Amenities")}</dt><dd>{selectedOptions.length ? selectedOptions.join(", ") : "없음"}</dd></div>
+                    <div><dt>{tr("게시자명","Display name")}</dt><dd>{labelValue(form.publisher)}</dd></div>
+                    {form.description ? <div><dt>{tr("소개","Description")}</dt><dd>{form.description}</dd></div> : null}
                   </dl>
                 </div>
                 <div className="wizard-final-disclosure">
-                  <strong>등록 전 확인</strong>
-                  <p>모든 신규 등록 매물은 시연용 합성 데이터로 취급됩니다. AI 분석 내용은 소유권 확인이나 법률적 판단이 아닙니다.</p>
+                  <strong>{tr("등록 전 확인","Before you save")}</strong>
+                  <p>{tr("모든 신규 등록 매물은 시연용 합성 데이터로 취급됩니다. AI 분석 내용은 소유권 확인이나 법률적 판단이 아닙니다.","Listings are demonstration data. AI suggestions do not verify ownership or legal rights.")}</p>
                 </div>
               </div>
             ) : null}
@@ -442,8 +451,8 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
               hidden={!saved && stage !== 3}>
               {saved ? <div className="wizard-photo-followup-label">
                 <span className="eyebrow">FINISH YOUR LISTING</span>
-                <h2>내 집 사진을 마지막으로 확인해 주세요</h2>
-                <p>AI 분석은 선택 사항이에요. 사진을 직접 확인하고 별도로 동의한 경우에만 실제 매물에 공개됩니다.</p>
+                <h2>{tr("내 집 사진을 마지막으로 확인해 주세요","Review your property photos")}</h2>
+                <p>{tr("AI 분석은 선택 사항이에요. 사진을 직접 확인하고 별도로 동의한 경우에만 실제 매물에 공개됩니다.","AI analysis is optional. Only explicitly approved photos become public.")}</p>
               </div> : null}
               <ListingPhotoGuide listingId={saved ? doneId || undefined : undefined}
                 onSuggestOptions={async (values) => {
@@ -473,11 +482,11 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
           <div className="wizard-action-bar">
             <button type="button" className="wizard-action-back"
               onClick={() => navigate((stage - 1) as RegisterStep)}
-              disabled={stage === (editId ? 1 : 0) || saving}>← 이전</button>
-            <span className="wizard-action-caption">{stage === 4 ? "확인 후 최종 등록" : "언제든 이전 단계로 돌아갈 수 있어요"}</span>
+              disabled={stage === (editId ? 1 : 0) || saving}>{tr("← 이전","← Back")}</button>
+            <span className="wizard-action-caption">{stage === 4 ? tr("확인 후 최종 등록","Review before saving") : tr("언제든 이전 단계로 돌아갈 수 있어요","You can go back anytime")}</span>
             <button type="button" className="btn wizard-action-next"
               disabled={saving} onClick={stage === 4 ? submit : nextStage}>
-              {saving ? "저장하는 중..." : stage === 4 ? (editId ? "변경사항 저장하기" : "매물 등록하기") : "다음 단계"}
+              {saving ? tr("저장하는 중...","Saving...") : stage === 4 ? (editId ? tr("변경사항 저장하기","Save changes") : tr("매물 등록하기","Save listing")) : tr("다음 단계","Continue")}
               <span aria-hidden="true">→</span>
             </button>
           </div>
@@ -485,7 +494,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
           ) : null}
         </section>
 
-        {!saved ? <aside className="wizard-aside" aria-label="실시간 매물 미리보기">
+        {!saved ? <aside className="wizard-aside" aria-label={tr("실시간 매물 미리보기","Live listing preview")}>
           <div className="wizard-preview">
             <div className="wizard-preview-top"><span>LIVE PREVIEW</span><span className="wizard-preview-live"><i /> 미리보기</span></div>
             <div className="wizard-preview-illustration" aria-hidden="true">
@@ -498,8 +507,8 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
             <p className="wizard-preview-address">{labelValue(form.address, "주소를 입력하면 여기에 표시돼요.")}</p>
             <p className="wizard-preview-price">{listingPriceLabel(form)}</p>
             <div className="wizard-preview-details">
-              <div><small>전용면적</small><strong>{form.area ? form.area + "㎡" : "—"}</strong></div>
-              <div><small>입주 시기</small><strong>{labelValue(form.moveIn, "—")}</strong></div>
+              <div><small>{tr("전용면적","Floor area")}</small><strong>{form.area ? form.area + "㎡" : "—"}</strong></div>
+              <div><small>{tr("입주 시기","Available")}</small><strong>{labelValue(form.moveIn, "—")}</strong></div>
             </div>
             <div className="wizard-preview-footer">
               <div className="wizard-preview-progress"><span style={{ width: (filled / 5 * 100) + "%" }} /></div>
@@ -507,8 +516,8 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
             </div>
           </div>
           <div className="wizard-assurance"><span aria-hidden="true">✧</span>
-            <div><strong>한 번에 다 쓰지 않아도 괜찮아요.</strong>
-              <p>입력 내용은 현재 브라우저 탭에 임시 보관됩니다. PDF 원본은 저장하지 않아요.</p></div>
+            <div><strong>{tr("한 번에 다 쓰지 않아도 괜찮아요.","You can finish this over multiple steps.")}</strong>
+              <p>{tr("입력 내용은 현재 브라우저 탭에 임시 보관됩니다. PDF 원본은 저장하지 않아요.","This tab keeps a draft. Original registry PDFs are not stored.")}</p></div>
           </div>
         </aside> : null}
       </div>

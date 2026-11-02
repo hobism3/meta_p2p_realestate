@@ -4,13 +4,28 @@ import { authenticate, supabaseConfigured } from "@/lib/auth";
 import { getDal } from "@/lib/dal";
 import { now, rowToListing } from "@/lib/db";
 import { SEED_LISTINGS, type TradeType } from "@/lib/listings";
+import {galleryImageUrl} from "@/lib/gallery-image";
 
 export async function GET(req: Request): Promise<Response> {
   const g = guardRead(req);
   if (g) return g;
-  const rows = await getDal().all("SELECT * FROM custom_listings ORDER BY created_at DESC");
+  const dal=getDal();
+  const [rows,photos]=await Promise.all([
+   dal.all("SELECT * FROM custom_listings ORDER BY created_at DESC"),
+   dal.all("SELECT listing_id,id FROM listing_gallery_photos ORDER BY display_order,created_at"),
+  ]);
+  const cover=new Map<string,string>(),counts=new Map<string,number>();
+  for(const row of photos){
+   const id=String(row.listing_id);
+   if(!cover.has(id))cover.set(id,galleryImageUrl(id,String(row.id)));
+   counts.set(id,(counts.get(id)??0)+1);
+  }
   // Public list must not disclose internal authentication subject IDs.
-  const custom = rows.map(r => { const listing = rowToListing(r); delete listing.ownerId; return listing; });
+  const custom=rows.map(r=>{
+   const listing=rowToListing(r);delete listing.ownerId;
+   const id=String(r.id);
+   return {...listing,coverPhotoUrl:cover.get(id),photoCount:counts.get(id)??0};
+  });
   const seeds = SEED_LISTINGS.map((l) => ({ ...l, editable: false }));
   return ok([...custom, ...seeds]);
 }

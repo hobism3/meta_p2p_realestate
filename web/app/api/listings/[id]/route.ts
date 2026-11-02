@@ -1,6 +1,7 @@
 import { bad, customListing, guardRead, guardWrite, notFound, ok, readJson, seedListing } from "@/lib/api";
 import { authenticate, supabaseConfigured } from "@/lib/auth";
 import { getDal } from "@/lib/dal";
+import {galleryImageUrl} from "@/lib/gallery-image";
 
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
   const g = guardRead(req);
@@ -10,6 +11,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
   // Public detail may be viewed anonymously, so omit internal owner subject ID.
   const publicDetails = { ...one };
   delete publicDetails.ownerId;
+  if(one.editable){
+   const photos=await getDal().all(
+    "SELECT id FROM listing_gallery_photos WHERE listing_id=? ORDER BY display_order,created_at LIMIT 6",[params.id]);
+   publicDetails.coverPhotoUrl=photos[0]?galleryImageUrl(params.id,String(photos[0].id)):undefined;
+   publicDetails.photoCount=photos.length;
+  }
   return ok(publicDetails);
 }
 

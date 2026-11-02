@@ -82,11 +82,12 @@ describe("P9 refusal paths & conservative transitions",()=>{
   let s="[PAGE 1]\n【을 구】\n";
   for(let i=1;i<=REGISTRY_TEXT_MAX_RIGHTS+15;i++)s+=i+" | 근저당권설정 | 2026.01.01 | 채권최고액 금1천만원\n";
   const x=extractRegistryText(s);
-  assert.equal(x.candidates.length,REGISTRY_TEXT_MAX_RIGHTS);
+  assert.equal(x.candidates.length,0);
   assert.ok(x.warnings.some(w=>w.includes("50")));
   const all=JSON.stringify(x);
   assert.ok(!all.includes("sourceText"));
-  assert.equal(x.coverage.candidateRows,REGISTRY_TEXT_MAX_RIGHTS);
+  assert.equal(x.coverage.candidateRows,0);
+  assert.equal(x.documentKind,"unrecognized");
   assert.ok(REGISTRY_TEXT_MAX_LINES>REGISTRY_TEXT_MAX_RIGHTS);
  });
  it("won amounts that are not integer 만원 are not rounded or fabricated",()=>{

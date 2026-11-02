@@ -107,9 +107,7 @@ export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptio
     urls.current = urls.current.filter((v) => v !== url);
   };
 
-  const upload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = "";
+  const addFiles = async (files: File[]) => {
     if (locked) return;
     setError("");
     if (items.length + files.length > 6) { setError("사진은 한 번에 최대 6장까지 정리할 수 있어요."); return; }
@@ -136,6 +134,23 @@ export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptio
     } catch (err) {
       for (const item of next) untrack(item.url);
       setError(err instanceof Error ? err.message : "사진을 읽지 못했어요.");
+    }
+  };
+
+  const upload = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    void addFiles(files);
+  };
+  const loadSyntheticDemo = async () => {
+    if (locked || items.length >= 6) return;
+    try {
+      const response = await fetch("/images/demo-living-warm.webp", { cache: "force-cache" });
+      if (!response.ok) throw new Error("합성 시연 이미지를 불러오지 못했어요.");
+      const bytes = await response.blob();
+      await addFiles([new File([bytes], "synthetic-demo-living.webp", { type: "image/webp" })]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "시연 이미지를 사용할 수 없어요.");
     }
   };
 
@@ -290,6 +305,8 @@ export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptio
         <input type="file" aria-label="우리 집 사진 추가" accept="image/jpeg,image/png,image/webp"
           multiple onChange={upload} disabled={locked} />
       </label>
+      <button type="button" className="btn ghost" disabled={locked || items.length >= 6}
+        onClick={() => void loadSyntheticDemo()}>가상 시연 사진 불러오기</button>
       <p className="meta">선택한 사진은 아직 매물에 저장되거나 공개되지 않아요. 가구 제거 결과도 매물에 게시되지 않습니다.</p>
 
       <div className="photo-guide-grid">

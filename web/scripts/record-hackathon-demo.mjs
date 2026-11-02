@@ -169,9 +169,15 @@ try{
  const publicationError=typeof publicationData.error==="string"?
    publicationData.error.slice(0,160):"unknown";
  console.log("GALLERY_STATUS",publication.status(),publication.ok()?"OK":publicationError);
- if(!publication.ok()) throw Error("Gallery API rejected request with HTTP "+publication.status()+" ("+publicationError+")");
- await page.getByRole("button",{name:/게시 완료/}).waitFor();
- await caption(page,"Real gallery storage, synthetic test property","Only a compressed JPEG is published; AI-edited previews are not.",7300);
+ if(!publication.ok()) {
+   console.warn("Gallery publication not demonstrated; showing disclosure instead of claiming a successful post.");
+   await caption(page,"Photo publishing needs a follow-up check",
+     "The owner must approve each real photo. This rehearsal did not confirm gallery publication.",3500);
+ } else {
+   await page.getByRole("button",{name:/게시 완료/}).waitFor();
+ }
+ await caption(page,publication.ok()?"Published with owner approval":"Photo publishing: verification required",
+   publication.ok()?"Only a compressed real-photo JPEG is public; simulated edits stay private.":"This isolated rehearsal could not publish the synthetic test photo.",7300);
  const detail=page.getByRole("link",{name:/완성된 매물 보기|상세 보기/}).first();
  const href=await detail.getAttribute("href");
  if(!href)throw Error("missing generated listing link");

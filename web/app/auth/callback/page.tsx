@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { setAccessToken } from "../../../lib/client-auth";
+import { safeAuthDestination } from "../../../lib/auth-return";
 
-// 소셜 로그인 귀환점. URL fragment의 토큰을 저장하고 홈으로 보낸다.
+// 소셜 로그인 귀환점. URL fragment 토큰은 저장하되, 검증한 기존 경로로만 이동한다.
 // 토큰은 브라우저에만 두고 서버·DB에 비밀번호를 남기지 않는다.
 export default function AuthCallbackPage() {
   const [error, setError] = useState("");
@@ -26,7 +27,8 @@ export default function AuthCallbackPage() {
       window.location.replace("/auth/reset");
       return;
     }
-    window.location.replace("/");
+    const next = safeAuthDestination(new URLSearchParams(window.location.search).get("next"));
+    window.location.replace(next);
   }, []);
 
   return (

@@ -76,6 +76,7 @@ export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptio
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
   const [draftMask, setDraftMask] = useState<Mask | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const maskPanelRef = useRef<HTMLDivElement>(null);
   const seq = useRef(0);
   const urls = useRef<string[]>([]);
   const locked = analyzing || editingId !== null || maskId !== null;
@@ -88,6 +89,12 @@ export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptio
       .catch(() => {});
     return () => { for (const url of urls.current) URL.revokeObjectURL(url); };
   }, []);
+
+  useEffect(() => {
+    if (maskId === null) return;
+    const handle = requestAnimationFrame(() => maskPanelRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }));
+    return () => cancelAnimationFrame(handle);
+  }, [maskId]);
 
   const track = (blob: Blob) => {
     const url = URL.createObjectURL(blob);
@@ -385,7 +392,7 @@ export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptio
       </div>
 
       {error ? <p className="error" role="alert">{error}</p> : null}
-      {maskId !== null ? <div className="photo-guide-mask" role="group" aria-label="사진 개인정보 가리기">
+      {maskId !== null ? <div ref={maskPanelRef} className="photo-guide-mask" role="group" aria-label="사진 개인정보 가리기">
         <h3>가리고 싶은 부분을 사각형으로 드래그해 주세요</h3>
         <p className="meta">불투명 색으로 덮으며, 이미 처리된 부분도 다시 그릴 수 있어요. AI 편집 결과에는 동일한 가림 영역을 다시 적용합니다.</p>
         <canvas ref={canvasRef} style={{ width: "100%", height: "auto", touchAction: "none", cursor: "crosshair" }}

@@ -182,7 +182,7 @@ function ProposalCard({ p, approvals, sides, demo, me, onDecide, onSuggest, onHo
   onEvidence: (id: string) => void;
 }) {
   const {tr,en}=useUiLocale();
-  const agreementLabel=(status:string)=>en?status==="대기"?"Pending":status==="동의함"?"Agreed":status==="거절함"?"Declined":status;
+  const agreementLabel=(status:string)=>en ? (status==="대기"?"Pending":status==="동의함"?"Agreed":status==="거절함"?"Declined":status) : status;
   const mine = (approvals[p.id] ?? []).some((a) => a.actor_id === me);
   const open = p.status === "proposed";
   const badge = p.status === "agreed" ? "양측 동의" : p.status === "refused" ? "거절됨" : "동의 대기";

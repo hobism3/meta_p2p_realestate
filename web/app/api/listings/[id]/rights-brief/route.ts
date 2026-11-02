@@ -53,7 +53,7 @@ export async function POST(req:Request,{params}:Ctx):Promise<Response>{
    [params.id,BRIEF_SOURCE,issued,JSON.stringify(rights),a.identity.userId,sharedAt]);
   return {sharedAt};
  });
- if("error"in outcome)return fail(outcome.error,outcome.status);
+ if("error"in outcome && typeof outcome.error==="string")return fail(outcome.error,outcome.status??400);
  return ok({available:true,verified:false,source:BRIEF_SOURCE,rightsCount:rights.length,
   sharedAt:outcome.sharedAt,note:"게시자 제공·독립 검증 없음. 현행/말소·소유권·보증금 안전을 확정하지 않습니다."},201);
 }

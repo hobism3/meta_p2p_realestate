@@ -98,7 +98,7 @@ test("가구 없는 공간 보기: 별도 동의, 원본과 AI 결과 병치, �
   });
   const button=page.getByRole("button",{name:"가구 없는 모습 미리보기"});
   await expect(button).toBeDisabled();
-  await page.getByRole("checkbox",{name:/AI 가상 이미지 생성을 위해/}).check();
+  await page.getByRole("checkbox",{name:/Meta Muse Image로 별도 전송/}).check();
   await button.click();
   await expect(page.locator(".photo-guide-comparison img")).toHaveCount(2);
   await expect(page.getByText("AI 가상 이미지 · 실제 모습 아님")).toBeVisible();

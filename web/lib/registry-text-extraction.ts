@@ -162,7 +162,9 @@ export function extractRegistryText(raw:unknown):RegistryTextExtraction{
   if(section==="unknown")continue;
   // Detect a right ONLY in the numbered 등기목적 column, not an incidental
   // word in creditor/owner notes. Copied PDF cell columns may be pipe-separated.
-  const columns=line.split("|");\n  const purpose=columns.length>=2?(kindOf(columns[0])?columns[0]:columns[1]):line;\n  const kind=kindOf(purpose);if(!kind)continue;
+  const columns=line.split("|");
+  const purpose=columns.length>=2?(kindOf(columns[0])?columns[0]:columns[1]):line;
+  const kind=kindOf(purpose);if(!kind)continue;
   const rank=rankOf(lines[i].text);
   if(rank===null)continue; // not a recognizable numbered registry row
   if(/말\s*소/.test(line)){

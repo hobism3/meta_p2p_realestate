@@ -60,3 +60,20 @@ test("P11: five externally published fictional registry PDFs are linked without 
  expect(outbound.filter(url=>url.includes("registry-samples/"))).toEqual([]);
  await expect(page.getByText(/실제 부동산 등기사항증명서가 아닙니다/)).toBeVisible();
 });
+
+test("P12: HUG publisher table facts are shown as unapproved rights with independent row coverage",async({page})=>{
+ const publicEducationalText=[
+  "[PAGE 1]","【갑 구】",
+  "3 | 압류 | 2022년1월13일",
+  "【을 구】",
+  "1 | 근저당권설정 | 2018년8월6일 | 채권최고액 금2,000,000,000원",
+ ].join("\n");
+ await page.goto("/registry/extract");
+ await page.locator("#registry-pasted-text").fill(publicEducationalText);
+ await page.getByRole("button",{name:"직접 수정한 텍스트로 다시 분석하기"}).click();
+ await expect(page.getByRole("heading",{name:/후보 2건 검토/})).toBeVisible();
+ await expect(page.locator('[role="note"]').filter({hasText:"눈에 보이는 번호 권리행 2건"})).toBeVisible();
+ await expect(page.getByText(/채권최고액 후보:/)).toContainText("200,000만원");
+ await expect(page.getByRole("button",{name:/선택한 정형 값만 권리관계 점검으로 가져오기/})).toBeDisabled();
+ await expect(page.getByText(/두 탐색 결과가 일치해도/)).toBeVisible();
+});

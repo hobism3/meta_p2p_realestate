@@ -13,18 +13,19 @@ import {createHash} from "node:crypto";
 import {getDocument} from "pdfjs-dist/legacy/build/pdf.mjs";
 import {reconstructPdfText,PDF_TEXT_MAX_BYTES,PDF_TEXT_MAX_PAGES,PDF_TEXT_MAX_ITEMS_PER_PAGE} from "../lib/registry-pdf-layout.ts";
 import {extractRegistryText} from "../lib/registry-text-extraction.ts";
+import {auditIndependentRightsRows} from "../lib/registry-independent-row-audit.ts";
 
 const manifest=JSON.parse(await readFile(new URL("../tests/fixtures/registry-public-sources.v1.json",import.meta.url),"utf8"));
 const corpus=[
  ...manifest.references.map(x=>({...x,category:"fictional_registry_pdf"})),
- ...manifest.otherPublicPdfExamples.filter(x=>["EBS-LEGAL-2008","JOBGO-GA-2017"].includes(x.id)).map(x=>({...x,category:"educational_material_with_example"})),
+ ...manifest.otherPublicPdfExamples.filter(x=>["EBS-LEGAL-2008","JOBGO-GA-2017","KOCW-HANSUNG","EDUSPA-RECORDS"].includes(x.id)).map(x=>({...x,category:"educational_material_with_example"})),
 ];
 const statuses=[];
 const maxSeconds=22;
 
 async function fetchBounded(url){
  const target=new URL(url);
- if(target.protocol!=="https:"||!["dangdang.io","wdown.ebsi.co.kr","cont0.jobgo.ne.kr"].includes(target.hostname))
+ if(target.protocol!=="https:"||!["dangdang.io","wdown.ebsi.co.kr","cont0.jobgo.ne.kr","kocw-n.xcache.kinxcdn.com","att.eduspa.com"].includes(target.hostname))
   throw new Error("not_allowlisted");
  const res=await fetch(url,{
   redirect:"follow",signal:AbortSignal.timeout(maxSeconds*1000),
@@ -78,6 +79,25 @@ async function probePdf(bytes){
   if(!result.text)
    return {status:"nonreconstructable",pages:doc.numPages,textPages};
   const parsed=extractRegistryText(result.text);
+  const independentAudit=auditIndependentRightsRows(result.text,parsed);
+  // Metamorphic check on real, publisher-hosted PDFs: the geometry-to-row
+  // projection MUST not depend on input glyph enumeration order or absolute
+  // x/y coordinate origins. Uses the same source bytes, no external labels.
+  const signature=out=>JSON.stringify({
+   documentKind:out.documentKind,
+   rights:out.candidates.map(x=>[x.entry.kind,x.entry.section,x.entry.rankNumber,
+    x.entry.registrationDate??null,x.entry.claimMaximumManwon??null,
+    x.cancellationMentioned]),
+   cancellations:out.cancellationMentions,
+   unresolved:out.coverage.unresolvedCancellationRows,
+  });
+  const expectedSig=signature(parsed);
+  const reordered=reconstructPdfText(pages.map(pg=>({...pg,items:pg.items.slice().reverse()})));
+  const shifted=reconstructPdfText(pages.map(pg=>({...pg,items:pg.items.map(it=>({
+   ...it,x:it.x+35,y:it.y+19,
+  }))})));
+  const reorderStable=Boolean(reordered.text)&&signature(extractRegistryText(reordered.text))===expectedSig;
+  const offsetStable=Boolean(shifted.text)&&signature(extractRegistryText(shifted.text))===expectedSig;
   const kinds=Object.create(null);
   for(const found of parsed.candidates)kinds[found.entry.kind]=(kinds[found.entry.kind]||0)+1;
   const mortgages=parsed.candidates.filter(c=>c.entry.kind==="mortgage");
@@ -89,7 +109,12 @@ async function probePdf(bytes){
    unmatchedCancellationRows:parsed.coverage.unresolvedCancellationRows,
    amountsWithExactManwon:parsed.candidates.filter(c=>c.entry.kind==="mortgage"&&c.entry.claimMaximumManwon!==null).length,
    mortgageTotalManwon,
-   kinds,documentKind:parsed.documentKind};
+   kinds,documentKind:parsed.documentKind,
+   independentObservedRightRows:independentAudit.observedRightRows,
+   independentMissingInPrimary:independentAudit.missingInPrimary,
+   independentNotConfirmed:independentAudit.notIndependentlyConfirmed,
+   independentComplexSubranks:independentAudit.complexSubrankRows,
+   metamorphic:{reorderStable,offsetStable}};
  }catch(err){
   // Only a safe JavaScript error class and this script's stack line are
   // recorded; NEVER expose error.message (may embed raw PDF text/PII).
@@ -113,6 +138,10 @@ function evaluatePublisherExpectation(source,measured){
   return {status:"FAIL",reason:"not_registry_structure"};
  if(measured.pages!==measured.textPages)
   return {status:"FAIL",reason:"missing_text_page"};
+ if(!measured.metamorphic?.reorderStable||!measured.metamorphic?.offsetStable)
+  return {status:"FAIL",reason:"pdf_layout_transform_instability"};
+ if(measured.independentMissingInPrimary>0)
+  return {status:"FAIL",reason:"independent_visible_right_omitted"};
  if(Number.isSafeInteger(expectation.totalCandidates)&&measured.candidates!==expectation.totalCandidates)
   return {status:"FAIL",reason:"unexpected_candidates"};
  for(const [kind,min] of Object.entries(expectation.atLeast??{})){

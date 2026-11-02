@@ -124,11 +124,15 @@ async function probePdf(bytes){
   const parsed=extractRegistryText(result.text);
   const kinds=Object.create(null);
   for(const found of parsed.candidates)kinds[found.entry.kind]=(kinds[found.entry.kind]||0)+1;
+  const mortgages=parsed.candidates.filter(c=>c.entry.kind==="mortgage");
+  const mortgageTotalManwon=mortgages.every(c=>c.entry.claimMaximumManwon!==null)?
+   mortgages.reduce((sum,c)=>sum+(c.entry.claimMaximumManwon??0),0):null;
   return {status:"parsed_text_layer",pages:doc.numPages,textPages,
    items:result.items,lines:result.lines,sectionHeaders:parsed.coverage.sectionHeaders,
    candidates:parsed.candidates.length,cancellationMentions:parsed.cancellationMentions,
    unmatchedCancellationRows:parsed.coverage.unresolvedCancellationRows,
    amountsWithExactManwon:parsed.candidates.filter(c=>c.entry.kind==="mortgage"&&c.entry.claimMaximumManwon!==null).length,
+   mortgageTotalManwon,
    kinds,documentKind:parsed.documentKind,rightRowShapes:structuralRows(result.text),headingShapes:structuralHeadingHints(result.text)};
  }catch{return {status:"pdf_parser_error"};}
  finally{

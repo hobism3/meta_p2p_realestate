@@ -105,3 +105,18 @@ test("가구 없는 공간 보기: 별도 동의, 원본과 AI 결과 병치, �
   await expect(page.getByText(/실제 면적, 구조, 하자 상태/)).toBeVisible();
   expect(editCalls).toBe(1);
 });
+
+test("가상 시연 사진을 서버 저장 없이 불러와 사용자 동의 전에는 모델을 호출하지 않는다", async ({page}) => {
+  let paidCalls = 0;
+  await page.route("**/api/listings/photo-review", async (route) => {
+    if (route.request().method() === "POST") paidCalls++;
+    return route.fulfill({json:{enabled:true,provider:"meta",maxImagesPerHour:1}});
+  });
+  await page.route("**/api/listings/photo-empty-view", async route =>
+    route.fulfill({json:{enabled:false}}));
+  await reachPhotoStep(page);
+  await page.getByRole("button",{name:"가상 시연 사진 불러오기"}).click();
+  await expect(page.getByText("synthetic-demo-living.webp")).toBeVisible();
+  await expect(page.getByRole("button",{name:"사진에서 옵션·공간 자동 정리"})).toBeDisabled();
+  expect(paidCalls).toBe(0);
+});

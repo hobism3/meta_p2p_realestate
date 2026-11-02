@@ -10,6 +10,7 @@ import {
   type RegisterDraft, type RegisterStep,
 } from "../../lib/register-wizard";
 import RegistryImport from "../../components/RegistryImport";
+import ListingPhotoGuide from "../../components/ListingPhotoGuide";
 
 const STORAGE_KEY = "directhome.register.wizard.v1";
 const NUMBER_FIELDS = new Set<keyof RegisterDraft>(["deposit", "rent", "salePrice", "fee", "area"]);
@@ -421,6 +422,15 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
               </div>
             ) : null}
           </div>
+          {/* Keep photo state mounted when moving between Wizard stages. No bytes in sessionStorage. */}
+          {maxVisited >= 3 ? (
+            <div hidden={stage !== 3}>
+              <ListingPhotoGuide onSuggestOptions={(values) => {
+                const existing = form.options.split(",").map((x) => x.trim()).filter(Boolean);
+                set("options", Array.from(new Set([...existing, ...values])).join(", "));
+              }} />
+            </div>
+          ) : null}
 
           {error ? <p className="wizard-error" role="alert">{error}</p> : null}
           <div className="wizard-action-bar">

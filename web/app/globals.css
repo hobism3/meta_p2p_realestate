@@ -1142,3 +1142,51 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
 .registry-review-page .card .card{box-shadow:none;background:#fcfefc}
 .registry-review-page .card p{overflow-wrap:anywhere}
 @media(max-width:540px){.registry-review-page>.card{padding:18px}.registry-review-page .btn{white-space:normal;min-height:40px}}
+
+
+/* Visual listing guide: isolated registration UI, photos remain local. */
+.photo-guide{margin:12px 0 24px;display:grid;gap:12px;min-width:0}
+.photo-guide h2{margin:4px 0 0;font-size:20px}
+.photo-guide-grid{display:grid;gap:12px}
+.photo-guide-item{display:grid;grid-template-columns:minmax(120px,180px) minmax(0,1fr);gap:14px;padding:12px;border:1px solid #dbe6f4;border-radius:14px;background:#fff;min-width:0}
+.photo-guide-item img{width:100%;height:160px;object-fit:cover;border-radius:9px;background:#edf2f8}
+.photo-guide-item-text{min-width:0;display:grid;gap:7px;align-content:start}
+.photo-guide-item-text strong,.photo-guide-item-text small{display:block;overflow-wrap:anywhere}
+.photo-guide-item-text small{font-size:11px;color:#687d97}
+.photo-guide-item-text p{margin:0;font-size:12px;line-height:1.6}
+.photo-guide-item-text .photo-guide-hint{color:#a26616}
+.photo-guide-item-text .photo-guide-warning{color:#a13e48}
+.photo-guide-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.photo-guide-actions .btn{font-size:12px;padding:7px 11px;min-height:35px}
+.photo-guide-consent{display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#52657f}
+.photo-guide-consent input{flex:none;margin-top:3px}
+.photo-guide-tip{border-radius:12px;border:1px solid #dce8fa;background:#f4f8ff;padding:13px;font-size:12px;line-height:1.65}
+.photo-guide-tip p{margin:0 0 8px}
+.photo-guide-mask{border:1px solid #b6ccea;border-radius:16px;background:#fff;padding:16px;display:grid;gap:12px}
+.photo-guide-mask h3{margin:0;font-size:17px}
+.photo-guide-mask canvas{border-radius:9px;background:#eef2f8;max-height:65vh;object-fit:contain}
+@media(max-width:650px){.photo-guide-item{grid-template-columns:minmax(0,1fr)}.photo-guide-item img{height:200px}}
+
+
+/* Photo registration: results-first layout, no standalone Meta Analysis tab. */
+.photo-guide-upload{display:inline-flex;position:relative;width:max-content;max-width:100%;cursor:pointer}
+.photo-guide-upload input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.photo-guide-upload:focus-within{outline:2px solid #3778e9;outline-offset:3px}
+.photo-guide-primary{justify-self:start;min-height:45px;white-space:normal}
+.photo-guide-item{align-items:start}
+.photo-guide-item-text{align-self:start}
+.photo-guide-comparison{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border-top:1px solid #dce6f5;padding-top:12px}
+.photo-guide-comparison figure{margin:0;min-width:0}
+.photo-guide-comparison img{width:100%;height:190px;object-fit:contain;border-radius:9px;background:#eef3fb}
+.photo-guide-comparison figcaption{font-size:12px;font-weight:750;color:#3c5e84;margin-top:6px}
+.photo-guide-comparison p{grid-column:1/-1;font-size:12px;line-height:1.6;color:#945029;margin:0}
+.photo-guide-empty-action{margin-top:3px}
+.photo-guide-suggestions{display:grid;gap:12px;padding:18px;border-radius:13px;background:#f6faff;border:1px solid #d5e6fc;min-width:0}
+.photo-guide-suggestions h3,.photo-guide-suggestions h4{margin:0;font-size:15px}
+.photo-guide-suggestions p{margin:0;font-size:13px;line-height:1.6}
+.photo-guide-option-chips{display:flex;flex-wrap:wrap;gap:7px}
+.photo-guide-option-chips .feature-chip{min-height:40px}
+.photo-guide-suggestions .photo-guide-tip{margin-top:8px}
+.photo-guide-suggestions .photo-guide-tip p{margin:6px 0 0}
+.photo-guide-tip .photo-guide-consent{margin-top:10px}
+@media(max-width:650px){.photo-guide-comparison{grid-template-columns:minmax(0,1fr)}.photo-guide-comparison p{grid-column:1}}

@@ -72,7 +72,8 @@ describe("P10 spatial PDF text-layer reconstruction",()=>{
   const oversized=reconstructPdfText([page(1,items)]);
   assert.equal(oversized.text,"");
   const invalid=reconstructPdfText([page(1,[item("bad",NaN,4),item("good",10,20)])]);
-  assert.ok(!invalid.text.includes("bad"));
+  assert.equal(invalid.text,"");
+  assert.ok(invalid.warnings.some(w=>w.includes("비정상")));
  });
  it("never silently truncate into a partial rights corpus when text limit is exceeded",()=>{
   const items=Array.from({length:90},(_,i)=>item("x".repeat(1550),0,700-i*6,1550,8));
@@ -81,6 +82,14 @@ describe("P10 spatial PDF text-layer reconstruction",()=>{
   assert.equal(out.pages,0);
   assert.ok(out.warnings.some(w=>w.includes("상한")));
   assert.ok(PDF_TEXT_MAX_CHARS>=120000);
+ });
+ it("refuses a silently truncated 1600-character row or a single overlong text chunk",()=>{
+  const one=reconstructPdfText([page(1,[item("x".repeat(1601),0,700)])]);
+  assert.equal(one.text,"");
+  assert.ok(one.warnings.some(w=>w.includes("너무")));
+  const two=reconstructPdfText([page(1,[item("x".repeat(1000),0,700,1000),item("y".repeat(1000),1020,700,1000)])]);
+  assert.equal(two.text,"");
+  assert.ok(two.warnings.some(w=>w.includes("너무")));
  });
  it("keeps duplicated same-line numeric chunks in evidence for a human reviewer",()=>{
   const out=reconstructPdfText([page(1,[

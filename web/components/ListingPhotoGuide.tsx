@@ -63,7 +63,7 @@ function toDataUrl(blob: Blob): Promise<string> {
 
 /** One integrated photo-to-listing workflow. AI analysis is an implementation detail, not a separate product tab. */
 export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPublished }: {
-  onSuggestOptions?: (values: string[]) => void; listingId?: string; onPublished?: () => void;
+  onSuggestOptions?: (values: string[]) => void | Promise<void>; listingId?: string; onPublished?: () => void;
  }) {
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState("");
@@ -78,6 +78,8 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
   const [editingId, setEditingId] = useState<number | null>(null);
   const [available, setAvailable] = useState({ vision: false, imageEdit: false });
   const [chosenOptions, setChosenOptions] = useState<string[]>([]);
+  const [applyingOptions,setApplyingOptions] = useState(false);
+  const [optionMessage,setOptionMessage] = useState("");
   const [maskId, setMaskId] = useState<number | null>(null);
   const [masks, setMasks] = useState<Mask[]>([]);
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
@@ -86,7 +88,7 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
   const maskPanelRef = useRef<HTMLDivElement>(null);
   const seq = useRef(0);
   const urls = useRef<string[]>([]);
-  const locked = analyzing || editingId !== null || publishingId !== null || maskId !== null;
+  const locked = analyzing || editingId !== null || publishingId !== null || maskId !== null || applyingOptions;
 
   useEffect(() => {
     Promise.all([
@@ -334,6 +336,17 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
   const pendingCount = items.filter((v) => !v.reviewed).length;
   const toggle = (value: string) => setChosenOptions((old) =>
     old.includes(value) ? old.filter((v) => v !== value) : [...old, value]);
+  const applyChosenOptions = async () => {
+    if (!onSuggestOptions || !chosenOptions.length || locked) return;
+    setApplyingOptions(true); setOptionMessage("");
+    try {
+      await onSuggestOptions(chosenOptions);
+      setChosenOptions([]);
+      setOptionMessage(listingId ? "선택한 옵션을 매물에 저장했어요." : "선택한 옵션을 매물 정보에 추가했어요.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "옵션을 저장하지 못했어요.");
+    } finally { setApplyingOptions(false); }
+  };
 
   return (
     <section className="card photo-guide" aria-label="사진으로 매물 정보 정리하기">
@@ -493,10 +506,12 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
                   {chosenOptions.includes(value) ? "✓ " : "+ "}{value}
                 </button>)}
               </div>
-              {onSuggestOptions?<button type="button" className="btn ghost" disabled={!chosenOptions.length}
-                onClick={() => { onSuggestOptions(chosenOptions); setChosenOptions([]); }}>
-                선택한 {chosenOptions.length}개를 매물 옵션 입력란에 추가
+              {onSuggestOptions?<button type="button" className="btn ghost" disabled={!chosenOptions.length || locked}
+                onClick={() => void applyChosenOptions()}>
+                {applyingOptions ? "선택 옵션 저장 중..." : listingId ?
+                  `선택한 ${chosenOptions.length}개를 실제 매물에 저장` : `선택한 ${chosenOptions.length}개를 매물 옵션 입력란에 추가`}
               </button>:null}
+              {optionMessage ? <p className="photo-guide-option-success" role="status">{optionMessage}</p> : null}
             </>
           ) : <p className="meta">제안할 가전·가구 옵션이 아직 확인되지 않았어요.</p>}
           {missing.length ? (

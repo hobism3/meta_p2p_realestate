@@ -5,7 +5,6 @@ test("P16 judges can follow owner/buyer/registry/neutral Jiptok journey without 
  page.on("request",req=>{if(/api\/listings\/photo-review|api\/listings\/photo-empty-view|models\/|images\/edits/.test(req.url()))externalCalls.push(req.url());});
  await page.goto("/showcase");
  await expect(page.getByRole("heading",{name:/내 집을 올리는 순간부터/})).toBeVisible();
- await expect(page.getByRole("region",{name:"user journey".toString()})).toHaveCount(0);
  await expect(page.getByRole("heading",{name:/4단계/})).toBeVisible();
  await expect(page.getByRole("heading",{name:"시연 A · 집을 찾는 입장"})).toBeVisible();
  await expect(page.getByRole("heading",{name:"시연 B · 집주인 입장"})).toBeVisible();

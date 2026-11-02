@@ -53,7 +53,10 @@ async function caption(page,title,subtitle,ms=5500){
       document.body.append(badge);
     }
   },{title,subtitle});
-  await page.waitForTimeout(ms);
+  const first=Math.min(ms,2800);
+  await page.waitForTimeout(first);
+  await page.evaluate(() => document.querySelector("#video-demo-caption")?.remove());
+  if(ms>first) await page.waitForTimeout(ms-first);
 }
 const type=async (locator,value)=>{await locator.fill(value);await sleep(280)};
 const api=async (path,method,identity,data)=>{
@@ -154,7 +157,15 @@ try{
  await page.getByRole("heading",{name:/매물 등록을 마쳤어요/}).waitFor();
  await caption(page,"03  Keep the same photos after saving","No second upload. Review, mask, and explicitly approve photo publication.",8000);
  await page.getByRole("checkbox",{name:/검토한 게시용 JPEG 사진 공개/}).check();
+ const publicationResult=page.waitForResponse(r=>
+   r.url().includes("/gallery")&&r.request().method()==="POST",{timeout:15000});
  await page.getByRole("button",{name:"검토한 사진 공개하기"}).click();
+ const publication=await publicationResult;
+ const publicationData=await publication.json().catch(()=>({}));
+ const publicationError=typeof publicationData.error==="string"?
+   publicationData.error.slice(0,160):"unknown";
+ console.log("GALLERY_STATUS",publication.status(),publication.ok()?"OK":publicationError);
+ if(!publication.ok()) throw Error("Gallery API rejected request with HTTP "+publication.status()+" ("+publicationError+")");
  await page.getByRole("button",{name:/게시 완료/}).waitFor();
  await caption(page,"Real gallery storage, synthetic test property","Only a compressed JPEG is published; AI-edited previews are not.",7300);
  const detail=page.getByRole("link",{name:/완성된 매물 보기|상세 보기/}).first();

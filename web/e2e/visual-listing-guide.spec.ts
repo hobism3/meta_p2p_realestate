@@ -126,3 +126,51 @@ test("가상 시연 사진을 서버 저장 없이 불러와 사용자 동의 �
   for (const button of await page.getByRole("button",{name:"이 사진 AI 분석"}).all()) await expect(button).toBeDisabled();
   expect(paidCalls).toBe(0);
 });
+
+
+test("등록 성공 후 같은 사진을 유지하고 별도 공개 동의 후에만 갤러리로 게시한다",async({page})=>{
+  let photoPosts=0, listingPosts=0, metaPosts=0;
+  await page.route("**/api/listings/photo-review",async route=>{
+    if(route.request().method()==="POST")metaPosts++;
+    return route.fulfill({json:{enabled:false}});
+  });
+  await page.route("**/api/listings/photo-empty-view",async route=>{
+    if(route.request().method()==="POST")metaPosts++;
+    return route.fulfill({json:{enabled:false}});
+  });
+  await page.route("**/api/listings",async route=>{
+    if(route.request().method()!=="POST")return route.continue();
+    listingPosts++;
+    return route.fulfill({status:201,json:{id:"mock-new-listing"}});
+  });
+  await page.route("**/api/listings/mock-new-listing/gallery",async route=>{
+    const body=route.request().postDataJSON();
+    expect(route.request().method()).toBe("POST");
+    expect(body.consentToPublish).toBe(true);
+    expect(body.checkedPersonalInfo).toBe(true);
+    expect(body.aiGenerated).toBe(false);
+    expect(body.image).toMatch(/^data:image\/jpeg;base64,/);
+    photoPosts++;
+    return route.fulfill({status:201,json:{id:"mock-photo-1"}});
+  });
+  await reachPhotoStep(page);
+  await page.locator('.photo-guide input[type="file"]').setInputFiles({
+    name:"test-room.jpg",mimeType:"image/jpeg",buffer:await generatedImage(page,"image/jpeg"),
+  });
+  await expect(page.getByText("test-room.jpg")).toBeVisible();
+  await page.locator("#moveIn").fill("협의 가능");
+  await page.locator("#publisher").fill("가상 집주인");
+  await page.getByRole("button",{name:/다음 단계/}).click();
+  await page.getByRole("button",{name:"매물 등록하기"}).click();
+  await expect(page.getByRole("heading",{name:"매물 등록을 마쳤어요."})).toBeVisible();
+  await expect(page.getByText("test-room.jpg")).toBeVisible();
+  const publication=page.getByRole("button",{name:"검토한 사진 공개하기"});
+  await expect(publication).toBeDisabled();
+  expect(photoPosts).toBe(0);
+  await page.getByRole("checkbox",{name:/검토한 게시용 JPEG 사진 공개/}).check();
+  await publication.click();
+  await expect(page.getByRole("button",{name:/게시 완료/})).toBeVisible();
+  expect(listingPosts).toBe(1);
+  expect(photoPosts).toBe(1);
+  expect(metaPosts).toBe(0);
+});

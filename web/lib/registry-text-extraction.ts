@@ -124,11 +124,13 @@ function claimMaximum(text:string):number|null{
 function sourceLines(text:string):Array<{text:string;line:number;page:number|null}>{
  let page:number|null=null;
  const out:Array<{text:string;line:number;page:number|null}>=[];
+ let number=0;
  for(const raw of text.replace(/\r\n?/g,"\n").split(/(\f|\n)/)){
   if(raw==="\f"){page=page===null?2:page+1;continue;}
   if(raw==="\n")continue;
   const marker=raw.match(/^\s*\[PAGE\s+(\d{1,3})\]\s*$/i);
   if(marker){page=Number(marker[1]);continue;}
+  number++;
   out.push({text:raw,line:number,page});
   if(out.length>REGISTRY_TEXT_MAX_LINES)break;
  }

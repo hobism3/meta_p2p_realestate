@@ -183,8 +183,10 @@ export function extractRegistryText(raw:unknown):RegistryTextExtraction{
    continue;
   }
   if(out.candidates.length>=REGISTRY_TEXT_MAX_RIGHTS){
-   out.warnings.push("권리 후보 50건 상한에 도달했습니다. 다른 페이지는 별도로 검토하세요.");
-   break;
+   // Never return only the first 50 rights as though they were complete.
+   return {...out,documentKind:"unrecognized",candidates:[],
+    coverage:{...out.coverage,candidateRows:0},
+    warnings:["권리 후보 50건 상한을 초과했습니다. 일부만 추출한 권리목록을 제공하지 않습니다. 원문을 직접 확인하세요."]};
   }
   let amountEvidence:"same_row"|"next_row"|"missing"="missing";
   let amount=kind==="mortgage"?claimMaximum(line):null;

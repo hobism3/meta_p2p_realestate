@@ -92,10 +92,33 @@ export function nearDuplicateHash(a: string, b: string): boolean {
   return differences <= 4;
 }
 
-/** Only general photo coverage guidance. Do not assume any property has every room. */
+/** AI results are evidence of visibility, never proof that a pictured item is included in a lease. */
+export const PHOTO_LISTING_OPTION_CANDIDATES = [
+  "에어컨", "시스템에어컨", "냉장고", "세탁기", "건조기", "침대",
+  "옷장", "인덕션", "가스레인지", "전자레인지", "비데",
+] as const;
+
+export function photoOptionCandidates(reviews: readonly PhotoReview[]): string[] {
+  const allowed = new Set<string>(PHOTO_LISTING_OPTION_CANDIDATES);
+  return Array.from(new Set(reviews.flatMap((review) => review.features).filter((v) => allowed.has(v))));
+}
+
+/**
+ * An absence in photos is not an absence in the property. Studio housing may
+ * not have distinct bedroom or living room; guide combined coverage instead.
+ */
 export function recommendedPhotoRooms(reviews: readonly PhotoReview[]): string[] {
   if (!reviews.length) return [];
   const have = new Set(reviews.map((r) => r.room));
-  return (["living_room", "bedroom", "kitchen", "bathroom"] as const)
-    .filter((room) => !have.has(room)).map((room) => PHOTO_ROOM_NAMES[room]);
+  const missing: string[] = [];
+  if (!have.has("bathroom")) missing.push("욕실");
+  if (!have.has("kitchen")) missing.push("주방");
+  if (!have.has("living_room") && !have.has("bedroom")) missing.push("생활 공간(거실·침실)");
+  return missing;
+}
+
+/** Copy is intentionally conditional. Do not claim a room is absent. */
+export function photoCoverageMessages(reviews: readonly PhotoReview[]): string[] {
+  return recommendedPhotoRooms(reviews).map((room) =>
+    room + " 사진은 아직 확인되지 않았어요. 해당 공간이 있다면 사진을 추가하면 좋아요.");
 }

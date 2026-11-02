@@ -1,5 +1,6 @@
 "use client";
-import {useMemo,useRef,useState} from "react";
+import {useEffect,useMemo,useRef,useState} from "react";
+import {REGISTRY_TRANSFER_KEY,parseSanitizedTransfer} from "../../../lib/registry-extraction-transfer";
 import {REGISTRY_SIGNALS,registryReview,type RegistryFlag} from "../../../lib/registry-review";
 import {
  REVIEW_CHECKS,RIGHT_LABELS,REVIEW_AGE_REMINDER_DAYS,reviewRegistryRights,
@@ -28,7 +29,20 @@ export default function RegistryReadingGuide(){
  const [checks,setChecks]=useState<Partial<Record<ReviewCheckKey,UserReviewStatus>>>({});
  const [example,setExample]=useState(false);
  const [copyNotice,setCopyNotice]=useState("");
+ const [transferNotice,setTransferNotice]=useState("");
  const id=useRef(0);
+ useEffect(()=>{
+  try{
+   const raw=sessionStorage.getItem(REGISTRY_TRANSFER_KEY);
+   if(!raw)return;
+   sessionStorage.removeItem(REGISTRY_TRANSFER_KEY); // one-time, never replay automatically
+   const parsed=parseSanitizedTransfer(raw);
+   if(!parsed||parsed.rights.length===0){setTransferNotice("전달된 권리정보 형식을 확인하지 못했습니다. 직접 확인해 주세요.");return;}
+   setRights(parsed.rights);
+   setSelected([]);setExample(false);
+   setTransferNotice(`이전 화면에서 사용자가 대조한 정형 권리 후보 ${parsed.rights.length}건을 불러왔습니다. 진위 또는 법률상 효력 확인은 아닙니다.`);
+  }catch{setTransferNotice("브라우저 세션에서 정형 권리정보를 가져오지 못했습니다.");}
+ },[]);
  const quick=useMemo(()=>registryReview(selected),[selected]);
  const structured=useMemo(()=>reviewRegistryRights({
   issuedOn,asOfDate:seoulToday(),proposedDepositManwon:deposit,rights,checks,
@@ -47,7 +61,7 @@ export default function RegistryReadingGuide(){
  };
  const reset=()=>{
   setSelected([]);setIssuedOn("");setDeposit(null);setRights([]);setChecks({});
-  setExample(false);setCopyNotice("");
+  setExample(false);setCopyNotice("");setTransferNotice("");
  };
  const loadExample=()=>{
   setSelected(["mortgage","trust","unknown_tenant_priority","unknown_tax"]);
@@ -88,9 +102,11 @@ export default function RegistryReadingGuide(){
    </div>
    <p className="meta">발급 후 {REVIEW_AGE_REMINDER_DAYS}일 알림은 앱 자체의 확인 권고이며, 법에서 정한 등기부 유효기간이 아닙니다. 보증금만으로 안전성을 계산하지 않습니다.</p>
    <a className="btn ghost" href="/registry/cases">유형별 38개 교육 사례 보기 ↗</a>{" "}
+   <a className="btn ghost" href="/registry/extract">PDF 복사 텍스트에서 권리 후보 추출 →</a>{" "}
    <button className="btn ghost" type="button" onClick={loadExample}>가상의 근저당·신탁 사례 보기</button>{" "}
    <button className="btn ghost" type="button" onClick={reset}>모든 선택 초기화</button>
    {example?<p role="status"><strong>가상 시연 데이터입니다.</strong> 실제 매물의 권리관계로 해석하지 마세요.</p>:null}
+   {transferNotice?<p role="status">{transferNotice}</p>:null}
   </section>
   <section className="card" aria-label="등기부에서 확인한 기본 항목">
    <h2>2. 빠른 권리관계 체크</h2>

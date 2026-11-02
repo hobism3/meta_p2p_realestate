@@ -59,7 +59,7 @@ function kindOf(value:string):RightKind|null{
  return null;
 }
 function sectionOf(value:string):RightSection|null{
- const t=value.replace(/\s+/g,"");
+ const t=value.replace(/[\s|│¦·]/g,""); // PDF.js may insert table separators between spaced 甲/乙 header glyphs
  // Published registry examples use 〖 갑 구 〗, 【 갑 구 】, [갑 구], and bare 갑구.
  // Captions in ordinary prose are not legal right rows; a numbered purpose is
  // still mandatory for a finding.

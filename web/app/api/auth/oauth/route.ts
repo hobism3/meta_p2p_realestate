@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeAuthDestination } from "@/lib/auth-return";
 
 const PROVIDERS = ["google"] as const;
 
@@ -20,7 +21,11 @@ export async function GET(req: Request): Promise<Response> {
   if (!base) {
     return NextResponse.redirect(new URL("/login?error=unconfigured", url.origin));
   }
-  const redirectTo = new URL("/auth/callback", url.origin).toString();
+  const next = safeAuthDestination(url.searchParams.get("next"));
+  const callback = new URL("/auth/callback", url.origin);
+  callback.searchParams.set("next", next);
+  // Supabase Auth must allowlist this Preview callback URL; do not fall back to the production host.
+  const redirectTo = callback.toString();
   const auth = new URL(`${base}/auth/v1/authorize`);
   auth.searchParams.set("provider", providerId(provider));
   auth.searchParams.set("redirect_to", redirectTo);

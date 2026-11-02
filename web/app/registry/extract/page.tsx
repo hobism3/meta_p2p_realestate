@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useMemo,useRef,useState} from "react";
 import {extractRegistryPdfLocally} from "../../../lib/registry-pdf-local-reader";
+import {auditIndependentRightsRows} from "../../../lib/registry-independent-row-audit";
 import samples from "../../../tests/fixtures/registry-text-layer.v1.json";
 import publicEducationalSamples from "../../../tests/fixtures/registry-public-sources.v1.json";
 import {
@@ -67,6 +68,8 @@ export default function LocalRegistryTextExtractor(){
  },[pdf]);
 
  const approved=useMemo(()=>(parsed?.candidates??[]).filter(c=>reviews[c.id]?.read),[parsed,reviews]);
+ const independentAudit=useMemo(()=>parsed?auditIndependentRightsRows(text,parsed):null,[text,parsed]);
+ const uncoveredRights=Boolean(independentAudit&&independentAudit.missingInPrimary>0);
  const loadSample=(id:string)=>{
   const sample=sampleCases.find(c=>c.id===id);
   if(!sample)return;
@@ -134,6 +137,7 @@ export default function LocalRegistryTextExtractor(){
  };
  const transfer=()=>{
   if(incompletePdf){setError("텍스트층이 누락된 페이지가 있어 후보를 P8로 가져올 수 없습니다.");return;}
+  if(uncoveredRights){setError("독립적인 권리행 탐색에서 현재 목록에 없는 기재가 발견됐습니다. 불완전한 목록을 전달하지 않습니다.");return;}
   if(approved.length===0){setError("먼저 원본과 대조한 항목을 하나 이상 선택하세요.");return;}
   try{
    const entries=approved.map(c=>({
@@ -214,6 +218,14 @@ export default function LocalRegistryTextExtractor(){
    <h2>3. 후보 {parsed.candidates.length}건 검토</h2>
    <p>구조 인식: <strong>{parsed.documentKind==="registry_like"?"갑구/을구 표제 확인":"등기부 형식 불명"}</strong> · 읽은 텍스트 {parsed.coverage.linesRead}줄 · 말소 언급 {parsed.cancellationMentions}건 · 연결되지 않은 말소 언급 {parsed.coverage.unresolvedCancellationRows}건</p>
    <p className="meta">원본 PDF의 취소선·표 셀 위치가 복사 과정에서 사라질 수 있으므로 기계가 자동으로 현행/말소를 확정하지 않습니다.</p>
+   {independentAudit?<div role="note" style={{padding:"10px 12px",border:"1px solid #d6dcd8",borderRadius:10,marginBottom:10}}>
+    <strong>P12 · 별도 번호/권리기재 탐색:</strong>{" "}
+    눈에 보이는 번호 권리행 {independentAudit.observedRightRows}건 · 기존 후보와 일치 {independentAudit.matched}건
+    {independentAudit.missingInPrimary>0?<p><strong>주의:</strong> 기존 후보에서 빠진 권리기재가 {independentAudit.missingInPrimary}건 탐지돼 자료 전달을 차단했습니다. PDF 원문을 확인하세요.</p>:null}
+    {independentAudit.notIndependentlyConfirmed>0?<p>독립 탐색에서 확인되지 않은 기존 후보 {independentAudit.notIndependentlyConfirmed}건. 원문에 실제로 번호가 있는지 확인하세요.</p>:null}
+    {independentAudit.complexSubrankRows>0?<p>부기번호가 있는 행 {independentAudit.complexSubrankRows}건은 별도 검토가 필요합니다.</p>:null}
+    <p className="meta">두 탐색 결과가 일치해도 문서 전체의 권리·법적 효력·말소를 검증했다는 뜻은 아닙니다.</p>
+   </div>:null}
    {parsed.warnings.map((w,i)=><p className="meta" key={i}>{w}</p>)}
    {parsed.candidates.length===0?<p>후보 행을 찾지 못했습니다. 법적 권리가 없다는 증거가 아닙니다. 갑구·을구를 직접 확인하세요.</p>:null}
    {parsed.candidates.map(c=><CandidateRow key={c.id} candidate={c}
@@ -221,7 +233,7 @@ export default function LocalRegistryTextExtractor(){
     onUpdate={next=>setReviews(old=>({...old,[c.id]:next}))}/>)}
    {parsed.candidates.length>0?<div>
     <p>원문 대조 후 선택한 항목: <strong>{approved.length}/{parsed.candidates.length}</strong></p>
-    <button className="btn" onClick={transfer} disabled={incompletePdf||approved.length===0}>선택한 정형 값만 권리관계 점검으로 가져오기 →</button>
+    <button className="btn" onClick={transfer} disabled={incompletePdf||uncoveredRights||approved.length===0}>선택한 정형 값만 권리관계 점검으로 가져오기 →</button>
     <p className="meta">가져오는 데이터는 권리종류·상태·등기일·순위번호·채권최고액만 포함합니다. 전체 PDF/복사 텍스트·주소·소유자 이름·근거 문장은 저장하지 않습니다. 가져와도 공식 인증이 아닙니다.</p>
    </div>:null}
   </section>:null}

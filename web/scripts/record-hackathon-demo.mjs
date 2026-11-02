@@ -145,7 +145,7 @@ try{
  await page.getByRole("button",{name:/이 사진 AI 분석|Analyze this photo/}).click();
  await page.getByRole("heading",{name:/AI가 사진 1장에서 찾아낸 내용|AI findings from 1 photo/}).waitFor();
  await caption(page,"Muse Spark Vision · feature flow (Mock replay)","Room label: living room. Candidate amenities: air conditioner and refrigerator.",8000);
- const chip=page.locator(".photo-guide-option-chips .feature-chip").filter({hasText:"에어컨"});
+ const chip=page.locator(".photo-guide-option-chips .feature-chip").filter({hasText:/에어컨|Air conditioner/});
  await chip.click();
  await page.getByRole("button",{name:/선택한 1개를 매물 옵션 입력란에 추가|선택한 1개를 실제 매물에 저장/}).click();
  await caption(page,"Humans confirm every candidate","AI suggestions never become binding listing facts on their own.",7000);

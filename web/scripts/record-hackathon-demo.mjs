@@ -53,7 +53,10 @@ async function caption(page,title,subtitle,ms=5500){
       document.body.append(badge);
     }
   },{title,subtitle});
-  await page.waitForTimeout(ms);
+  const first=Math.min(ms,2800);
+  await page.waitForTimeout(first);
+  await page.evaluate(() => document.querySelector("#video-demo-caption")?.remove());
+  if(ms>first) await page.waitForTimeout(ms-first);
 }
 const type=async (locator,value)=>{await locator.fill(value);await sleep(280)};
 const api=async (path,method,identity,data)=>{

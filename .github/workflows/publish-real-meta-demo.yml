@@ -1,10 +1,6 @@
 name: publish-real-meta-hackathon-demo
 on:
-  push:
-    branches: ["feat/real-meta-evidence-20261103"]
-    paths:
-      - ".github/workflows/publish-real-meta-demo.yml"
-      - "web/scripts/render-real-meta-demo.py"
+  workflow_dispatch:
 permissions:
   contents: write
   actions: read
@@ -24,8 +20,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p web/demo-evidence/captured web/demo-evidence/mock
-          gh run download 41544487605 -n directhome-real-meta-evidence-20261103 -D web/demo-evidence/captured
-          gh run download 41460475886 -n directhome-demo-mock-rehearsal -D web/demo-evidence/mock
+          if ! gh run download 41544487605 -n directhome-real-meta-evidence-20261103 -D web/demo-evidence/captured; then
+            gh release download directhome-real-meta-demo-20261103 -p '*.json' -p '*.jpg' -p '*.webp' -D web/demo-evidence/captured
+          fi
+          if ! gh run download 41460475886 -n directhome-demo-mock-rehearsal -D web/demo-evidence/mock; then
+            gh release download directhome-real-meta-demo-20261103 -p '*mock*.mp4' -D web/demo-evidence/mock
+          fi
           find web/demo-evidence/captured -maxdepth 1 -type f
           test -n "$(find web/demo-evidence/mock -type f -name '*.mp4' -print -quit)"
       - name: Verify provider hashes and render actual-model evidence cards

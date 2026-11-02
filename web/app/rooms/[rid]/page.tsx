@@ -527,6 +527,16 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               </button>
             </div>
           </div>
+          {meta && !meta.demo ? <aside className="jiptok-peek" aria-label={tr("집톡이 짧은 거래 요약","Jiptok quick status")}>
+            <span className="jiptok-peek-icon" aria-hidden="true">⌂<i>✦</i></span>
+            <div>
+              <strong>{tr("집톡이가 지금 확인할 일을 정리했어요","Jiptok is tracking the next step")}</strong>
+              <p>{en ? "Check confirmed terms and unresolved items below." : broker.nextStep.title}</p>
+            </div>
+            <a href="#jiptok-digest" className="jiptok-peek-action">
+              {tr("한눈에 보기 →","View summary →")}
+            </a>
+          </aside> : null}
           {error ? <p className="error" role="alert">{error}</p> : null}
           <div className="msgs conversation-feed" ref={msgsRef} role="log" aria-label={tr("거래 대화","Deal conversation")} aria-relevant="additions text">
             <div className="conversation-day-label"><span>메시지 · {meta?.demo ? "그룹채팅 시연"

@@ -139,7 +139,7 @@ export default function DetailPage({ params }: { params: { id: string } }) {
           );
         })()}
       </section>
-      <section className="card detail-info-card" aria-label="권리관계 독립 확인">
+      <section id="registry-rights" className="card detail-info-card" aria-label="권리관계 독립 확인">
         <h2>거래 전 권리관계 확인</h2>
         <ListingRightsBrief listingId={listing.id}/>
         <p>등기사항증명서는 소유자가 아니어도 직접 열람할 수 있습니다. 주소를 대법원 인터넷등기소에 입력해 발급 시점이 최근인지 확인하세요. 매물 게시자가 실제 계약 권한을 가진 사람인지는 별도 신원·위임장 대조가 필요합니다.</p>

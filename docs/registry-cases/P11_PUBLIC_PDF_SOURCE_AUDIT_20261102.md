@@ -19,7 +19,7 @@
 |DANGDANG-PROVISIONAL|[provisional-attachment.pdf](https://dangdang.io/blog/registry-samples/provisional-attachment.pdf)|909534|`f4acf20a41ca…ef4021125f06875aef0cb4251f07f1`|1페이지 847 items|**가압류 0건: 누락 결함**|
 |DANGDANG-MORTGAGE|[mortgage-60.pdf](https://dangdang.io/blog/registry-samples/mortgage-60.pdf)|908370|`c0d795a2c6dd…053e506c13f9`|1페이지 850 items|**근저당 0건: 누락 결함**|
 |DANGDANG-MULTI|[multi-risk.pdf](https://dangdang.io/blog/registry-samples/multi-risk.pdf)|913157|`b2ea6887d754…394d879192dab09`|2페이지 954 items|**복합 위험 0건: 누락 결함**|
-|DANGDANG-FIXED-DATE|[lease-fixed-date-only.pdf](https://dangdang.io/blog/registry-samples/lease-fixed-date-only.pdf)|1087433|`b65aed6cd76d…e506c13f9` (정확 해시는 JSON 참조)|1페이지 855 items|0건; 실제 권리 여부와 다른 절차 구분은 원문 대조 필요|
+|DANGDANG-FIXED-DATE|[lease-fixed-date-only.pdf](https://dangdang.io/blog/registry-samples/lease-fixed-date-only.pdf)|1087433|`b65aed6cd76d…e7820c9ba47c7fe2c1aed7b`|1페이지 855 items|0건; 실제 권리 여부와 다른 절차 구분은 원문 대조 필요|
 
 > 해시의 정확한 64자리 값, URL, 용량은 `web/tests/fixtures/registry-public-sources.v1.json`에서 관리. 이 표의 짧은 SHA는 가독용이며 정밀 무결성 비교에는 사용하지 않는다. 5개 모두 PDF.js 로드 및 텍스트층 복원 성공. 단계별 `sectionHeaders=3`으로 표제부/갑·을구 헤더를 추출했으나 권리기재 **행 파싱은 기존 규칙에서 실패**했다.
 
@@ -53,3 +53,19 @@
 
 ## 6. 판정 메모
 초기 수집 상태: **7/7 교육용 PDF 파일 수신**, 그중 **6건 텍스트층 복원**, 24p 자료 1건 상한 거부. 핵심 5건에서 **실제 권리 행 탐지 품질 미달(가압류·근저당·복합 위험 false negative)**. 후속 코드 수정과 골든 통과 여부는 `P11_DEVELOPMENT_LOG_20261102.md`에 재검증 결과를 누적한다.
+
+## 7. P11 수정 후 재측정: 공개 원본 5개 의미 검증 게이트 PASS
+
+- 출처 바이트 무결성 SHA256 5개, PDF 구조(갑구/을구), 페이지 텍스트층 유무, **교육용 출처의 설명에 근거한 최소 종류별 권리 후보 수**, 근저당 사례 합계 29,000만원을 함께 검사하는 별도 CI 게이트를 만들었다.
+- 실제 공개 원본 확인/의미 게이트: [GitHub Actions 실행 #41370802954](https://github.com/hobism3/meta_p2p_realestate/actions/runs/41370802954), **5/5 PASS**, 원문 데이터 업로드·로그·Git 저장 0.
+- 게이트는 불일치가 있을 경우 `PUBLIC_REGISTRY_EVIDENCE_GATE.status=FAIL` 및 실패 종료 코드로 판정하며, 다운로드 실패/해시 변경을 성공으로 조용히 승격하지 않는다.
+- 타입별 산출: 정상 0, 가압류(가압류1+근저당1), 근저당(근저당2), 복합(가압류1+경매1+근저당2), 확정일자만 설명한 문서 0.
+- 근저당 합계는 가압류 시나리오 12,000만원, 근저당 시나리오 **29,000만원**, 복합 시나리오 32,000만원으로 추출됨. 여기서 **29,000만원만 공개 출처 설명의 가상 합계와 대조한 근거**로 게이트가 검증한다. 나머지는 프로그램 산출값이며 독립 원문 전문가 라벨이 아니다.
+- P10의 표제부 → 갑·을구 인식 오류: PDF.js 좌표 복원 결과에서 `갑|구`/분리된 세로 막대가 끼어 구역 헤더를 찾지 못함 → PDF 텍스트 헤더 정규화에 `|`, `│`, `¦`, `·` 허용. 원본 법률행의 상세 구조는 여전히 검증 예정.
+- 별도 EBS 교육 시험 PDF는 근저당 후보 1건(금액은 추출 불가), 24페이지 실무교재는 P10 20페이지 상한을 초과해 전부 평가하지 않음. PDF 원본 수집/원문 이력과 권리판정 오탐을 구분한다.
+- 6개 기존 교육자료 **형식에 착안해 재작성한 합성 골든** (`registry-published-format.v1.json`)은 실제 PDF 원문 줄·좌표 정답이 아님. 사용자가 실제 원문을 보고 검토하는 절차가 계속 필수다.
+
+### 공개 자료를 개인 개발용으로 로컬 저장하기 (재배포 금지)
+- 개발자가 자신의 로컬 저장소에서만: `cd web && node scripts/cache-fictional-registry-pdfs.mjs --private-corpus` 실행.
+- 출처의 5개 **가상 PDF만** SHA/바이트/헤더 검증하고 `web/.local-registry-training-docs/` (Git 제외, 0600 권한) 아래 저장. 이미 존재하는 파일 덮어쓰기 금지. 이 명령은 **사용자 로컬 PC**에서 네트워크 접근이 가능해야 한다.
+- 실제 등기부 원본(식별가능한 소유자·권리자·주소)은 이 수집·저장 스크립트의 대상에서 제외. 외부 자료의 무단 재배포·Meta 전송·학습데이터 사용 금지. 공개 교육용 허구 샘플도 출처 제공자가 허용한 이용 조건 안에서만 사용한다.

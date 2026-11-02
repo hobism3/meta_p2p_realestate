@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { authenticate } from "@/lib/auth";
-import { reservePhotoAiAttempt } from "@/lib/photo-ai-budget";
+import { reservePhotoAiAttempt, photoAiTotalCap } from "@/lib/photo-ai-budget";
 import { clientKey } from "@/lib/api";
 import { checkRate } from "@/lib/ratelimit";
 import {
@@ -35,7 +35,7 @@ function allowance(id: string): boolean {
 }
 
 export function GET(): Response {
-  return json({ enabled: enabled(), model: "muse-image-1.0", maximumEditsPerHour: EDITS_PER_HOUR });
+  return json({ enabled: enabled(), model: "muse-image-1.0", maximumEditsPerHour: EDITS_PER_HOUR, maxTotalAttempts: photoAiTotalCap("edit"), provider: enabled() ? "meta" : "disabled" });
 }
 
 async function readLimitedProviderJson(response: Response): Promise<unknown> {

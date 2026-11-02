@@ -42,6 +42,22 @@
       "category": "public_statistical_document_educational",
       "retrieval": "pdf_source_link_only",
       "use": "Independent explanation of 표제부/갑구/을구 and missing 을구; not a labelled actual certificate."
+    },
+    {
+      "id": "HUG-TRUST",
+      "name": "HUG 전세사기예방센터: 신탁회사의 동의 없는 계약",
+      "url": "https://www.khug.or.kr/jeonse/web/s02/s020302.jsp",
+      "category": "public_institution_risk_case",
+      "retrieval": "html_text_only",
+      "use": "HUG case explains trust registered in 갑구 and why ownership/consent cannot be inferred from a purported landlord."
+    },
+    {
+      "id": "HUG-PROMISED-REMOVAL",
+      "name": "HUG: 선순위 근저당·신탁 말소 특약 불이행 사례",
+      "url": "https://m.khug.or.kr/jeonse/web/s02/s020503.jsp",
+      "category": "public_institution_risk_case",
+      "retrieval": "html_text_only",
+      "use": "Publisher describes why a promise to cancel mortgage/trust is not proof that registration has actually been cancelled; never auto-promote cancellation."
     }
   ],
   "claims": [
@@ -108,6 +124,29 @@
         "latest_certificate"
       ],
       "not": "safe_contract_guarantee"
+    },
+    {
+      "id": "GUIDE-HUG-TRUST",
+      "sourceIds": [
+        "HUG-TRUST",
+        "HUG-EXAMPLE"
+      ],
+      "level": "public_institution_guidance",
+      "type": "trust_in_ownership_section",
+      "section": "갑구",
+      "needs": "trust_registry_and_actual_consent",
+      "not": "verified_landlord_authority"
+    },
+    {
+      "id": "GUIDE-HUG-CANCEL-PROMISE",
+      "sourceIds": [
+        "HUG-PROMISED-REMOVAL",
+        "DANGDANG-EXAMPLES"
+      ],
+      "level": "public_institution_guidance",
+      "type": "promised_cancellation_is_not_completion",
+      "needs": "fresh_registry_verification",
+      "not": "cancelled_status"
     }
   ],
   "rules": [

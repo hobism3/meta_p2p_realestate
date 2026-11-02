@@ -10,6 +10,7 @@ import {
 } from "../../../lib/registry-text-extraction";
 import {REGISTRY_TRANSFER_KEY,toSanitizedTransfer} from "../../../lib/registry-extraction-transfer";
 import {RIGHT_LABELS,type RightStatus} from "../../../lib/registry-rights-analysis";
+import {useUiLocale} from "../../../lib/ui-locale";
 
 type ReviewSelection={read:boolean;status:RightStatus};
 const sampleCases=samples.cases;
@@ -24,11 +25,12 @@ function CandidateRow({candidate,selection,onUpdate}:{
  selection:ReviewSelection;
  onUpdate:(state:ReviewSelection)=>void;
 }){
+ const {tr}=useUiLocale();
  return <article className="card" style={{marginBottom:10}}>
   <h3>{RIGHT_LABELS[candidate.entry.kind]} · {candidate.entry.section} / 순위번호 {candidate.entry.rankNumber??"불명"}</h3>
   <p className="meta">근거 위치: {candidate.evidence.page===null?"페이지 미지정":candidate.evidence.page+"페이지"} · 복사 텍스트 {candidate.evidence.line}번째 줄 · 구조화 후보 {candidate.id}</p>
-  <p className="meta">확인된 문자열을 그대로 표시하지 않고, 종류·순위·날짜·금액만 재구성합니다.</p>
-  <p><b>추출 후보:</b> {candidate.evidence.label}</p>
+  <p className="meta">{tr("확인된 문자열을 그대로 표시하지 않고, 종류·순위·날짜·금액만 재구성합니다.","Only types, ranks, dates and amounts are shown, not the source text.")}</p>
+  <p><b>{tr("추출 후보:","Candidate:")}</b> {candidate.evidence.label}</p>
   {candidate.entry.kind==="mortgage"?<p>채권최고액 후보: <strong>{candidate.entry.claimMaximumManwon==null?"추출 불가":candidate.entry.claimMaximumManwon.toLocaleString("ko-KR")+"만원"}</strong>
    <small className="meta"> · {candidate.amountEvidence==="same_row"?"같은 행":candidate.amountEvidence==="next_row"?"다음 줄": "근거 누락"}</small></p>:null}
   {candidate.cancellationMentioned?<p role="status"><strong>말소 관련 별도 행이 연결된 것으로 추정됩니다.</strong> 취소선/말소 대상 등기의 실제 효력은 반드시 원본에서 확인하세요.</p>:null}
@@ -41,12 +43,13 @@ function CandidateRow({candidate,selection,onUpdate}:{
   </label>
   <label style={{display:"flex",alignItems:"flex-start",gap:10,marginTop:10}}>
    <input type="checkbox" checked={selection.read} onChange={ev=>onUpdate({...selection,read:ev.target.checked})}/>
-   <span>원본과 대조했습니다. 이 항목만 다음 권리관계 자가점검으로 가져옵니다. (현행/말소의 법적 진위 인증이 아님)</span>
+   <span>{tr("원본과 대조했습니다. 이 항목만 다음 권리관계 자가점검으로 가져옵니다. (현행/말소의 법적 진위 인증이 아님)","I compared this item with the source PDF. Import it only as a reviewed candidate (not legal verification).")}</span>
   </label>
  </article>;
 }
 
 export default function LocalRegistryTextExtractor(){
+ const {tr,en}=useUiLocale();
  const [pdf,setPdf]=useState<File|null>(null);
  const [localUrl,setLocalUrl]=useState("");
  const [text,setText]=useState("");
@@ -159,16 +162,16 @@ export default function LocalRegistryTextExtractor(){
 
  return <div className="grid owner-page registry-review-page">
   <header className="owner-hero"><span>P10 · LOCAL PDF TEXT-LAYER READER</span>
-   <h1>등기 권리기재 후보 추출</h1>
-   <p><strong>PDF를 선택하면</strong> 브라우저에 포함된 PDF.js로 글자와 페이지·좌표를 추출해 권리기재 후보를 자동 정리합니다. 결과는 사람이 원문과 대조한 후에만 점검 화면으로 전달할 수 있습니다.</p>
-   <p><strong>복사 가능한 텍스트층만 읽습니다.</strong> 스캔 이미지 OCR·취소선의 법적 효력·문서 진위는 판정하지 않습니다. PDF·텍스트는 서버·Meta 모델로 전송하지 않습니다.</p>
+   <h1>{tr("등기 권리기재 후보 추출","Extract title-record evidence")}</h1>
+   <p><strong>{tr("PDF를 선택하면","When you select a PDF,")}</strong> 브라우저에 포함된 PDF.js로 글자와 페이지·좌표를 추출해 권리기재 후보를 자동 정리합니다. 결과는 사람이 원문과 대조한 후에만 점검 화면으로 전달할 수 있습니다.</p>
+   <p><strong>{tr("복사 가능한 텍스트층만 읽습니다.","Only embedded text is read.")}</strong> 스캔 이미지 OCR·취소선의 법적 효력·문서 진위는 판정하지 않습니다. PDF·텍스트는 서버·Meta 모델로 전송하지 않습니다.</p>
   </header>
   <section className="card">
-   <h2>1. PDF 자동 텍스트 추출 (브라우저 안에서만)</h2>
-   <p>PDF 선택 후 별도 업로드 없이 로컬 텍스트층을 분석합니다. 개인정보가 담긴 PDF는 원문 대조 후 화면의 텍스트·결과 삭제를 사용해 지우세요.</p>
+   <h2>{tr("1. PDF 자동 텍스트 추출 (브라우저 안에서만)","1. Extract PDF text locally")}</h2>
+   <p>{tr("PDF 선택 후 별도 업로드 없이 로컬 텍스트층을 분석합니다. 개인정보가 담긴 PDF는 원문 대조 후 화면의 텍스트·결과 삭제를 사용해 지우세요.","Your browser extracts the PDF text locally. Clear any private text after reviewing the source.")}</p>
    <label style={{display:"grid",gap:8}}>
     PDF 선택 → 자동 글자 추출·행 복원 (서버 전송 없음)
-    <input type="file" aria-label="로컬 PDF 파일 선택" accept="application/pdf,.pdf" disabled={busy} onChange={ev=>void choosePdf(ev.target.files?.[0]??null)}/>
+    <input type="file" aria-label={tr("로컬 PDF 파일 선택","Choose local PDF")} accept="application/pdf,.pdf" disabled={busy} onChange={ev=>void choosePdf(ev.target.files?.[0]??null)}/>
    </label>
    {pdf&&localUrl?<div style={{marginTop:12}}>
     <p><strong>{pdf.name}</strong> · {Math.round(pdf.size/1024)}KB · 브라우저 로컬</p>
@@ -178,7 +181,7 @@ export default function LocalRegistryTextExtractor(){
    {pdfProgress?<p className="meta" role="status">{busy?"PDF 처리 중: ":""}{pdfProgress}</p>:null}
    {pdfStats?<p className="meta"><strong>추출 규모:</strong> {pdfStats}</p>:null}
    {pdfWarnings.map((w,i)=><p role="note" className="meta" key={i}>⚠ {w}</p>)}
-   <p className="meta">PDF 구조가 불분명하면 아래 텍스트를 직접 수정할 수 있습니다. [PAGE 1]처럼 페이지 구분을 표시할 수 있으며 자동 추출 결과를 공식 권리기록으로 인증하지 않습니다.</p>
+   <p className="meta">{tr("PDF 구조가 불분명하면 아래 텍스트를 직접 수정할 수 있습니다. [PAGE 1]처럼 페이지 구분을 표시할 수 있으며 자동 추출 결과를 공식 권리기록으로 인증하지 않습니다.","Review and correct the extracted text if needed. These results do not certify legal ownership or registered rights.")}</p>
    <label style={{display:"grid",gap:8,marginTop:16}}>
     가상 복사 텍스트 실험
     <select value={chosenExample} onChange={ev=>ev.target.value?loadSample(ev.target.value):clear()}>
@@ -189,8 +192,8 @@ export default function LocalRegistryTextExtractor(){
    <p className="meta">{statusText}</p>
   </section>
   <section className="card">
-   <h2>P11 · 공개 교육용 가상 등기부 PDF 5종</h2>
-   <p>실제로 게시자가 공개한 <strong>교육용 가상 문서</strong>입니다. 원본 페이지로 이동해 내려받은 다음, 위 PDF 선택란에서 로컬 분석을 시험할 수 있습니다. 실제 부동산 등기사항증명서가 아닙니다.</p>
+   <h2>{tr("P11 · 공개 교육용 가상 등기부 PDF 5종","Five public educational title-record PDFs")}</h2>
+   <p>실제로 게시자가 공개한 <strong>{tr("교육용 가상 문서","fictional educational examples")}</strong>입니다. 원본 페이지로 이동해 내려받은 다음, 위 PDF 선택란에서 로컬 분석을 시험할 수 있습니다. 실제 부동산 등기사항증명서가 아닙니다.</p>
    <div className="grid" style={{gap:10}}>
     {publicEducationalSamples.references.map(s=>(
      <div key={s.id} style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",gap:8,padding:"10px 12px",border:"1px solid var(--line)",borderRadius:12}}>
@@ -202,24 +205,24 @@ export default function LocalRegistryTextExtractor(){
    <p className="meta" style={{marginTop:10}}>5종 원본 URL·SHA-256 및 임시 CI 재검증 결과는 P11 출처 원장에서 관리합니다. 원본은 우리 서버·Meta로 전송되지 않으며, 다운로드한 교육용 PDF의 재배포/상업적 활용 허락까지 의미하지 않습니다. 원본의 모든 권리·효력을 자동으로 확정하지 않습니다.</p>
   </section>
   <section className="card">
-   <h2>2. 자동 추출된 텍스트 확인 또는 직접 붙여넣기</h2>
+   <h2>{tr("2. 자동 추출된 텍스트 확인 또는 직접 붙여넣기","2. Review extracted text or paste it")}</h2>
    <label htmlFor="registry-pasted-text">복사된 문자 자료 (최대 {REGISTRY_TEXT_MAX_CHARS.toLocaleString("ko-KR")}자)</label>
    <textarea id="registry-pasted-text" spellCheck={false}
     style={{width:"100%",minHeight:225,padding:14,border:"1px solid #cbdad2",borderRadius:10,font:"inherit",lineHeight:1.5}}
     maxLength={REGISTRY_TEXT_MAX_CHARS+1}
     placeholder={"【갑 구】 소유권에 관한 사항\n1 | 가압류 | 2026.01.01\n【을 구】 소유권 이외의 권리에 관한 사항\n1 | 근저당권설정 | 2026.02.01 | 채권최고액 금1억2천만원정"}
     value={text} onChange={ev=>{requestId.current++;setBusy(false);setPdfProgress("");setText(ev.target.value);setParsed(null);setReviews({});setError("");setChosenExample("");}}/>
-   <p className="meta">이 텍스트는 저장하지 않습니다. 원본의 주소·성명·개인번호가 복사됐을 수 있으므로 공유하거나 Git·로그에 붙이지 마세요. 결과에는 허용된 권리정보만 표시합니다.</p>
+   <p className="meta">{tr("이 텍스트는 저장하지 않습니다. 원본의 주소·성명·개인번호가 복사됐을 수 있으므로 공유하거나 Git·로그에 붙이지 마세요. 결과에는 허용된 권리정보만 표시합니다.","This text is not stored. It might contain private names, addresses or identity numbers. Do not share or put it in logs.")}</p>
    <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-    <button className="btn" onClick={parse} disabled={busy||incompletePdf||text.trim().length<10||text.length>REGISTRY_TEXT_MAX_CHARS}>직접 수정한 텍스트로 다시 분석하기</button>
-    <button className="btn ghost" onClick={clear}>텍스트·결과 삭제</button>
+    <button className="btn" onClick={parse} disabled={busy||incompletePdf||text.trim().length<10||text.length>REGISTRY_TEXT_MAX_CHARS}>{tr("직접 수정한 텍스트로 다시 분석하기","Reanalyze revised text")}</button>
+    <button className="btn ghost" onClick={clear}>{tr("텍스트·결과 삭제","Clear text and results")}</button>
    </div>
    {error?<p role="alert" className="error">{error}</p>:null}
   </section>
   {parsed?<section className="card" aria-live="polite">
    <h2>3. 후보 {parsed.candidates.length}건 검토</h2>
    <p>구조 인식: <strong>{parsed.documentKind==="registry_like"?"갑구/을구 표제 확인":"등기부 형식 불명"}</strong> · 읽은 텍스트 {parsed.coverage.linesRead}줄 · 말소 언급 {parsed.cancellationMentions}건 · 연결되지 않은 말소 언급 {parsed.coverage.unresolvedCancellationRows}건</p>
-   <p className="meta">원본 PDF의 취소선·표 셀 위치가 복사 과정에서 사라질 수 있으므로 기계가 자동으로 현행/말소를 확정하지 않습니다.</p>
+   <p className="meta">{tr("원본 PDF의 취소선·표 셀 위치가 복사 과정에서 사라질 수 있으므로 기계가 자동으로 현행/말소를 확정하지 않습니다.","Strikethroughs and table structure may not survive text extraction; active or cancelled status is not certified.")}</p>
    {independentAudit?<div role="note" style={{padding:"10px 12px",border:"1px solid #d6dcd8",borderRadius:10,marginBottom:10}}>
     <strong>P12 · 별도 번호/권리기재 탐색:</strong>{" "}
     눈에 보이는 번호 권리행 {independentAudit.observedRightRows}건 · 기존 후보와 일치 {independentAudit.matched}건
@@ -229,18 +232,18 @@ export default function LocalRegistryTextExtractor(){
     <p className="meta">두 탐색 결과가 일치해도 문서 전체의 권리·법적 효력·말소를 검증했다는 뜻은 아닙니다.</p>
    </div>:null}
    {parsed.warnings.map((w,i)=><p className="meta" key={i}>{w}</p>)}
-   {parsed.candidates.length===0?<p>후보 행을 찾지 못했습니다. 법적 권리가 없다는 증거가 아닙니다. 갑구·을구를 직접 확인하세요.</p>:null}
+   {parsed.candidates.length===0?<p>{tr("후보 행을 찾지 못했습니다. 법적 권리가 없다는 증거가 아닙니다. 갑구·을구를 직접 확인하세요.","No candidate rows were detected. This does not prove that no registered rights exist.")}</p>:null}
    {parsed.candidates.map(c=><CandidateRow key={c.id} candidate={c}
     selection={reviews[c.id]??{read:false,status:"unknown"}}
     onUpdate={next=>setReviews(old=>({...old,[c.id]:next}))}/>)}
    {parsed.candidates.length>0?<div>
     <p>원문 대조 후 선택한 항목: <strong>{approved.length}/{parsed.candidates.length}</strong></p>
-    <button className="btn" onClick={transfer} disabled={incompletePdf||uncoveredRights||approved.length===0}>선택한 정형 값만 권리관계 점검으로 가져오기 →</button>
+    <button className="btn" onClick={transfer} disabled={incompletePdf||uncoveredRights||approved.length===0}>{tr("선택한 정형 값만 권리관계 점검으로 가져오기 →","Send reviewed facts to rights checklist →")}</button>
     <p className="meta">가져오는 데이터는 권리종류·상태·등기일·순위번호·채권최고액만 포함합니다. 전체 PDF/복사 텍스트·주소·소유자 이름·근거 문장은 저장하지 않습니다. 가져와도 공식 인증이 아닙니다.</p>
    </div>:null}
   </section>:null}
   <section className="card">
-   <h2>4. 추출기의 한계</h2>
+   <h2>{tr("4. 추출기의 한계","4. Limits of extraction")}</h2>
    <p>로컬 PDF.js에서 읽은 텍스트층의 <strong>잠정 후보</strong>입니다. 문자 간 좌표 복원만으로 취소선·말소 대상·병합 셀·소유권·실제 효력은 확인할 수 없습니다. PDF의 진위, 최신 등기, 이미지 스캔본, 선순위 임차인·세금, 소유자 신원·위임권한을 확인할 수 없습니다.</p>
    <a className="btn ghost" href="/registry/cases">P8 권리 유형 사례집 보기 ↗</a>{" "}
    <a className="btn ghost" href="/registry/check">직접 권리관계 점검하기 ↗</a>

@@ -1,0 +1,131 @@
+{
+  "schema": "registry-web-evidence-v1",
+  "createdAt": "2026-11-02",
+  "objective": "No in-house human truth labels. Use publisher-authored public educational examples, official legal/consumer guidance, and independent transformations. Provenance is not legal certainty.",
+  "sources": [
+    {
+      "id": "HUG-EXAMPLE",
+      "name": "HUG 전세사기예방센터: 등기부등본 확인",
+      "url": "https://www.khug.or.kr/jeonse/web/s03/s030105.jsp",
+      "category": "public_institution_worked_example",
+      "retrieval": "html_text_only",
+      "use": "Anonymized educational table examples of 갑구 압류 and 을구 근저당권 with 채권최고액; no personal/addresses stored."
+    },
+    {
+      "id": "DANGDANG-EXAMPLES",
+      "name": "당당: 등기부등본 보는 법",
+      "url": "https://dangdang.io/blog/registry-document-guide",
+      "category": "publisher_fictional_examples",
+      "retrieval": "html_text_only",
+      "use": "Publisher-created fictional downloadable PDF 5 cases; mortgage maximum sum 2억9천만원 is explicitly stated."
+    },
+    {
+      "id": "HF-CHECKLIST",
+      "name": "한국주택금융공사: 계약하기",
+      "url": "https://corp.hf.go.kr/ko/sub01/sub01_10_03.do",
+      "category": "public_institution_guidance",
+      "retrieval": "html_text_only",
+      "use": "Independent institution states to check mortgage/provisional attachment and ledger."
+    },
+    {
+      "id": "REGISTRY-LAW-RIGHTS",
+      "name": "국가법령정보센터 부동산등기법 제3조·제4조·제5조",
+      "url": "https://www.law.go.kr/LSW/lsLinkProc.do?joLnkStr=%EC%A0%9C51%EC%A1%B0&lsNm=%EB%B6%80%EB%8F%99%EC%82%B0%EB%93%B1%EA%B8%B0%EB%B2%95&mode=11",
+      "category": "primary_statute",
+      "retrieval": "manual_source_citation",
+      "use": "Kinds of registered rights, ordering by section/receipt, and annex/subrank limitations. Recheck current applicable consolidated text before deployment."
+    },
+    {
+      "id": "STATISTICS-RECORD-MANUAL",
+      "name": "국가통계도서관 건물분 등기부등본 안내",
+      "url": "https://lib1.mods.go.kr/dl_image2/IMG/01/000000000954/SERVICE/000000000954_01.PDF",
+      "category": "public_statistical_document_educational",
+      "retrieval": "pdf_source_link_only",
+      "use": "Independent explanation of 표제부/갑구/을구 and missing 을구; not a labelled actual certificate."
+    }
+  ],
+  "claims": [
+    {
+      "id": "EX-HUG-OWNERSHIP-SEIZURE",
+      "sourceId": "HUG-EXAMPLE",
+      "level": "publisher_authored_example",
+      "type": "seizure",
+      "section": "갑구",
+      "rank": 3,
+      "registrationDate": "2022-01-13",
+      "originalLabel": "압류",
+      "documentKind": "anonymized_educational_example",
+      "not": "actual_certificate"
+    },
+    {
+      "id": "EX-HUG-MORTGAGE",
+      "sourceId": "HUG-EXAMPLE",
+      "level": "publisher_authored_example",
+      "type": "mortgage",
+      "section": "을구",
+      "rank": 1,
+      "registrationDate": "2018-08-06",
+      "claimMaximumManwon": 200000,
+      "originalLabel": "근저당권설정",
+      "not": "loan_balance"
+    },
+    {
+      "id": "EX-DANGDANG-MORTGAGE",
+      "sourceId": "DANGDANG-EXAMPLES",
+      "level": "publisher_authored_fictional",
+      "type": "mortgage_total",
+      "claimMaximumManwon": 29000,
+      "originalLabel": "근저당 60퍼센트 가상 샘플",
+      "not": "actual_debt"
+    },
+    {
+      "id": "GUIDE-CROSS-SECTION",
+      "sourceIds": [
+        "HUG-EXAMPLE",
+        "DANGDANG-EXAMPLES",
+        "REGISTRY-LAW-RIGHTS"
+      ],
+      "level": "public_guidance_agreement",
+      "type": "general_classification",
+      "ownershipSection": "갑구",
+      "nonOwnershipSection": "을구",
+      "not": "individual_rank_validity"
+    },
+    {
+      "id": "GUIDE-NO-AUTO-SAFETY",
+      "sourceIds": [
+        "HUG-EXAMPLE",
+        "DANGDANG-EXAMPLES",
+        "HF-CHECKLIST"
+      ],
+      "level": "public_guidance_agreement",
+      "type": "missing_information",
+      "conditions": [
+        "senior_tenants",
+        "tax",
+        "building_ledger",
+        "real_owner_authority",
+        "latest_certificate"
+      ],
+      "not": "safe_contract_guarantee"
+    }
+  ],
+  "rules": [
+    {
+      "id": "SCOPE-001",
+      "rule": "Publisher-derived case facts are external partial labels, not complete expert ground truth."
+    },
+    {
+      "id": "SCOPE-002",
+      "rule": "Never infer that missing candidate rows or source unavailability implies no rights or safe transaction."
+    },
+    {
+      "id": "SCOPE-003",
+      "rule": "No names, addresses, ID numbers, full PDF texts, downloaded PDF bytes, or uploaded source screenshots persisted to Git."
+    },
+    {
+      "id": "SCOPE-004",
+      "rule": "Only publisher-listed educational examples are deterministic expectation sources; official guidance supports definitions/checklists, not sample-level PDF goldens."
+    }
+  ]
+}

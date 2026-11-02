@@ -110,7 +110,7 @@ function claimMaximum(text:string):number|null{
   const [eok,tail]=token.split("억");
   const high=smallKoreanNumber(eok);
   const low=tail?smallKoreanNumber(tail.replace(/만원?$/,"").replace(/원$/,"")):0;
-  if(high!==null&&low!==null && /(?:억|만원)$/.test(token))manwon=high*10000+low;
+  if(high!==null&&low!==null && /(?:억원?|만원)$/.test(token))manwon=high*10000+low;
  }else if(token.endsWith("만원")){
   manwon=smallKoreanNumber(token.slice(0,-2));
  }else if(token.endsWith("만")){
@@ -160,7 +160,7 @@ export function extractRegistryText(raw:unknown):RegistryTextExtraction{
   if(detected!==null){section=detected;headings++;continue;}
   // No claims outside 갑구 / 을구, to avoid free-text explanatory false positives.
   if(section==="unknown")continue;
-  const kind=kindOf(line);if(!kind)continue;
+  // Detect a right ONLY in the numbered 등기목적 column, not an incidental\n  // word in creditor/owner notes. Copied PDF cell columns may be pipe-separated.\n  const columns=line.split("|");\n  const purpose=columns.length>=2?columns[1]:line;\n  const kind=kindOf(purpose);if(!kind)continue;
   const rank=rankOf(lines[i].text);
   if(rank===null)continue; // not a recognizable numbered registry row
   if(/말\s*소/.test(line)){

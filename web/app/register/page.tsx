@@ -223,6 +223,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
       <div className="wizard-success-actions">
         {doneId ? <a className="btn" href={"/listings/" + doneId}>상세 보기 ↗</a> : null}
          {doneId ? <a className="btn ghost" href={"/owner/listings/" + doneId}>내 집 관리 · AI 설정 →</a> : null}
+        {doneId ? <a className="btn ghost" href={"/owner/listings/" + doneId + "#owner-gallery"}>실제 사진 게시 · 갤러리 관리 →</a> : null}
         <a className="btn ghost" href="/">매물 둘러보기</a>
       </div>
     </div>

@@ -1,2 +1,5 @@
 # Derived PDF.js worker generated locally from pinned dependency before Next dev/build.
 web/public/pdf.worker.4.10.38.min.mjs
+
+# Copyrighted publicly accessible educational PDF samples: local private test cache only.
+web/.local-registry-training-docs/

@@ -105,10 +105,10 @@ try {
  await page.goto(base+"/register");
  mark("listing_pdf");
  await setCaption(page,"01 / 03   Create a listing","Start from an educational registry PDF.",2500,"mock");
- const sample=await fetch(base+"/api/listings/import-registry/sample");
- if(!sample.ok)throw Error("Synthetic registry sample PDF missing "+sample.status);
- const sampleBytes=Buffer.from(await sample.arrayBuffer());
- await page.locator("#registry-pdf").setInputFiles({name:"directhome-synthetic-registry-demo.pdf",mimeType:"application/pdf",buffer:sampleBytes});
+ // Use EXACTLY the same byte-identical synthetic Korean PDF for registration
+ // AND the later rights-analysis chapter. This is a whitelisted educational Mock.
+ const sampleBytes=await readFile(educational);
+ await page.locator("#registry-pdf").setInputFiles({name:"fictional-korean-registry.pdf",mimeType:"application/pdf",buffer:sampleBytes});
  await page.locator(".registry-consent input").check();
  await page.getByRole("button",{name:"AI로 매물 정보 추출하기"}).click();
  const extract=page.getByRole("heading",{name:"추출 결과 미리보기"});

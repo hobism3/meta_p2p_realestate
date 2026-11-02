@@ -4,6 +4,9 @@
 
 **Live demo:** https://meta-p2p-realestate.vercel.app/  
 **Repository:** https://github.com/hobism3/meta_p2p_realestate  
+**Actual Meta AI demonstration (generated room, Vision air conditioner detection, furniture-free edit):** https://github.com/hobism3/meta_p2p_realestate/releases/tag/directhome-real-meta-demo-20261103  
+**Evidence and model-call audit:** [docs/REAL_META_VERIFICATION_20261103.md](docs/REAL_META_VERIFICATION_20261103.md)  
+
 **2026-11-01 legal review baseline:** `main@94108e1` (legal patch branch changes are not verified production releases)
 
 > **Problem:** Finding a property is only the beginning. Buyers and sellers negotiate price, deposits, rent, visits, handover, and move-in dates in free-form messages. A wish, a counteroffer, and an accepted condition can be easily confused.

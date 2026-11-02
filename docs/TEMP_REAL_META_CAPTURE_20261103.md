@@ -1,5 +1,6 @@
 # Temporary real Meta inference evidence capture — 2026-11-03
 
+> **RETIRED (2026-11-03 KST):** This one-shot endpoint was used exactly once for each of three Meta operations, then deleted. Its Vercel sandbox has been stopped. This document is an archival audit of the retired mechanism, NOT an available product API. See [the verified public release](https://github.com/hobism3/meta_p2p_realestate/releases/tag/directhome-real-meta-demo-20261103) and [the evidence report](REAL_META_VERIFICATION_20261103.md).\n\n
 The DirectHome photo AI API requires real Supabase login, and automation must not forge identity or bypass session validation. The ordinary owner flow remains unchanged.
 
 This separate internal-only capture endpoint allows the project operator to validate exactly one **Meta-generated synthetic photo** with real provider calls, for hackathon evidence. It is intentionally short-lived and must be **removed from main immediately after evidence collection**.

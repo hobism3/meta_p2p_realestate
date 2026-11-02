@@ -38,3 +38,14 @@
 - Google 로그인까지 Preview에서 직접 사용하려면 Supabase Authentication → URL Configuration → Redirect URLs에 테스트할 Preview URL의 정확한 `/auth/callback` 주소 허용이 필요. 새로운 PR의 `?next=%2Fregister` 쿼리가 붙는 Callback도 허용목록에 포함돼야 함.
 - Supabase 공개 권장 `https://*-<team-slug>.vercel.app/**` 는 많은 Preview 도메인에 인증 토큰을 전달할 수 있으므로, 제한된 실험에서는 도메인 단위 최소 범위 허용을 선호함.
 - Meta 잔여 크레딧 15달러. 현재 검증 세션에서 유료 호출 0회. 사용자 계정으로 브라우저에서 1회만 실행하는 것이 비용을 통제하며, API 게이트의 인스턴스별 quota는 전역 상한이 아님.
+
+
+## 2026-11-02 15:00 KST · Supabase 커넥터 신규 연결 확인
+- ChatGPT Supabase 연결 정상, 프로젝트 `DirectHome` ref `vnaedrgwilaeujlfravc` / 상태 `ACTIVE_HEALTHY` 확인. DB·사용자·JWT 원문은 출력하지 않음.
+- 공식 가이드 [Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls) 및 2026-10-13 [잘못된 리다이렉트 FAQ](https://supabase.com/kb/troubleshooting/why-am-i-being-redirected-to-the-wrong-url-when-using-auth-redirectto-option-_vqIeO) 대조. `redirect_to`는 허용목록에 일치해야 하며, 일치하지 않을 때 기본 Site URL이 사용될 수 있음.
+- 본 플러그인이 제공하는 Supabase API 기능 목록에는 **Auth URL Configuration 조회/변경 액션이 없음**. 연결 권한이 있어도 해당 설정을 자동으로 수정하지 못했으며 미변경이다.
+- 확인할 Dashboard 경로: `https://supabase.com/dashboard/project/vnaedrgwilaeujlfravc/auth/url-configuration`.
+- 기존 Preview 주소 기준 허용 항목 후보: `https://meta-p2p-realestate-oz2igfgvf-direct-home1.vercel.app/auth/callback`. 최신 PR #33이 배포되면 배포된 정확한 호스트에 맞는 `/auth/callback?next=%2Fregister`를 추가해야 한다. 정확한 호스트가 정해지기 전에는 광범위 와일드카드보다 최소 허용목록을 사용한다.
+- **중요:** 현재 Preview는 PR #33 이전 코드이므로, 허용 URL만 추가해도 Google callback의 `window.location.replace('/')` 문제는 해결되지 않는다. 실제 개선은 PR #33 새 Preview 빌드 및 Supabase 허용목록 둘 다 필요하다.
+- OAuth 서버 인증 기록을 집계로만 살펴봤으며 (개별 사용자·토큰 불조회), 로그인 성공/Preview 우회 여부를 입증할 만큼의 증거는 없었다. 따라서 실 Google 로그인 PASS 선언 금지.
+- Meta 실호출은 여전히 **0회**. Supabase 커넥터만으로 외부 사진 분석 API를 POST 호출하는 능력이 생기는 것은 아니다.

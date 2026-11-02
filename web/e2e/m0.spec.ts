@@ -269,7 +269,12 @@ test("사진: 매물·지도·상세에 생성 시연 이미지를 표시한다"
   const cover = page.locator(".listing-photo img").first();
   await expect(cover).toBeVisible();
   await expect(cover).toHaveAttribute("src", /\/images\/demo-living-/);
-  await expect.poll(() => cover.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  // Mobile shows listings below the first-screen owner/tenant entry cards.
+  // A lazy-loaded image is not requested until it approaches the viewport.
+  // Scroll it into view before asserting decoded pixel dimensions.
+  await cover.scrollIntoViewIfNeeded();
+  await expect.poll(() => cover.evaluate((img: HTMLImageElement) => img.naturalWidth),
+    { timeout: 15000 }).toBeGreaterThan(0);
   await page.getByRole("button", { name: "지도형" }).click();
   const marker = page.locator(".leaflet-marker-icon").first();
   await expect(marker).toBeVisible({ timeout: 20000 });

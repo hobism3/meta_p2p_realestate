@@ -56,6 +56,7 @@ export default function SiteNav() {
       <a href="/">집 찾기</a>
       <a href="/register">매물 등록</a>
       <a href="/registry/check">등기 권리 확인</a>
+      <a href="/showcase">서비스 체험</a>
       {me ? (
         <>
           <a href="/rooms">내 거래방</a>

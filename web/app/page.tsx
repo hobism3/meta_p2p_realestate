@@ -47,6 +47,7 @@ export default function HomePage() {
         <div className="entry-heading">
           <span className="intro-kicker">✦ DirectHome · AI 직거래 파트너</span>
           <h1 id="entry-heading">어떤 목적으로 오셨나요?</h1>
+          <p className="meta"><a className="btn ghost" href="/showcase">DirectHome 기능을 순서대로 체험하기 ↗</a></p>
           <p>집을 내놓는 사람도, 새로운 집을 찾는 사람도.<br />원하는 일을 골라 시작하세요.</p>
         </div>
         <div className="entry-options" role="group" aria-label="이용 목적 선택">

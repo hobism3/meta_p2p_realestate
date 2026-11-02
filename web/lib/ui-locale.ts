@@ -20,6 +20,12 @@ export function useUiLocale() {
   useEffect(() => {
     const sync = () => {
       const current = readLocale();
+      // Landing on a shareable ?lang=en judge URL should persist that
+      // preference when navigating to other product pages.
+      const explicit = new URLSearchParams(window.location.search).get("lang");
+      if (explicit === "en" || explicit === "ko") {
+        try { window.localStorage.setItem(KEY, explicit); } catch { /* optional */ }
+      }
       setLocaleState(current);
       document.documentElement.lang = current;
     };

@@ -90,7 +90,7 @@ export default function TransactionProgressPanel({rid,tradeType,listingId="",rev
    <button type="button" className="btn ghost" onClick={()=>void refresh()}>{tr("현황 새로고침","Refresh status")}</button>
   </div>
   <p className="meta">{tr("이 화면은 당사자가 입력한 조건의 플랫폼 내 확인 이력입니다. 실제 채팅·동의 표현의 법적 의미는 별도 확인해야 합니다.","This is the platform's record of user-entered terms. It does not create a legal contract. Visit bookings require owner approval.")}</p>
-  {summary?<><section className="jiptok-digest" aria-label={tr("집톡이 한눈에 정리","Jiptok summary")}>
+  {summary?<><section id="jiptok-digest" className="jiptok-digest" aria-label={tr("집톡이 한눈에 정리","Jiptok summary")}>
    <header className="jiptok-digest-header">
     <div className="jiptok-digest-avatar" aria-hidden="true">⌂<span>✦</span></div>
     <div>

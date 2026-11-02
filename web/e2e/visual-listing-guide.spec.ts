@@ -122,6 +122,7 @@ test("가상 시연 사진을 서버 저장 없이 불러와 사용자 동의 �
   await expect(page.getByText("synthetic-demo-kitchen.jpg")).toBeVisible();
   await expect(page.getByText("synthetic-demo-lounge.jpg")).toBeVisible();
   await expect(page.locator(".photo-guide-item")).toHaveCount(3);
-  await expect(page.getByRole("button",{name:"사진에서 옵션·공간 자동 정리"})).toBeDisabled();
+  await expect(page.getByRole("button",{name:"이 사진 AI 분석"})).toHaveCount(3);
+  for (const button of await page.getByRole("button",{name:"이 사진 AI 분석"}).all()) await expect(button).toBeDisabled();
   expect(paidCalls).toBe(0);
 });

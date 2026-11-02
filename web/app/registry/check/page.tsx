@@ -224,6 +224,6 @@ export default function RegistryReadingGuide(){
    {example?<p className="meta">가상 예시는 실제 매물에 공유할 수 없습니다.</p>:null}
    {shareNotice?<p role="status">{shareNotice}</p>:null}
    <a className="btn ghost" href={"/listings/"+encodeURIComponent(shareListingId)+"#registry-rights"}>매물 상세에서 안내 확인 →</a>
-  </section>}
+  </section>:null}
  </div>;
 }

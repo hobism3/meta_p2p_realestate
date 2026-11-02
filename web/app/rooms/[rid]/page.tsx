@@ -538,6 +538,15 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
                     </div>
                   ))}
                 </div>
+                <div className="jiptok-demo-brief" aria-label="집톡이 대화 요약">
+                  <strong>✦ 집톡이가 정리한 지금 상황</strong>
+                  <p>{broker.quip}</p>
+                  <p><b>확인된 절차</b> {broker.journey.filter(s=>s.status==="checked").length}개
+                    <span aria-hidden="true"> · </span>
+                    <b>확인 중</b> {broker.journey.filter(s=>s.status==="pending"||s.status==="talking").length}개
+                  </p>
+                  <p><b>다음 확인</b> · {broker.nextStep.title} — {broker.nextStep.note}</p>
+                </div>
                 <p className="jiptok-next"><strong>집톡이의 다음 확인</strong> · {broker.nextStep.title} — {broker.nextStep.note}</p>
                 <button type="button" className="jiptok-reconcile" onClick={() => void onReconcile()} disabled={zipPending}>
                   {zipPending ? "집톡이가 확인 중" : "↻ 기존 대화에서 빠진 조건 다시 정리"}

@@ -1,0 +1,31 @@
+name: directhome-narration-voice-check
+on:
+  push:
+    branches: [feat/three-chapter-hackathon-film-20261103]
+    paths: [.github/workflows/test-natural-voice.yml]
+permissions:
+  contents: read
+jobs:
+  natural-voice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Install neural voice client
+        run: python3 -m pip install --quiet --break-system-packages 'edge-tts>=7,<8'
+      - name: Try natural English narration
+        run: |
+          mkdir -p /tmp/voice-demo
+          python3 - <<'PY'
+          import asyncio,edge_tts
+          async def main():
+              text="DirectHome creates a property listing from a fictional registry PDF. A genuine Meta image analysis recognizes the living room and its air conditioner. Jiptok tracks which terms both people have actually confirmed."
+              for voice in ["en-US-AvaNeural","en-US-GuyNeural"]:
+                  await edge_tts.Communicate(text=text,voice=voice,rate="+3%").save("/tmp/voice-demo/"+voice+".mp3")
+          asyncio.run(main())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: directhome-natural-voice-tests
+          path: /tmp/voice-demo/*.mp3
+          if-no-files-found: error
+          retention-days: 7

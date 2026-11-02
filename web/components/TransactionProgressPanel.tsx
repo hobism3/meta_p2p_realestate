@@ -107,14 +107,14 @@ export default function TransactionProgressPanel({rid,tradeType,listingId="",rev
    </div>
    <div className="jiptok-digest-columns">
     <div className="jiptok-digest-list">
-     <h4><span aria-hidden="true">✓</span> 확인된 내용</h4>
+     <h4><span aria-hidden="true">✓</span> {tr("확인된 내용","Confirmed items")}</h4>
      {summary.stages.filter(s=>s.status==="confirmed" && s.confirmedValue).length?
       summary.stages.filter(s=>s.status==="confirmed" && s.confirmedValue).slice(0,3).map(step=>
        <p key={step.key}><strong>{stageLabel(step.key,step.label)}</strong><span>{step.confirmedValue}</span></p>):
       <p className="jiptok-digest-empty">{tr("아직 앱에서 확인 완료로 기록된 조건이 없어요.","No completed confirmations have been recorded yet.")}</p>}
     </div>
     <div className="jiptok-digest-list">
-     <h4><span aria-hidden="true">◐</span> 아직 확인할 내용</h4>
+     <h4><span aria-hidden="true">◐</span> {tr("아직 확인할 내용","Still to confirm")}</h4>
      {summary.stages.filter(s=>s.status!=="confirmed" && s.pendingValue).length?
       summary.stages.filter(s=>s.status!=="confirmed" && s.pendingValue).slice(0,3).map(step=>
        <p key={step.key}><strong>{stageLabel(step.key,step.label)}</strong><span>{step.pendingValue}</span></p>):

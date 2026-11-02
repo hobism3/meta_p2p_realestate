@@ -69,6 +69,13 @@ test("사진 등록: 전체 분석 후 옵션 후보·욕실 사진 누락 제�
   await page.locator(".photo-guide-option-chips .feature-chip").filter({hasText:"냉장고"}).click();
   await page.getByRole("button",{name:/선택한 1개를 매물 옵션 입력란에 추가/}).click();
   await expect(page.locator("#options")).toHaveValue("냉장고");
+  await page.locator("#moveIn").fill("협의 가능");
+  await page.locator("#publisher").fill("가상 집주인");
+  await page.getByRole("button",{name:/다음 단계/}).click();
+  await expect(page.getByRole("heading",{name:/등록 전에 한 번만/})).toBeVisible();
+  await page.getByRole("button",{name:/이전/}).click();
+  await expect(page.getByText("synthetic-room.jpg")).toBeVisible();
+  await expect(page.getByText(/욕실 사진은 아직 확인되지 않았어요/)).toBeVisible();
   expect(calls).toBe(1);
 });
 test("가구 없는 공간 보기: 별도 동의, 원본과 AI 결과 병치, 시뮬레이션 표시",async({page})=>{

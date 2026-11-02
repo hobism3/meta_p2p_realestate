@@ -1,0 +1,101 @@
+name: publish-real-meta-hackathon-demo
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install video and offline narration tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg espeak
+          python3 -m pip install --quiet 'Pillow==11.3.0'
+      - name: Retrieve actual Meta evidence and the independently recorded Mock application
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p web/demo-evidence/captured web/demo-evidence/mock
+          if ! gh run download 41544487605 -n directhome-real-meta-evidence-20261103 -D web/demo-evidence/captured; then
+            gh release download directhome-real-meta-demo-20261103 -p '*.json' -p '*.jpg' -p '*.webp' -D web/demo-evidence/captured
+          fi
+          if ! gh run download 41460475886 -n directhome-demo-mock-rehearsal -D web/demo-evidence/mock; then
+            gh release download directhome-real-meta-demo-20261103 -p '*mock*.mp4' -D web/demo-evidence/mock
+          fi
+          find web/demo-evidence/captured -maxdepth 1 -type f
+          test -n "$(find web/demo-evidence/mock -type f -name '*.mp4' -print -quit)"
+      - name: Verify provider hashes and render actual-model evidence cards
+        run: |
+          cd web/demo-evidence/captured
+          echo 'af59759ed94169864d77587608dcc8f88e87b74f75f591351a06f883390a47c5  source_meta_generated.jpg' | sha256sum -c -
+          echo '23fdd7e442487566dc05052b94aad69065bec2aaba40e9ae3919b15bdf221ded  empty_view_actual.webp' | sha256sum -c -
+          cd ../../..
+          python3 web/scripts/render-real-meta-demo.py web/demo-evidence/captured web/demo-evidence/panels
+      - name: Encode 3 minute live Meta + transparently labeled Mock app video
+        run: |
+          set -euo pipefail
+          mkdir -p web/demo-evidence/render
+          cd web/demo-evidence
+          for pair in "01_intro:6" "02_generate:13" "03_vision:13" "04_edit:15" "05_outro:6"; do
+            name="${pair%%:*}"; secs="${pair#*:}"
+            ffmpeg -hide_banner -loglevel error -y -loop 1 -framerate 24 -i "panels/${name}.png" -t "$secs" -r 24 -c:v libx264 -preset veryfast -crf 22 -pix_fmt yuv420p "render/${name}.mp4"
+          done
+          MOCK="$(find mock -type f -name '*.mp4' -print -quit)"
+          ffmpeg -hide_banner -loglevel error -y -i "$MOCK" -vf "setpts=PTS/1.20,fps=24,scale=1280:720:flags=lanczos" -an -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p render/mock_fast.mp4
+          printf "file '%s'\n" "$(pwd)/render/01_intro.mp4" "$(pwd)/render/02_generate.mp4" "$(pwd)/render/03_vision.mp4" "$(pwd)/render/04_edit.mp4" "$(pwd)/render/mock_fast.mp4" "$(pwd)/render/05_outro.mp4" > render/concat.txt
+          ffmpeg -hide_banner -loglevel error -y -f concat -safe 0 -i render/concat.txt -c copy -an render/silent.mp4
+          espeak -v en-us -s 151 -w render/voice0.wav 'Direct Home. This video distinguishes actual Meta AI outputs from a synthetic deal demonstration.'
+          espeak -v en-us -s 151 -w render/voice1.wav 'Meta Muse Image generated a synthetic Korean apartment living room, including a sofa, television and a floor-standing air conditioner.'
+          espeak -v en-us -s 151 -w render/voice2.wav 'A real Meta Muse Spark call recognizes the living room and detects the air conditioner as a visible option.'
+          espeak -v en-us -s 151 -w render/voice3.wav 'A real Meta Muse Image edit removes the furniture. This is a virtual illustration, not proof of the physical property condition.'
+          espeak -v en-us -s 151 -w render/voice4.wav 'Now the labeled Mock application shows listing creation, publishing photos, and Jiptok keeping track of human-confirmed deal conditions.'
+          ffmpeg -hide_banner -loglevel error -y -i render/silent.mp4 -i render/voice0.wav -i render/voice1.wav -i render/voice2.wav -i render/voice3.wav -i render/voice4.wav \
+            -filter_complex "[1:a]adelay=0|0,volume=.75[a0];[2:a]adelay=6000|6000,volume=.75[a1];[3:a]adelay=19000|19000,volume=.75[a2];[4:a]adelay=32000|32000,volume=.75[a3];[5:a]adelay=47000|47000,volume=.75[a4];[a0][a1][a2][a3][a4]amix=inputs=5:duration=longest:dropout_transition=0[aout]" \
+            -map 0:v:0 -map '[aout]' -c:v copy -c:a aac -b:a 160k -movflags +faststart -t 179 DirectHome_REAL_Meta_Jiptok_Demo_20261103.mp4
+          python3 - <<'PY'
+          import json,subprocess
+          p='DirectHome_REAL_Meta_Jiptok_Demo_20261103.mp4'
+          x=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_format','-show_streams','-of','json',p]))
+          duration=float(x['format']['duration'])
+          assert 130<duration<180,(duration,p)
+          assert {'video','audio'} <= {s['codec_type'] for s in x['streams']}
+          print('FINAL_VIDEO_VERIFIED',round(duration,2),'seconds, video+audio')
+          PY
+      - name: Archive the finished evidence and full MP4
+        uses: actions/upload-artifact@v4
+        with:
+          name: directhome-real-meta-jiptok-video
+          path: |
+            web/demo-evidence/DirectHome_REAL_Meta_Jiptok_Demo_20261103.mp4
+            web/demo-evidence/captured/manifest.json
+            web/demo-evidence/captured/vision_actual.json
+            web/demo-evidence/captured/source_meta_generated.jpg
+            web/demo-evidence/captured/empty_view_actual.webp
+            web/demo-evidence/mock/*.mp4
+          if-no-files-found: error
+          retention-days: 90
+      - name: Publish durable GitHub Release assets (real Meta + clearly labeled Mock)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=directhome-real-meta-demo-20261103
+          ASSETS=(
+            web/demo-evidence/DirectHome_REAL_Meta_Jiptok_Demo_20261103.mp4
+            web/demo-evidence/captured/manifest.json
+            web/demo-evidence/captured/vision_actual.json
+            web/demo-evidence/captured/source_meta_generated.jpg
+            web/demo-evidence/captured/empty_view_actual.webp
+            web/demo-evidence/mock/*.mp4
+          )
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
+          else
+            gh release create "$TAG" "${ASSETS[@]}" --target "$GITHUB_SHA" --prerelease \
+              --title 'DirectHome: Actual Meta AI evidence + Jiptok Mock walkthrough' \
+              --notes 'A ~2m50s English narrated hackathon rehearsal. The initial source image, Vision detection (living_room, air conditioner), and furniture-free edit are ACTUAL Meta Muse API outputs from Nov 3 KST, evidenced by SHA-256, manifest and JSON. The subsequent web-app and Jiptok bilateral transaction walkthrough is deliberately labeled synthetic MOCK. This is not a real property or a legally verified transaction. No API credentials or user photos are included.'
+          fi

@@ -585,11 +585,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           </div>
           {meta && !meta.demo && meta.ownerAgentEnabled ? <OwnerAgentJobStatus rid={params.rid} revision={transactionRevision}/> : null}
           {meta && !meta.demo ? <TransactionProgressPanel rid={params.rid}
+            listingId={meta.listing?.id??""}
             tradeType={meta.listing?.tradeType??"월세"}
             revision={transactionRevision}
             onUpdated={() => { void refreshConditions(); setTransactionRevision(x=>x+1); }} /> : null}
-          {meta && !meta.demo ? <RoomBookingPanel rid={params.rid}
-            onUpdated={() => { void refresh(); setTransactionRevision(x=>x+1); }} /> : null}
+          {meta && !meta.demo ? <div id="room-visit-booking"><RoomBookingPanel rid={params.rid}
+            onUpdated={() => { void refresh(); setTransactionRevision(x=>x+1); }} /></div> : null}
           {zipError ? <p className="conversation-inline-error" role="alert">{zipError}</p> : null}
           {zipNotice ? <p className="meta" role="status">{zipNotice}</p> : null}
           {aiError ? (

@@ -16,6 +16,8 @@
 |[P10 검증 및 변경 로그](../registry-cases/P10_DEVELOPMENT_LOG_20261102.md)|PR #29 main, 단위 328/API 206/Playwright 88+4, 수정·정보 최소화 제한|개발·감사|
 |[P11 공개 교육용 실제 PDF 확보·해시 원장](../registry-cases/P11_PUBLIC_PDF_SOURCE_AUDIT_20261102.md)|허구 등기 PDF 5종+교육 PDF 2종 원본 획득 검증, 5/5 타입·근저당 합계 검사, 허가/개인정보 제한|문서 증빙·개발|
 |[P11 개발·실험·CI 로그](../registry-cases/P11_DEVELOPMENT_LOG_20261102.md)|PR #31 main, build/340 unit/206 API/90 Playwright, 원본 기반 인식 개선과 미검증 법률 범위|개발·감사|
+|[P12 공개 웹 근거 교차 검증 설계](../registry-cases/P12_WEB_EVIDENCE_VALIDATION_20261102.md)|사용자 전문가 라벨 없이 HUG/당당/HF/법령 및 독립 권리행 감사, PDF 변형 검증|문서 분석·근거 관리|
+|[P12 실험·개발 로그](../registry-cases/P12_DEVELOPMENT_LOG_20261102.md)|PR #32 main, 기관 웹 주장 26항목, PDF 게이트 5/5, 351 unit/206 API, E2E 기존 시연방 1건 실패 기록|개발·감사|
 |[법률 심층 감사 v2](LEGAL_DEEP_DIVE_20261101.md)|2026~27 법률 시행 시점, 공인중개사법·개인정보·전자적 의사표시, 실제 코드 감사 및 제한|제품·법무·개발|
 |[중개행위 해당성](BROKERAGE_CLASSIFICATION_20261101.md)|각 집톡이 행위와 객관적 알선성·보수·업성, 판례/행정 Q&A, 허용·법무 추가확인 경계|제품·법무|
 |[등기 공개자료와 상용 API](REGISTRY_PUBLIC_DATA_AND_API_20261101.md)|부동산등기법 제19조/109조의2, Open API와 민간 API 구분, 개인정보 적법성/계약 실사|권리 분석·제휴|

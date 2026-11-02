@@ -47,3 +47,14 @@
 - 저작권·개인정보 처리가 허용된 **실제 구조를 가진 한국어 합성 PDF**와 사람 검토 정답(페이지/행/문서 좌표/말소선)을 확보.
 - 현행/말소 자동 확정 전에는 근거 crop/원본 위치 시각 확인 UX, 별도 OCR/좌표 정확도 평가 체계가 필요.
 - 정식 외부 등기 API, 본인확인기관, 건축물대장·선순위 임차인 및 세금 권한, 법적 위험 산정/계약 안정성은 후속 별도 게이트로 유지.
+
+## 2026-11-02 · 별도 Vercel 배포 정합성 감사 (읽기 전용)
+
+**배포 판정: Git main 병합은 완료, Production 코드 최신화는 확인되지 않음.**
+
+- 대상 Vercel 프로젝트: `meta-p2p-realestate` (project `prj_12sWEl9EGK9MFD2vTlwt7a4Zs29u`), GitHub `hobism3/meta_p2p_realestate`.
+- Vercel `list_deployments(target=production)`: 최신 READY production은 `dpl_J28x71tYVah5AWWEVKuCanNhfaPk`, GitHub source `main@2d13ed569e`로 확인. P10 main 병합 `74539862`보다 오래된 버전.
+- Vercel `list_deployments(sha=74539862ed94639bb6506898e924cdf2a0de201e)`: **0건**. 프리뷰 브랜치에서도 조회 시점 최종 head의 READY를 확인하지 못함(초기 head `82a9fa83`의 ERROR 배포는 조회됨).
+- **원인 미확정**: Vercel Git Integration 설정/자동 배포 트리거/프로젝트 접근/빌드 조건 등을 실제 운영 권한을 가진 담당자가 확인해야 함. GitHub Actions CI 통과만으로 운영 URL이 갱신되는 것은 아님.
+- 후속 이슈 [#30 — Vercel Production SHA 불일치 조사](https://github.com/hobism3/meta_p2p_realestate/issues/30). 최신 main 인계와 same-origin `/pdf.worker.4.10.38.min.mjs`의 실서비스 200 상태, `/registry/extract` 기능을 배포 후 함께 검증한다.
+- 이 확인은 **읽기 전용**. 배포·Promote·Rollback을 임의 실행하지 않았으며 실 사용자/법률/인증 게이트가 해소됐다고 표시하지 않음.

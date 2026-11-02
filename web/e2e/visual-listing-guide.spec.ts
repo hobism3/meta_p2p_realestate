@@ -170,6 +170,10 @@ test("등록 성공 후 같은 사진을 유지하고 별도 공개 동의 후�
   await page.getByRole("checkbox",{name:/검토한 게시용 JPEG 사진 공개/}).check();
   await publication.click();
   await expect(page.getByRole("button",{name:/게시 완료/})).toBeVisible();
+  await expect(page.getByRole("link",{name:/게시된 사진 관리/}))
+    .toHaveAttribute("href","/owner/listings/mock-new-listing#owner-gallery");
+  // The local editor must not imply that removing a card deletes a public photo.
+  await expect(page.getByRole("button",{name:"사진 제거"})).toHaveCount(0);
   expect(listingPosts).toBe(1);
   expect(photoPosts).toBe(1);
   expect(metaPosts).toBe(0);

@@ -75,6 +75,7 @@ jobs:
             web/demo-evidence/captured/vision_actual.json
             web/demo-evidence/captured/source_meta_generated.jpg
             web/demo-evidence/captured/empty_view_actual.webp
+            web/demo-evidence/mock/*.mp4
           if-no-files-found: error
           retention-days: 90
       - name: Publish durable GitHub Release assets (real Meta + clearly labeled Mock)
@@ -89,6 +90,7 @@ jobs:
             web/demo-evidence/captured/vision_actual.json
             web/demo-evidence/captured/source_meta_generated.jpg
             web/demo-evidence/captured/empty_view_actual.webp
+            web/demo-evidence/mock/*.mp4
           )
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${ASSETS[@]}" --clobber

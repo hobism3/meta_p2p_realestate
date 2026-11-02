@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./locale.css";
+import "./jiptok-digest.css";
 import "leaflet/dist/leaflet.css";
 import SiteNav from "../components/SiteNav";
 

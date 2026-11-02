@@ -257,7 +257,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
               <div className="wizard-success-mark" aria-hidden="true">✓</div>
               <span className="eyebrow">LISTING SAVED</span>
               <h1>{editId ? "매물 정보를 수정했어요." : "매물 등록을 마쳤어요."}</h1>
-              <p>이제 사진도 마무리해 볼까요? 방금 선택한 사진은 이 화면에 그대로 남아 있어요.</p>
+              <p>이제 사진도 마무리해 볼까요? 선택했던 사진은 이 화면에 그대로 남아 있어요. 원한다면 지금 추가할 수도 있습니다.</p>
               <div className="wizard-success-next">
                 <span className="wizard-success-next-num" aria-hidden="true">02</span>
                 <div>
@@ -446,9 +446,23 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
                 <p>AI 분석은 선택 사항이에요. 사진을 직접 확인하고 별도로 동의한 경우에만 실제 매물에 공개됩니다.</p>
               </div> : null}
               <ListingPhotoGuide listingId={saved ? doneId || undefined : undefined}
-                onSuggestOptions={(values) => {
+                onSuggestOptions={async (values) => {
                   const existing = form.options.split(",").map((x) => x.trim()).filter(Boolean);
-                  set("options", Array.from(new Set([...existing, ...values])).join(", "));
+                  const merged = Array.from(new Set([...existing, ...values]));
+                  if (saved && doneId) {
+                    const token = process.env.NEXT_PUBLIC_WRITE_TOKEN;
+                    const res = await fetch("/api/listings/" + encodeURIComponent(doneId), {
+                      method: "PATCH",
+                      headers: {"Content-Type":"application/json",
+                        ...(token ? {"x-write-token":token} : {}), ...authHeaders()},
+                      body: JSON.stringify({options:merged}),
+                    });
+                    if (!res.ok) {
+                      const body = await res.json().catch(() => ({})) as {error?:string};
+                      throw new Error(body.error ?? "옵션 저장에 실패했어요.");
+                    }
+                  }
+                  set("options", merged.join(", "));
                 }} />
             </div>
           ) : null}

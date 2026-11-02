@@ -35,7 +35,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq fonts-nanum ffmpeg
-          python3 -m pip install --quiet --break-system-packages 'reportlab==4.4.4'
+          python3 -m pip install --quiet --break-system-packages 'reportlab==4.4.9'
       - name: Retrieve previously verified Meta model images and JSON
         env:
           GH_TOKEN: ${{ github.token }}
@@ -43,7 +43,9 @@ jobs:
           mkdir -p demo-evidence/captured
           gh run download 41544487605 -n directhome-real-meta-evidence-20261103 -D demo-evidence/captured
       - name: Create our own fictional PDF
-        run: python3 scripts/make-educational-rights-pdf.py demo-evidence/rights-study-synthetic.pdf
+        run: |
+          python3 scripts/make-educational-rights-pdf.py demo-evidence/rights-study-synthetic.pdf
+          echo '7624c8384271e6ebd5bc092263066432db3656b74454272d9fb33a5144d59403  demo-evidence/rights-study-synthetic.pdf' | sha256sum -c -
       - name: Build DirectHome
         run: npm run build
       - name: Record three in-app sessions with synthetic local test users

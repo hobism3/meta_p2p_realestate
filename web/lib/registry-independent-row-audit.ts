@@ -33,9 +33,9 @@ const PREFIX_KINDS:Array<[AuditedKind,RegExp]>=[
  ["mortgage",/^(?:근저당권|저당권)(?:설정|변경|이전|경정)?/],
  ["lease_right",/^전세권(?:설정|이전)?/],
 ];
-const TITLE=/^[【〖\[(『]?([갑을])\s*[|│¦·]?\s*구(?:[】〗\])』])?(?:\s|$|\()/;
+const TITLE=/^(?:【|〖|\\[|\\(|『)?([갑을])구(?:】|〗|\\]|\\)|』)?/;
 function section(line:string):Area|null{
- const m=line.trim().match(TITLE);
+ const m=line.trim().replace(/[\\s|│¦·]/g,"").match(TITLE);
  return m?(m[1]==="갑"?"갑구":"을구"):null;
 }
 function purposeKind(raw:string):AuditedKind|null{

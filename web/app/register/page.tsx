@@ -345,11 +345,6 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
 
             {stage === 3 ? (
               <div className="wizard-details">
-                <ListingPhotoGuide onSuggestOptions={(values) => {
-                  const existing = form.options.split(",").map((x) => x.trim()).filter(Boolean);
-                  const combined = Array.from(new Set([...existing, ...values]));
-                  set("options", combined.join(", "));
-                }} />
                 <div className="wizard-fields-grid">
                   <FormField id="moveIn" title="입주 가능일 *" value={form.moveIn}
                     placeholder="예: 2026-11-10 또는 즉시 입주" onChange={(v) => set("moveIn", v)}
@@ -427,6 +422,15 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
               </div>
             ) : null}
           </div>
+          {/* Keep photo state mounted when moving between Wizard stages. No bytes in sessionStorage. */}
+          {maxVisited >= 3 ? (
+            <div hidden={stage !== 3}>
+              <ListingPhotoGuide onSuggestOptions={(values) => {
+                const existing = form.options.split(",").map((x) => x.trim()).filter(Boolean);
+                set("options", Array.from(new Set([...existing, ...values])).join(", "));
+              }} />
+            </div>
+          ) : null}
 
           {error ? <p className="wizard-error" role="alert">{error}</p> : null}
           <div className="wizard-action-bar">

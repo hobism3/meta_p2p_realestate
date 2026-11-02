@@ -4,6 +4,7 @@ import {authHeaders} from "../lib/client-auth";
 import {decideProposal,loadProposals,type ProposalsData} from "../lib/store";
 import type {TransactionSnapshot,TransactionStageKey,TransactionStatus} from "../lib/transaction-projection";
 import {buildCompanionTasks} from "../lib/jiptok-support-tasks";
+import {buildTransactionJourney} from "../lib/transaction-journey";
 
 const statuses:Record<TransactionStatus,string>={
  confirmed:"양측 확인",partial:"일부 확인",pending:"동의 대기",
@@ -21,8 +22,8 @@ function headers():Record<string,string>{
  const token=process.env.NEXT_PUBLIC_WRITE_TOKEN;
  return {"Content-Type":"application/json",...(token?{"x-write-token":token}:{}) ,...authHeaders()};
 }
-export default function TransactionProgressPanel({rid,tradeType,revision=0,onUpdated}:{
- rid:string;tradeType:string;revision?:number;onUpdated?:()=>void;
+export default function TransactionProgressPanel({rid,tradeType,listingId="",revision=0,onUpdated}:{
+ rid:string;tradeType:string;listingId?:string;revision?:number;onUpdated?:()=>void;
 }){
  const [summary,setSummary]=useState<TransactionSnapshot|null>(null);
  const [proposalData,setProposalData]=useState<ProposalsData|null>(null);
@@ -32,7 +33,8 @@ export default function TransactionProgressPanel({rid,tradeType,revision=0,onUpd
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const options=useMemo(()=>typeOptions[tradeType]??typeOptions["월세"],[tradeType]);
  const chosen=name||options[0];
- const companion=useMemo(()=>summary?buildCompanionTasks(summary):[],[summary]);
+ const companion=useMemo(()=>summary?buildCompanionTasks(summary,4,listingId):[],[summary,listingId]);
+ const journey=useMemo(()=>summary?buildTransactionJourney(summary,listingId):[],[summary,listingId]);
  const refresh=useCallback(async()=>{
   try{
    const [res,proposals]=await Promise.all([
@@ -78,7 +80,21 @@ export default function TransactionProgressPanel({rid,tradeType,revision=0,onUpd
    <button type="button" className="btn ghost" onClick={()=>void refresh()}>현황 새로고침</button>
   </div>
   <p className="meta">이 화면은 당사자가 입력한 조건의 <strong>플랫폼 내 확인 이력</strong>입니다. 계약서 작성·전자서명·법적 계약 성립 판단 기능은 제공하지 않습니다. 다만 실제 채팅·동의 표현 자체가 법적 의사표시로 평가될 수 있어 주의가 필요합니다. 방문 예약은 집주인 승인 후에만 확정 표시됩니다.</p>
-  {summary?<><div className="real-progress-grid">
+  {summary?<><section className="card" aria-label="지금부터 계약 준비까지의 진행 순서" style={{margin:"12px 0 16px"}}>
+   <span className="eyebrow">YOUR NEXT STEPS</span><h3>집톡이가 챙기는 다음 단계</h3>
+   <p className="meta">저장된 방문 승인과 양측 확인 카드만 실제 앱 진행에 반영합니다. 권리 확인·법적 계약·송금 완료는 자동으로 체크하지 않습니다.</p>
+   <div className="real-progress-grid">
+    {journey.map((step,index)=><article className={"real-stage is-"+(step.status==="app_confirmed"?"confirmed":step.status==="awaiting_both"?"pending":"not-started")} key={step.key}>
+     <span className="real-stage-number">{step.status==="app_confirmed"?"✓":step.status==="awaiting_both"?"◐":index+1}</span>
+     <div className="real-stage-body">
+      <strong>{step.title}</strong>
+      <small>{step.statusLabel}</small>
+      <p>{step.detail}</p>
+      {step.target&&step.actionLabel?<a href={step.target}>{step.actionLabel} ↗</a>:null}
+     </div>
+    </article>)}
+   </div>
+  </section><div className="real-progress-grid">
    {summary.stages.map((step,index)=><div key={step.key} className={"real-stage is-"+step.status}>
     <span className="real-stage-number">{stageSymbol(step.status)}</span>
     <div className="real-stage-body"><strong>{index+1}. {step.label}</strong>

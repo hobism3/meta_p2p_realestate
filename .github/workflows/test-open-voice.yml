@@ -1,0 +1,40 @@
+name: directhome-open-weight-voice-check
+on:
+  push:
+    branches: [feat/three-chapter-hackathon-film-20261103]
+    paths: [.github/workflows/test-open-voice.yml]
+permissions:
+  contents: read
+jobs:
+  synthesize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Apache-licensed Kokoro inference
+        run: python3 -m pip install --quiet 'kokoro-onnx>=0.3,<1' soundfile
+      - name: Obtain open-weight model and prepackaged voices
+        run: |
+          mkdir -p /tmp/kokoro-voice
+          curl -fLsS --retry 2 -o /tmp/kokoro-voice/kokoro-v1.0.int8.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/kokoro-v1.0.int8.onnx
+          curl -fLsS --retry 2 -o /tmp/kokoro-voice/voices-v1.0.bin https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/voices-v1.0.bin
+          ls -lh /tmp/kokoro-voice/
+      - name: Render natural American English example locally
+        run: |
+          cd /tmp/kokoro-voice
+          python3 - <<'PY'
+          from kokoro_onnx import Kokoro
+          import soundfile as sf
+          voice=Kokoro('kokoro-v1.0.int8.onnx','voices-v1.0.bin')
+          sample,rate=voice.create('DirectHome automatically fills property details from a fictional registry, then suggests visible amenities from a photo. Jiptok summarizes proposals, while people make the final decisions.',voice='af_heart',speed=1.0,lang='en-us')
+          sf.write('sample.wav',sample,rate)
+          print('SUCCESS',len(sample),rate)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: directhome-open-weight-voice-trial
+          path: /tmp/kokoro-voice/sample.wav
+          if-no-files-found: error
+          retention-days: 7

@@ -266,7 +266,9 @@ test("방: 문의→생성→채팅→새로고침 유지, 타인은 차단된�
 
 test("사진: 매물·지도·상세에 생성 시연 이미지를 표시한다", async ({ page }) => {
   await page.goto("/");
-  const cover = page.locator(".listing-photo img").first();
+  // Other E2E cases also create custom listings. Find a seeded photo explicitly
+  // rather than assuming the first card is always a synthetic seed.
+  const cover = page.locator('.listing-photo img[src*="/images/demo-living-"]').first();
   await expect(cover).toBeVisible();
   await expect(cover).toHaveAttribute("src", /\/images\/demo-living-/);
   // HTML lazy-loaded images may be visible in the DOM but outside the viewport on mobile.

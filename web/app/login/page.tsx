@@ -2,14 +2,14 @@
 
 import {useEffect,useState,type FormEvent} from "react";
 import {clearAccessToken,getAccessToken,setAccessToken} from "../../lib/client-auth";
+import {safeAuthDestination} from "../../lib/auth-return";
 
 type Mode = "login"|"signup"|"recover";
 type Me = {userId:string;name:string;mode:string};
 type AuthResponse = {error?:string;access_token?:string;requiresConfirmation?:boolean;message?:string};
 function destination():string {
   if(typeof window==="undefined")return "/";
-  const next=new URLSearchParams(window.location.search).get("next")??"";
-  return next.startsWith("/")&&!next.startsWith("//")&&!next.includes("\\")?next:"/";
+  return safeAuthDestination(new URLSearchParams(window.location.search).get("next"));
 }
 export default function LoginPage(){
   const [mode,setMode]=useState<Mode>("login");
@@ -19,6 +19,7 @@ export default function LoginPage(){
   const [error,setError]=useState(""),[notice,setNotice]=useState("");
   const [busy,setBusy]=useState(false),[showPassword,setShowPassword]=useState(false);
   const [hydrated,setHydrated]=useState(false);
+  const [nextPath,setNextPath]=useState("/");
   const loadMe=async()=>{
     const token=getAccessToken();
     if(!token){setMe(null);return;}
@@ -31,6 +32,7 @@ export default function LoginPage(){
   useEffect(()=>{
     const q=new URLSearchParams(window.location.search).get("mode");
     if(q==="signup"||q==="recover")setMode(q);
+    setNextPath(destination());
     const e=new URLSearchParams(window.location.search).get("error");
     if(e==="unconfigured")setError("서버 인증 미설정입니다. 관리자에게 문의하세요.");
     else if(e==="provider")setError("지원하지 않는 로그인 방식입니다.");
@@ -88,7 +90,7 @@ export default function LoginPage(){
     <section className="card auth-box">
       {me?<><span className="eyebrow">SIGNED IN</span><h2>로그인되어 있습니다</h2>
         <p>{me.name}</p><p className="meta">계정 유형은 이용 화면을 제한하지 않습니다.</p>
-        <div className="auth-actions"><a className="btn" href="/owner">내 집 관리</a><a className="btn ghost" href="/#properties">집 찾기</a></div>
+        <div className="auth-actions">{nextPath !== "/" ? <a className="btn" href={nextPath}>이전 작업으로 돌아가기</a> : null}<a className="btn" href="/owner">내 집 관리</a><a className="btn ghost" href="/#properties">집 찾기</a></div>
         <button className="btn ghost" onClick={()=>void logout()}>로그아웃</button></>:
       <>
         <div className="auth-tabs" role="tablist" aria-label="계정 이용 방법">
@@ -126,7 +128,7 @@ export default function LoginPage(){
         {notice?<p role="status" className="auth-notice">{notice}</p>:null}
         {mode==="recover"?<button type="button" disabled={!hydrated} className="auth-text-link" onClick={()=>switchMode("login")}>← 로그인으로 돌아가기</button>:null}
         <div className="auth-divider"><span>또는</span></div>
-        <a className="btn ghost auth-google" href="/api/auth/oauth?provider=google">Google로 계속하기 ↗</a>
+        <a className="btn ghost auth-google" href={"/api/auth/oauth?provider=google&next=" + encodeURIComponent(nextPath)}>Google로 계속하기 ↗</a>
         <p className="meta auth-footnote">이메일 인증이 활성화된 경우 메일의 확인 링크를 눌러야 로그인할 수 있습니다. 서로 다른 두 계정으로 집주인·방문자 역할을 테스트할 수 있습니다.</p>
       </>}
     </section>

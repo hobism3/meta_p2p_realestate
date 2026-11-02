@@ -15,8 +15,8 @@
 ## 자동 테스트와 배포 — 무엇을 확인하지 못했나
 - 사진 PR #25의 head `d994b780`에서 GitHub `verify-fast`/`verify-e2e` 둘 다 성공. Preview READY `d994b780` 확인.
 - **main 최종 HEAD `ae5e441`의 GitHub Actions 실행 결과는 해당 SHA로 조회 시 0건**, P13~P16 개별 PR 병합·README에서 기록한 테스트를 최신 통합 HEAD의 새 검증으로 간주하지 않음.
-- Vercel `target=production` 조회에서 P12 기준 `bf33ee1` READY 배포를 확인. 이는 과거 Issue #30의 P10 시점 구버전 SHA 상태는 해소됐다는 증거지만 **P13~P16 또는 `ae5e441`이 Production에 배포됐다는 증거는 아님**.
-- Vercel 새 배포·Promotion·Rollback은 요청 없이는 하지 않음. 최신 SHA와 PDF worker 같은 도메인 파일/권한/화면 검증은 Issue #30에서 추적.
+- Vercel `target=production` **재조회에서 main `ae5e441` READY** 배포 `meta-p2p-realestate-7wyygnan5-direct-home1.vercel.app` 확인. 이전 P12 `bf33ee1` READY에 이어 P13–P16 포함 최신 기능 커밋 배포가 존재한다. **단 앱 실제 라우트/같은 도메인 PDF worker/권한/운영 DB 정상 동작까지 검증한 것은 아님**.
+- Vercel 새 배포·Promotion·Rollback을 임의 실행하지 않음. 기능 SHA READY 확인 완료. PDF worker 같은 도메인 파일/권한/화면 검증은 Issue #30에서 추적.
 
 ## 사용자가 보류한 것
 - 실제 서로 다른 두 Supabase 계정으로 하는 거래 시연/승인 QA: 보류.

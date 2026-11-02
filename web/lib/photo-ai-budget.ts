@@ -4,7 +4,7 @@
  * proof-of-concept ceiling without allowing unrestricted spending.
  * Any DB failure fails closed. No daily reset or admin bypass.
  */
-import {getDal} from "@/lib/dal";
+import {getDal} from "./dal.ts";
 
 export type PhotoAiFeature="vision"|"edit";
 const CAPS:Record<PhotoAiFeature,{key:string;defaultValue:number;hardCeiling:number}>={

@@ -5,6 +5,7 @@ import {REVIEW_AGE_REMINDER_DAYS,reviewRegistryRights} from "../lib/registry-rig
 import "./registry-casebook.test.mjs";
 import "./registry-text-extraction.test.mjs";
 import "./registry-extraction-transfer.test.mjs";
+import "./registry-pdf-layout.test.mjs";
 
 const base=()=>({issuedOn:"2026-11-01",asOfDate:"2026-11-01",rights:[]});
 const entry=(overrides={})=>({

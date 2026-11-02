@@ -19,17 +19,13 @@ export function sanitizeSharedRights(raw:unknown):SharedRight[]|null{
  // Reject invalid kinds/sections/statuses wholesale; no silent partial import.
  const accepted=toSanitizedTransfer(raw as RightEntry[]);
  if(accepted.rights.length!==raw.length)return null;
- const allowed=new Set(Object.keys(RIGHT_LABELS));
- return accepted.rights.map(right=>{
-  if(!allowed.has(right.kind))return null;
-  return {
+ return accepted.rights.map(right=>({
    kind:right.kind,section:right.section,status:"unknown" as const,
    rankNumber:right.rankNumber,claimMaximumManwon:right.kind==="mortgage"?right.claimMaximumManwon:null,
    registrationDate:validBriefDate(right.registrationDate)||undefined,
    jointCollateralMentioned:right.kind==="mortgage"&&right.jointCollateralMentioned===true,
    cancellationPromised:right.cancellationPromised===true,
-  };
- }).filter((item):item is SharedRight=>item!==null);
+  }));
 }
 export function safePublicBriefRow(row:Record<string,unknown>|undefined):{
  available:boolean;source:string;verified:false;issuedOn:string;sharedAt:string;rights:SharedRight[];note:string;

@@ -69,3 +69,11 @@
 - \`verify-fast\`에 신규 Node + API 스위트 등록, E2E는 전체 자동 실행.
 - 현재 단계 표기는 **IMPLEMENTED**. NEXT/빌드/Playwright/GitHub CI 종료코드 및 마지막 SHA 확인 후 DONE 승격.
 - 실제 Muse Spark 이미지 인식 정확도와 Muse Image 구조 보존/개인정보 악화 여부는 **별도 벤치마크 필요**. CI Mock/E2E 성공을 실제 VLM 정확도 증명으로 간주하지 않음.
+
+### 2026-11-02 · 자동 게이트 최종 성공 및 의미
+- 검증 코드 head: `188b1049a15579e2931ac1c500015e8245da4eb3`.
+- [GitHub verify-fast](https://github.com/hobism3/meta_p2p_realestate/actions/runs/41366165456) **completed SUCCESS**. Next production build PASS, Node unit+DAL **302 PASS / 0 FAIL**, 격리 API+READ_ONLY 회귀 **214 PASS / 0 FAIL**.
+- [GitHub verify-e2e](https://github.com/hobism3/meta_p2p_realestate/actions/runs/41366165575) **completed SUCCESS**. Playwright 전체 PC/모바일 **86 PASS / 4 SKIP / 0 FAIL**. 신규 시각 사진 2개 시나리오는 각각 desktop/mobile에서 실행되고 PASS; 사진 가림, VLM JSON Mock 후보, 욕실 누락, 옵션 수동 반영, 등록 단계 후퇴 시 복원, 원본/AI 가상 이미지 비교 포함.
+- 사진 모델 실호출/생성모델 정확도·스토리지·제삼자 실사진·법률·보안 검증은 미수행. **자동화 기능 검증 DONE, 실제 모델 성능·공개 서비스 검증 BLOCKED/후속**으로 구분.
+- 사진 스토리지·매물 상세 갤러리 후속 설계는 [Issue #28](https://github.com/hobism3/meta_p2p_realestate/issues/28)로 분리.
+- 본 기록 추가 자체는 docs-only 커밋이므로 이 마지막 코드 SHA에서 확인한 PASS를 뒤따르는 문서 SHA의 재검증으로 오인하지 않음. 브랜치 및 PR #25는 main 미병합 상태.

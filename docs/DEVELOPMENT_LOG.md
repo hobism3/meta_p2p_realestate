@@ -126,3 +126,11 @@
 - 테스트: 순수 사진 가이드 로직/이미지 검증, 가상 Meta API 통합, Playwright 가상 이미지 및 가상 응답 E2E 추가. 실제 CI 결과 확인 전 IMPLEMENTED, NOT DONE.
 - 실제 Muse 호출/모델 정확도, 가상 이미지 구조 보존도, 실제 주거 사진·법률·보안 검증 미실시.
 - 설계/다음 단계: docs/VISUAL_LISTING_GUIDE_20261101.md.
+
+### 2026-11-02 · Visual AI v2 자동화 검증 완료 (PR #25)
+- 검증 대상 최종 기능 코드 head `188b1049a15579e2931ac1c500015e8245da4eb3` 기준:
+  - verify-fast run 41366165456: Next.js production build **PASS**; unit/DAL **302/302 PASS**; API/READ_ONLY **214/214 PASS**.
+  - verify-e2e run 41366165575: Playwright **86 PASS / 4 SKIP**, PC/모바일 가상사진 옵션 후보·욕실 누락·개인정보 가림·가구 없는 이미지·Wizard 단계 이동까지 통과.
+- 판정: **자동화 기능 구현·검증 DONE**. 실 Meta API 과금 호출/성능, 물리적 구조 보존, 영구 스토리지/게시, 실제 사용자 개인정보·법률 승인 **미검증**.
+- P8 권리 분석/원본 등기 외부 전송 제한 무변경, PR #25는 독립 브랜치 유지. 사진 스토리지/매물 갤러리 후속 Issue #28 작성.
+- 세부 설계/테스트: [VISUAL_LISTING_GUIDE_20261101.md](VISUAL_LISTING_GUIDE_20261101.md). 문서 후속 커밋의 CI는 별도 확인 필요.

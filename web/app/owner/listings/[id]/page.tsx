@@ -37,6 +37,12 @@ export default function OwnerListingSettings({params}:{params:{id:string}}){
   <a href="/owner" className="owner-back">← 내 집 관리 · 확인 요청</a>
   <div className="owner-hero"><span>PROPERTY ASSISTANT</span><h1>{title||"매물"} · AI 대리인</h1><p>집주인이 제공한 정보에만 근거해 답변하도록 준비하는 설정입니다. 설정된 매물 정보로만 AI가 자동 응답합니다. 집주인 판단이 필요한 문의는 내 집 관리에서 확인할 수 있습니다. 방문 예약은 집주인 승인 후 확정되며, 푸시·문자·이메일 알림은 아직 제공하지 않습니다.</p></div>
   <OwnerAuthorityPanel listingId={params.id}/>
+  <section className="card" aria-label="이 매물의 등기 권리관계 확인">
+   <span className="eyebrow">REGISTRY PRE-CHECK</span><h2>매물 권리기재 확인 · 공유</h2>
+   <p>본인확인이나 법적 소유권 인증은 아닙니다. PDF를 브라우저에서만 분석한 뒤 필요한 정형 후보를 직접 검토할 수 있습니다. 공유하려면 별도 동의가 필요하며 원본은 서버에 저장되지 않습니다.</p>
+   <a className="btn ghost" href={"/registry/extract?listingId="+encodeURIComponent(params.id)}>이 매물 등기부 로컬 분석 →</a>
+   <a className="btn ghost" href={"/listings/"+encodeURIComponent(params.id)+"#registry-rights"}>공개된 안내 확인 ↗</a>
+  </section>
   <section id="owner-gallery" aria-label="매물 실제 사진 관리">
    <div className="card"><span className="eyebrow">PROPERTY PHOTOS</span>
     <h2>실제 매물 사진 · 공개 갤러리</h2>

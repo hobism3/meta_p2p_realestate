@@ -59,10 +59,17 @@ function structuralRows(text){
   const head=Array.from(line.trim().slice(0,20));
   const classify=ch=>/[0-9]/.test(ch)?"N":/[가-힣]/.test(ch)?"K":ch==="|"?"P":/\s/.test(ch)?"_":/[-.]/.test(ch)?"D":"O";
   const headPattern=head.map(classify).join("").replace(/([NKPO_D])\1{2,}/g,"$1$1+");
+  const isolated=extractRegistryText("[PAGE 1]\n【갑 구】\n"+line);
+  const headlines=lines.slice(0,i+1).map((value,idx)=>{
+   const v=value.replace(/\s/g,"");
+   const section=/^.{0,3}갑구/.test(v)?"갑구":/^.{0,3}을구/.test(v)?"을구":/^.{0,3}표제부/.test(v)?"표제부":null;
+   return section?{row:idx+1,section}:null;
+  }).filter(Boolean);
   result.push({row:i+1,keyword:match[0].replace(/\s/g,""),
    headPattern,startsRank:/^\s*\d{1,5}\s*(?:\||\s)/.test(line),
    pipes:(line.match(/\|/g)||[]).length,keywordInColumn:left.split("|").length,
-   leftLength:left.length,fullLength:line.length});
+   leftLength:left.length,fullLength:line.length,
+   isolatedCandidates:isolated.candidates.length,lastHead:headlines.slice(-1)[0]??null});
   if(result.length>=15)break;
  }
  return result;

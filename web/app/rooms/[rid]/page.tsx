@@ -6,6 +6,7 @@ import { brokerSnapshot } from "../../../lib/broker-companion";
 import RoomBookingPanel from "../../../components/RoomBookingPanel";
 import OwnerAgentJobStatus from "../../../components/OwnerAgentJobStatus";
 import TransactionProgressPanel from "../../../components/TransactionProgressPanel";
+import {useUiLocale} from "../../../lib/ui-locale";
 import { hasNewProposalCue } from "../../../lib/agent";
 import { groupListingFeatures, initialTerms } from "../../../lib/listing-presentation";
 import {
@@ -218,6 +219,7 @@ function ProposalCard({ p, approvals, sides, demo, me, onDecide, onSuggest, onHo
 }
 
 export default function RoomPage({ params }: { params: { rid: string } }) {
+  const {tr,en}=useUiLocale();
   const [messages, setMessages] = useState<DealMessage[]>([]);
   const [meta, setMeta] = useState<RoomMeta | null>(null);
   const [msg, setMsg] = useState("");
@@ -280,12 +282,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
   }, [messages, aiPending]);
 
   if (authed === null) {
-    return <div className="deal-route-skeleton" role="status">거래방을 준비하는 중...</div>;
+    return <div className="deal-route-skeleton" role="status">{tr("거래방을 준비하는 중...","Preparing your private deal room...")}</div>;
   }
   if (!authed) {
     return (
       <div className="card">
-        독립 거래방은 로그인이 필요합니다. <a href="/login">로그인하기</a>
+        독립 거래방은 로그인이 필요합니다. <a href="/login">{tr("로그인하기","Sign in")}</a>
       </div>
     );
   }
@@ -487,16 +489,20 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
           <h1>{listing ? listing.title : "독립 거래방"}</h1>
           <div className="deal-hero-tags">
             <span className={"deal-room-type " + (meta?.demo ? "is-demo" : "is-live")}>
-              {meta?.demo ? "✦ AI 시연 거래" : "개인 간 거래"}
+              {meta?.demo ? tr("✦ AI 시연 거래","✦ AI demo") : tr("개인 간 거래","Peer-to-peer")}
             </span>
             {listing ? <span className="deal-hero-trade">{listing.tradeType}</span> : null}
             {formattedPrice ? <strong className="deal-hero-price">{formattedPrice}</strong> : null}
           </div>
-          <p>{meta?.demo
+          <p>{en
+            ? (meta?.demo?"Meet Jiptok: your neutral companion for this fictional AI conversation.":meta?.ownerAgentEnabled
+              ?"Jiptok tracks open items while the owner AI only answers from approved facts. Both humans must confirm terms."
+              :"Talk with the owner and visitor. Jiptok tracks next steps; both people must confirm each proposal.")
+            : (meta?.demo
             ? "집톡이도 그룹채팅에 참여해 조건과 남은 확인 절차를 챙깁니다."
             : meta?.ownerAgentEnabled
               ? "집톡이가 그룹채팅에서 다음 거래 절차를 챙기고, 집주인 AI 대리인은 등록된 사실만 안내합니다. 양측의 조건 확인은 직접 진행합니다."
-              : "집주인·방문자·집톡이가 함께 대화합니다. 집톡이는 절차를 안내하고, 실제 합의는 두 분의 확인 카드로만 확정됩니다."}</p>
+              : "집주인·방문자·집톡이가 함께 대화합니다. 집톡이는 절차를 안내하고, 실제 합의는 두 분의 확인 카드로만 확정됩니다.")}</p>
         </div>
         <div className="deal-hero-symbol" aria-hidden="true">
           <span className="deal-hero-house">⌂</span>
@@ -509,47 +515,47 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             <div className="conversation-identity">
               <span className="conversation-avatar" aria-hidden="true">⌂</span>
               <div>
-                <strong>{meta?.demo ? participant + " · 집톡이" : participant + " · 집톡이"}</strong>
+                <strong>{en?(meta?.demo?"Demo AI landlord":meta?.ownerAgentEnabled?"AI owner assistant":"Counterparty")+" · Jiptok":participant+" · 집톡이"}</strong>
                 <span className="conversation-status"><i aria-hidden="true" />
-                  {meta?.demo ? "그룹채팅 · 임대인·임차인·집톡이 (AI 시연)" : meta?.ownerAgentEnabled ? "실거래 그룹채팅 · 집주인 AI 대리인 · 집톡이" : "실거래 그룹채팅 · 집주인 · 방문자 · 집톡이"}
+                  {en?(meta?.demo?"Demo AI owner · visitor · Jiptok":meta?.ownerAgentEnabled?"Owner AI · visitor · Jiptok":"Owner · visitor · Jiptok"):(meta?.demo ? "그룹채팅 · 임대인·임차인·집톡이 (AI 시연)" : meta?.ownerAgentEnabled ? "실거래 그룹채팅 · 집주인 AI 대리인 · 집톡이" : "실거래 그룹채팅 · 집주인 · 방문자 · 집톡이")}
                 </span>
               </div>
             </div>
             <div className="conversation-head-actions">
               <button type="button" className="conversation-tools-button" onClick={onTogglePanel}>
-                <span aria-hidden="true">▤</span> {panelOpen ? "거래 현황 닫기" : "거래 현황"}
+                <span aria-hidden="true">▤</span> {panelOpen ? tr("거래 현황 닫기","Close status") : tr("거래 현황","Deal status")}
               </button>
             </div>
           </div>
           {error ? <p className="error" role="alert">{error}</p> : null}
-          <div className="msgs conversation-feed" ref={msgsRef} role="log" aria-label="거래 대화" aria-relevant="additions text">
+          <div className="msgs conversation-feed" ref={msgsRef} role="log" aria-label={tr("거래 대화","Deal conversation")} aria-relevant="additions text">
             <div className="conversation-day-label"><span>메시지 · {meta?.demo ? "그룹채팅 시연"
   : meta?.ownerAgentEnabled ? "실거래 · 집주인 AI · 집톡이" : "실거래 · 집톡이와 함께"}</span></div>
             {meta?.demo ? (
-              <section className="jiptok-progress" aria-label="집톡이 진행 현황">
+              <section className="jiptok-progress" aria-label={tr("집톡이 진행 현황","Jiptok progress")}>
                 <strong>✦ 집톡이가 챙기는 거래 진행</strong>
-                <p className="jiptok-journey-overview">양측이 실제로 확인한 사항만 완료로 표시합니다. {broker.journey.filter((step) => step.status === "checked").length} / 6단계 확인됨</p>
-                <div className="jiptok-journey" aria-label="거래 진행 단계">
+                <p className="jiptok-journey-overview">{tr("양측이 실제로 확인한 사항만 완료로 표시합니다.","Only recorded approvals are marked complete.")} {broker.journey.filter((step) => step.status === "checked").length} / 6 {tr("단계 확인됨","steps")}</p>
+                <div className="jiptok-journey" aria-label={tr("거래 진행 단계","Deal progress steps")}>
                   {broker.journey.map((step, index) => (
                     <div key={step.key} className={"jiptok-journey-step is-" + step.status} title={step.detail}>
                       <span className="jiptok-stage-number">{step.status === "checked" ? "✓" : index + 1}</span>
                       <span>{step.label}</span>
-                      <small>{step.status === "checked" ? "완료" : step.status === "pending" ? "동의 대기" : step.status === "talking" ? "확인 중" : "예정"}</small>
+                      <small>{en?(step.status === "checked"?"Complete":step.status === "pending"?"Awaiting consent":step.status==="talking"?"Reviewing":"Upcoming"):(step.status === "checked" ? "완료" : step.status === "pending" ? "동의 대기" : step.status === "talking" ? "확인 중" : "예정")}</small>
                     </div>
                   ))}
                 </div>
-                <div className="jiptok-demo-brief" aria-label="집톡이 대화 요약">
+                <div className="jiptok-demo-brief" aria-label={tr("집톡이 대화 요약","Jiptok conversation recap")}>
                   <strong>✦ 집톡이가 정리한 지금 상황</strong>
-                  <p>{broker.quip}</p>
-                  <p><b>확인된 절차</b> {broker.journey.filter(s=>s.status==="checked").length}개
+                  <p>{en?"I'll organize the terms from your conversation and flag anything still open.":broker.quip}</p>
+                  <p><b>{tr("확인된 절차","Confirmed steps")}</b> {broker.journey.filter(s=>s.status==="checked").length}개
                     <span aria-hidden="true"> · </span>
-                    <b>확인 중</b> {broker.journey.filter(s=>s.status==="pending"||s.status==="talking").length}개
+                    <b>{tr("확인 중","Pending")}</b> {broker.journey.filter(s=>s.status==="pending"||s.status==="talking").length}개
                   </p>
-                  <p><b>다음 확인</b> · {broker.nextStep.title} — {broker.nextStep.note}</p>
+                  <p><b>{tr("다음 확인","Next step")}</b> · {en?"Confirm the next outstanding deal item.":broker.nextStep.title+" — "+broker.nextStep.note}</p>
                 </div>
-                <p className="jiptok-next"><strong>집톡이의 다음 확인</strong> · {broker.nextStep.title} — {broker.nextStep.note}</p>
+                <p className="jiptok-next"><strong>{tr("집톡이의 다음 확인","Next item to confirm")}</strong> · {en?"Confirm the next outstanding deal item.":broker.nextStep.title+" — "+broker.nextStep.note}</p>
                 <button type="button" className="jiptok-reconcile" onClick={() => void onReconcile()} disabled={zipPending}>
-                  {zipPending ? "집톡이가 확인 중" : "↻ 기존 대화에서 빠진 조건 다시 정리"}
+                  {zipPending ? tr("집톡이가 확인 중","Jiptok is checking...") : tr("↻ 기존 대화에서 빠진 조건 다시 정리","↻ Review unresolved terms")}
                 </button>
               </section>
             ) : null}
@@ -577,8 +583,8 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               <div className="conversation-row is-jiptok" role="status">
                 <span className="conversation-small-avatar jiptok-avatar" aria-hidden="true">✦</span>
                 <div className="conversation-message">
-                  <span className="conversation-author">집톡이</span>
-                  <div className="bubble jiptok conversation-typing" aria-label="집톡이가 남은 사항을 확인 중입니다"><i/><i/><i/></div>
+                  <span className="conversation-author">{tr("집톡이","Jiptok")}</span>
+                  <div className="bubble jiptok conversation-typing" aria-label={tr("집톡이가 남은 사항을 확인 중입니다","Jiptok is reviewing remaining items")}><i/><i/><i/></div>
                 </div>
               </div>
             ) : null}
@@ -587,7 +593,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
                 <span className="conversation-small-avatar" aria-hidden="true">⌂</span>
                 <div className="conversation-message">
                   <span className="conversation-author">{participant}</span>
-                  <div className="bubble theirs conversation-typing" aria-label="AI 대리인이 정보 확인 중입니다"><i/><i/><i/></div>
+                  <div className="bubble theirs conversation-typing" aria-label={tr("AI 대리인이 정보 확인 중입니다","AI assistant is checking facts")}><i/><i/><i/></div>
                 </div>
               </div>
             ) : null}
@@ -608,12 +614,12 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
             </p>
           ) : null}
           {meta?.demo && chatMessages.length < 3 ? (
-            <div className="conversation-suggestions" aria-label="빠른 질문">
-              <span>이런 이야기로 시작해 보세요</span>
+            <div className="conversation-suggestions" aria-label={tr("빠른 질문","Suggested questions")}>
+              <span>{tr("이런 이야기로 시작해 보세요","Try one of these questions")}</span>
               <div className="quickrow">
-                <button type="button" onClick={() => quickAsk("가격 협의 가능할까요?")}>💬 가격 협의</button>
-                <button type="button" onClick={() => quickAsk("방문 가능일이 언제인가요?")}>📅 방문 일정</button>
-                <button type="button" onClick={() => quickAsk("옵션이 어떻게 되나요?")}>⌂ 주거 옵션</button>
+                <button type="button" onClick={() => quickAsk("가격 협의 가능할까요?")}>{tr("💬 가격 협의","💬 Ask about price")}</button>
+                <button type="button" onClick={() => quickAsk("방문 가능일이 언제인가요?")}>{tr("📅 방문 일정","📅 Schedule a visit")}</button>
+                <button type="button" onClick={() => quickAsk("옵션이 어떻게 되나요?")}>{tr("⌂ 주거 옵션","⌂ Ask about amenities")}</button>
               </div>
             </div>
           ) : null}
@@ -630,7 +636,7 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
                 }} />
             </div>
             <button type="button" className="conversation-send" onClick={onSend} disabled={sending || !msg.trim()}>
-              {sending ? "전송 중..." : "전송"} <span aria-hidden="true">↗</span>
+              {sending ? tr("전송 중...","Sending...") : tr("전송","Send")} <span aria-hidden="true">↗</span>
             </button>
           </div>
           <p className="conversation-privacy">{meta?.demo
@@ -640,11 +646,11 @@ export default function RoomPage({ params }: { params: { rid: string } }) {
               : "집톡이는 미확인 조건과 다음 절차를 안내합니다. 가격·생활 조건은 양측의 확인 카드 동의, 방문은 집주인 승인 이후에만 확정됩니다."}</p>
         </section>
         {panelOpen ? (
-          <aside className="card drawer open" aria-label="거래 현황 상세">
+          <aside className="card drawer open" aria-label={tr("거래 현황 상세","Deal status details")}>
             <div>
-              <button className="btn ghost" onClick={() => setPanelOpen(false)}>닫기</button>
+              <button className="btn ghost" onClick={() => setPanelOpen(false)}>{tr("닫기","Close")}</button>
             </div>
-            <h3>거래 현황</h3>
+            <h3>{tr("거래 현황","Deal status")}</h3>
             <p className="meta">등록 조건과 대화 중 제안은 구분됩니다. 동일한 조건 버전에 양측이 동의해야 합의로 표시됩니다.</p>
             <h4>{meta?.listing?.tradeType === "매매" ? "매매 가격" : meta?.listing?.tradeType === "전세" ? "전세 조건" : "월세 조건"}</h4>
             {meta?.listing ? <div className="deal-terms-baseline" aria-label="매물 등록 조건">

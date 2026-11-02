@@ -102,7 +102,7 @@ export default function RegistryReadingGuide(){
    </div>
    <p className="meta">발급 후 {REVIEW_AGE_REMINDER_DAYS}일 알림은 앱 자체의 확인 권고이며, 법에서 정한 등기부 유효기간이 아닙니다. 보증금만으로 안전성을 계산하지 않습니다.</p>
    <a className="btn ghost" href="/registry/cases">유형별 38개 교육 사례 보기 ↗</a>{" "}
-   <a className="btn ghost" href="/registry/extract">PDF 복사 텍스트에서 권리 후보 추출 →</a>{" "}
+   <a className="btn ghost" href="/registry/extract">PDF 자동 텍스트층에서 권리 후보 추출 →</a>{" "}
    <button className="btn ghost" type="button" onClick={loadExample}>가상의 근저당·신탁 사례 보기</button>{" "}
    <button className="btn ghost" type="button" onClick={reset}>모든 선택 초기화</button>
    {example?<p role="status"><strong>가상 시연 데이터입니다.</strong> 실제 매물의 권리관계로 해석하지 마세요.</p>:null}

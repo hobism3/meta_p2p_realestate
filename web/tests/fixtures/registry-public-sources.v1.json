@@ -13,7 +13,8 @@
       "expectedDescription": "교육용 가상 무담보 정상 예시",
       "sha256": "2ddff3f07aa134c04456685db796ffb8029e007159eabc3c07c6c0fad1e87b50",
       "priorObservedBytes": 908854,
-      "distribution": "source-link-only"
+      "distribution": "source-link-only",
+      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted"
     },
     {
       "id": "DANGDANG-PROVISIONAL",
@@ -23,7 +24,10 @@
       "kind": "explicit_educational_fiction",
       "structure": "provisional_seizure",
       "expectedDescription": "교육용 가압류 예시",
-      "distribution": "source-link-only"
+      "distribution": "source-link-only",
+      "sha256": "f4acf20a41cae0ab33b40cfe70c26a28f2ef4021125f06875aef0cb4251f07f1",
+      "priorObservedBytes": 909534,
+      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted"
     },
     {
       "id": "DANGDANG-MORTGAGE",
@@ -33,7 +37,10 @@
       "kind": "explicit_educational_fiction",
       "structure": "mortgage_multi",
       "expectedDescription": "교육용 가상 근저당 채권최고액 합계 예시(블로그의 가정: 2억9천만원)",
-      "distribution": "source-link-only"
+      "distribution": "source-link-only",
+      "sha256": "c0d795a2c6dd883106a248d8e8d926d1fc072f10b191c546c728053e506c13f9",
+      "priorObservedBytes": 908370,
+      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted"
     },
     {
       "id": "DANGDANG-MULTI",
@@ -43,7 +50,10 @@
       "kind": "explicit_educational_fiction",
       "structure": "compound",
       "expectedDescription": "교육용 가압류·경매·복수 근저당 혼합 예시",
-      "distribution": "source-link-only"
+      "distribution": "source-link-only",
+      "sha256": "b2ea6887d7540d668f75dc99d3cee02b3c80aa64e05cd61af394d879192dab09",
+      "priorObservedBytes": 913157,
+      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted"
     },
     {
       "id": "DANGDANG-FIXED-DATE",
@@ -53,7 +63,10 @@
       "kind": "explicit_educational_fiction",
       "structure": "fixed_date_not_recorded",
       "expectedDescription": "교육용 확정일자와 등기 권리의 차이 예시",
-      "distribution": "source-link-only"
+      "distribution": "source-link-only",
+      "sha256": "b65aed6cd76d125e5d72453e282f6ea01915e3996e7820c9ba47c7fe2c1aed7b",
+      "priorObservedBytes": 1087433,
+      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted"
     }
   ],
   "otherPublicPdfExamples": [
@@ -63,7 +76,10 @@
       "url": "https://wdown.ebsi.co.kr/W61001/01exam/20080604/s_bns_mun.pdf",
       "kind": "published_educational_exam",
       "scope": "2009학년도 6월 법과사회 모의평가 중 등기부 가상 발문; PDF 전체는 시험지이므로 실제 증명서로 오인 금지",
-      "distribution": "source-link-only"
+      "distribution": "source-link-only",
+      "sha256": "ac192fef9c8f7edd68a10b658e753b785cde3f0765163f5b2702bf5ae42c691f",
+      "priorObservedBytes": 588005,
+      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted"
     },
     {
       "id": "JOBGO-GA-2017",
@@ -71,7 +87,10 @@
       "url": "https://cont0.jobgo.ne.kr/contents/K353TQ/pc/down/66.pdf",
       "kind": "published_educational_training",
       "scope": "가등기·담보가등기·말소·본등기 등기기록례; 제3자 자료 저작권 확인 전 원문 재배포 금지",
-      "distribution": "source-link-only"
+      "distribution": "source-link-only",
+      "sha256": "e6bbbea4e5dab59bf864ce23ae83a30a5b5255ef0921d64f67c39e2416818890",
+      "priorObservedBytes": 754970,
+      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted"
     },
     {
       "id": "KOCW-HANSUNG",

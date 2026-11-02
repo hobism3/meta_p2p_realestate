@@ -63,7 +63,7 @@ function toDataUrl(blob: Blob): Promise<string> {
 
 /** One integrated photo-to-listing workflow. AI analysis is an implementation detail, not a separate product tab. */
 export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPublished }: {
-  onSuggestOptions?: (values: string[]) => void; listingId?: string; onPublished?: () => void;
+  onSuggestOptions?: (values: string[]) => void | Promise<void>; listingId?: string; onPublished?: () => void;
  }) {
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState("");
@@ -78,6 +78,8 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
   const [editingId, setEditingId] = useState<number | null>(null);
   const [available, setAvailable] = useState({ vision: false, imageEdit: false });
   const [chosenOptions, setChosenOptions] = useState<string[]>([]);
+  const [applyingOptions,setApplyingOptions] = useState(false);
+  const [optionMessage,setOptionMessage] = useState("");
   const [maskId, setMaskId] = useState<number | null>(null);
   const [masks, setMasks] = useState<Mask[]>([]);
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
@@ -86,7 +88,7 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
   const maskPanelRef = useRef<HTMLDivElement>(null);
   const seq = useRef(0);
   const urls = useRef<string[]>([]);
-  const locked = analyzing || editingId !== null || publishingId !== null || maskId !== null;
+  const locked = analyzing || editingId !== null || publishingId !== null || maskId !== null || applyingOptions;
 
   useEffect(() => {
     Promise.all([
@@ -334,19 +336,47 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
   const pendingCount = items.filter((v) => !v.reviewed).length;
   const toggle = (value: string) => setChosenOptions((old) =>
     old.includes(value) ? old.filter((v) => v !== value) : [...old, value]);
+  const applyChosenOptions = async () => {
+    if (!onSuggestOptions || !chosenOptions.length || locked) return;
+    setApplyingOptions(true); setOptionMessage("");
+    try {
+      await onSuggestOptions(chosenOptions);
+      setChosenOptions([]);
+      setOptionMessage(listingId ? "선택한 옵션을 매물에 저장했어요." : "선택한 옵션을 매물 정보에 추가했어요.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "옵션을 저장하지 못했어요.");
+    } finally { setApplyingOptions(false); }
+  };
 
   return (
     <section className="card photo-guide" aria-label="사진으로 매물 정보 정리하기">
-      <div className="section-head">
-        <div><span className="eyebrow">AI LISTING ASSISTANT</span><h2>사진으로 우리 집 정보 정리하기</h2></div>
-        <span className="meta">{items.length}/6장</span>
+      <div className="photo-guide-heading">
+        <div>
+          <span className="eyebrow">PHOTO STUDIO</span>
+          <h2>사진으로 우리 집 정보 정리하기</h2>
+          <p>사진을 선택하고, AI가 찾은 정보를 확인해 매물 등록에 활용하세요.</p>
+        </div>
+        <span className="photo-guide-count">{items.length}<small>/ 6장</small></span>
       </div>
-      <p className="meta">사진에서 공간과 가전·가구를 찾아 옵션 후보를 만들고, 빠진 공간 사진도 안내해요. 집을 구하는 사람과의 채팅에는 개입하지 않아요.</p>
-      <label className="btn ghost photo-guide-upload">
-        사진 추가하기
-        <input type="file" aria-label="우리 집 사진 추가" accept="image/jpeg,image/png,image/webp"
-          multiple onChange={upload} disabled={locked} />
-      </label>
+      <div className="photo-guide-milestones" aria-label="사진 등록 진행 상황">
+        <span className={items.length ? "is-done" : ""}><b>01</b> 사진 선택 <small>{items.length}장</small></span>
+        <span className={reviewed.length ? "is-done" : ""}><b>02</b> AI 정보 정리 <small>{reviewed.length}장 분석</small></span>
+        <span className={publishedIds.length ? "is-done" : ""}><b>03</b> 사진 공개 <small>{listingId ? publishedIds.length + "장 공개" : "매물 저장 후"}</small></span>
+      </div>
+      <div className="photo-guide-picker">
+        <div><strong>사진을 추가해 주세요</strong>
+          <p>최대 6장 · JPG, PNG, WebP · 장당 8MB 이하</p>
+        </div>
+        <label className="btn photo-guide-upload">
+          + 사진 추가하기
+          <input type="file" aria-label="우리 집 사진 추가" accept="image/jpeg,image/png,image/webp"
+            multiple onChange={upload} disabled={locked || items.length >= 6} />
+        </label>
+      </div>
+      <div className="photo-guide-samples-title">
+        <strong>사진이 없다면 예시로 먼저 체험하기</strong>
+        <span>예시는 실제 매물에 게시할 수 없어요</span>
+      </div>
       <div className="photo-guide-sample-list" aria-label="매물 사진 예시">
         {PHOTO_DEMO_ASSETS.map((example) => (
           <button key={example.id} type="button" className="photo-guide-sample"
@@ -359,15 +389,58 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
           </button>
         ))}
       </div>
-      <p className="meta">사진은 실제 매물이 아닌 서로 다른 주택의 무료 스톡 이미지입니다. 예시를 고르는 것만으로 AI 분석은 시작되지 않습니다.</p>
-      <p className="meta">선택한 사진은 자동으로 저장·게시되지 않아요. 등록된 매물의 집주인 관리 페이지에서 개인정보를 확인하고 게시용 사진만 따로 공개할 수 있습니다. AI 빈 공간 이미지는 게시하지 않습니다.</p>
-
+      <div className="photo-guide-permissions" aria-label="사진 AI와 공개 동의">
+        <div className="photo-guide-permission">
+          <span className="photo-guide-permission-icon" aria-hidden="true">✦</span>
+          <div>
+            <strong>AI로 공간·옵션 확인</strong>
+            <p>동의 후 원하는 사진의 분석 버튼을 눌러 실행합니다. 자동 일괄 호출은 하지 않아요.</p>
+            <label className="photo-guide-consent">
+              <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />
+              <span>매물 정보 초안 추출을 위해 선택한 사진을 Meta Vision AI로 전송하는 데 동의합니다.</span>
+            </label>
+            {!available.vision ? <p className="photo-guide-unavailable" role="status">현재 AI 분석이 비활성화되어 있어요. 사진 확인·가리기는 이용할 수 있습니다.</p> : null}
+          </div>
+        </div>
+        <div className="photo-guide-permission">
+          <span className="photo-guide-permission-icon" aria-hidden="true">▧</span>
+          <div>
+            <strong>가구 없는 모습 미리보기 <small>선택 기능</small></strong>
+            <p>AI가 가구를 지운 가상 이미지입니다. 실제 구조·하자 정보로 사용하지 마세요.</p>
+            <label className="photo-guide-consent">
+              <input type="checkbox" checked={editConsent} onChange={e => setEditConsent(e.target.checked)} />
+              <span>선택한 사진을 Meta Muse Image로 별도 전송하는 데 동의합니다.</span>
+            </label>
+            {!available.imageEdit ? <p className="photo-guide-unavailable">현재 이미지 생성 기능이 비활성화되어 있어요.</p> : null}
+          </div>
+        </div>
+      </div>
+      {listingId ? <div className="photo-guide-publish-consent">
+        <div>
+          <strong>매물 사진 공개 확인</strong>
+          <p>AI가 가구를 지운 이미지는 공개하지 않습니다. 게시한 사진은 누구나 볼 수 있어요. 사람·문서·주소·반사된 개인정보를 직접 확인해 주세요.</p>
+        </div>
+        <label className="photo-guide-consent">
+          <input type="checkbox" checked={publicationConsent} onChange={e => setPublicationConsent(e.target.checked)} />
+          <span>개인정보와 게시 권한을 확인했고, 검토한 게시용 JPEG 사진 공개에 동의합니다.</span>
+        </label>
+        {publishMessage ? <p role="status" className="photo-guide-publish-message">{publishMessage}</p> : null}
+      </div> : <p className="photo-guide-save-note">사진은 아직 저장·게시되지 않았어요. 매물 등록 후 이 화면에서 같은 사진을 검토하고 공개할 수 있습니다.</p>}
+      {analysisProgress ? <p className="photo-guide-progress" role="status" aria-live="polite">{analysisProgress}</p> : null}
       <div className="photo-guide-grid">
         {items.map((item) => (
-          <article className="photo-guide-item" key={item.id}>
-            <img src={item.url} alt={"매물 사진 원본 또는 일부 가림 처리본: " + item.name} />
+          <article className={"photo-guide-item" + (item.reviewed ? " is-reviewed" : "")} key={item.id}>
+            <div className="photo-guide-thumbnail">
+              <img src={item.url} alt={"매물 사진 원본 또는 일부 가림 처리본: " + item.name} />
+              {item.review ? <span className="photo-guide-room-badge">{PHOTO_ROOM_NAMES[item.review.room]}</span> : null}
+            </div>
             <div className="photo-guide-item-text">
-              <strong>{item.name}</strong>
+              <div className="photo-guide-item-heading">
+                <strong>{item.name}</strong>
+                <span className={item.reviewed ? "photo-guide-status is-ready" : "photo-guide-status"}>
+                  {item.reviewed ? "AI 분석 완료" : "분석 전"}
+                </span>
+              </div>
               <small>{item.metrics.width}×{item.metrics.height} · {Math.round(item.blob.size / 1024)}KB · {item.masked ? "개인 영역 가림 적용" : "가림 미적용"}</small>
               {item.suggestions.map((hint) => <p className="photo-guide-hint" key={hint}>· {hint}</p>)}
               {item.review ? (
@@ -379,28 +452,28 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
                   </p> : null}
                 </>
               ) : null}
-              <div className="photo-guide-actions">
-                <button type="button" className="btn ghost" disabled={locked} onClick={() => { setMaskId(item.id); setMasks([]); }}>
-                  개인 물품 가리기
-                </button>
-                <button type="button" className="btn ghost" disabled={locked} onClick={() => remove(item.id)}>삭제</button>
-                {listingId ? <button type="button" className="btn"
-                  disabled={locked||!publicationConsent||publishedIds.includes(item.id)||item.name.startsWith("synthetic-demo-")}
-                  onClick={()=>void publishPhoto(item)}>
-                  {publishingId===item.id?"게시용 사진 저장 중...":publishedIds.includes(item.id)?"게시 완료":"확인한 사진 공개하기"}
-                </button>:null}
-              </div>
               <div className="photo-guide-empty-action">
                 <button type="button" className="btn photo-guide-primary"
                   disabled={locked || item.reviewed || !consent || !available.vision}
                   onClick={() => void analyzeOne(item)}>
-                  {analyzing ? analysisProgress : item.reviewed ? "이 사진 분석 완료" : "이 사진 AI 분석"}
+                  {analyzing ? "분석 중..." : item.reviewed ? "이 사진 분석 완료" : "이 사진 AI 분석"}
                 </button>
                 <button type="button" className="btn ghost"
                   disabled={!editConsent || !available.imageEdit || locked}
                   onClick={() => void previewEmptyRoom(item)}>
-                  {editingId === item.id ? "빈 공간 이미지 생성 중..." : item.emptyPreview ? "가구 없는 모습 다시 만들기" : "가구 없는 모습 미리보기"}
+                  {editingId === item.id ? "이미지 만드는 중..." : item.emptyPreview ? "가구 없는 모습 다시 만들기" : "가구 없는 모습 미리보기"}
                 </button>
+              </div>
+              <div className="photo-guide-actions">
+                <button type="button" className="btn ghost" disabled={locked} onClick={() => { setMaskId(item.id); setMasks([]); }}>
+                  개인 물품 가리기
+                </button>
+                <button type="button" className="btn ghost" disabled={locked} onClick={() => remove(item.id)}>{publishedIds.includes(item.id) ? "목록에서 제거" : "사진 제거"}</button>
+                {listingId ? <button type="button" className="btn photo-guide-publish"
+                  disabled={locked||!publicationConsent||publishedIds.includes(item.id)||item.name.startsWith("synthetic-demo-")}
+                  onClick={()=>void publishPhoto(item)}>
+                  {publishingId===item.id?"공개 사진 저장 중...":publishedIds.includes(item.id)?"✓ 게시 완료":"검토한 사진 공개하기"}
+                </button>:null}
               </div>
             </div>
             {item.emptyPreview ? (
@@ -414,18 +487,10 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
         ))}
       </div>
 
-      <div className="photo-guide-tip">
-        <strong>사진을 올리기 전 개인정보를 가려 주세요</strong>
-        <p>가족 사진, 문서, 사람, 화면, 택배 라벨, 거울 반사 등을 직접 확인하고 '개인 물품 가리기'로 덮어 주세요. AI도 모든 노출을 찾아내지는 못해요.</p>
-      </div>
-      <label className="photo-guide-consent">
-        <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-        <span>사진을 확인했고, 매물 정보 초안 추출을 위해 선택한 사진을 Meta Vision AI로 보내는 데 동의합니다.</span>
-      </label>
-      <p className="meta">각 사진 카드의 <b>이 사진 AI 분석</b>을 눌러 원하는 사진만 분석하세요. 호출 한도 초과 시 과금 없이 차단합니다.</p>
-      {!available.vision ? <p className="meta">현재 사진 AI 분석이 비활성화되어 있어요. 사진 확인과 가림 기능은 사용할 수 있습니다.</p> : (
-        <p className="meta">사진별 분석 버튼을 눌러야 외부 모델을 호출합니다. 완료 후에도 옵션은 직접 확인해야 해요.</p>
-      )}
+      <details className="photo-guide-privacy">
+        <summary>사진 공개 전 개인정보 확인 안내</summary>
+        <p>사진 속 사람, 가족 사진, 문서, 주소·택배 라벨, 화면, 거울 반사 등을 직접 확인하고 가려 주세요. AI 분석 결과에 없더라도 개인정보가 없다는 뜻은 아닙니다.</p>
+      </details>
 
       {reviewed.length ? (
         <section className="photo-guide-suggestions" aria-label="자동으로 찾은 매물 정보">
@@ -441,10 +506,12 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
                   {chosenOptions.includes(value) ? "✓ " : "+ "}{value}
                 </button>)}
               </div>
-              {onSuggestOptions?<button type="button" className="btn ghost" disabled={!chosenOptions.length}
-                onClick={() => { onSuggestOptions(chosenOptions); setChosenOptions([]); }}>
-                선택한 {chosenOptions.length}개를 매물 옵션 입력란에 추가
+              {onSuggestOptions?<button type="button" className="btn ghost" disabled={!chosenOptions.length || locked}
+                onClick={() => void applyChosenOptions()}>
+                {applyingOptions ? "선택 옵션 저장 중..." : listingId ?
+                  `선택한 ${chosenOptions.length}개를 실제 매물에 저장` : `선택한 ${chosenOptions.length}개를 매물 옵션 입력란에 추가`}
               </button>:null}
+              {optionMessage ? <p className="photo-guide-option-success" role="status">{optionMessage}</p> : null}
             </>
           ) : <p className="meta">제안할 가전·가구 옵션이 아직 확인되지 않았어요.</p>}
           {missing.length ? (
@@ -457,24 +524,7 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
         </section>
       ) : null}
 
-      <div className="photo-guide-tip">
-        <strong>선택 기능: 가구 없는 공간 보기</strong>
-        <p>사진에서 이동 가능한 가구와 생활용품을 없애 공간을 가상으로 보여 줍니다. AI가 보이지 않는 부분을 만들어 내므로 집의 실측이나 현장 정보로 사용할 수 없어요.</p>
-        <label className="photo-guide-consent">
-          <input type="checkbox" checked={editConsent} onChange={(e) => setEditConsent(e.target.checked)} />
-          <span>AI 가상 이미지 생성을 위해 선택한 사진을 Meta Muse Image로 별도 전송하는 데 동의합니다.</span>
-        </label>
-        {!available.imageEdit ? <p className="meta">현재 가구 없는 이미지 생성 기능은 서버에서 비활성화되어 있습니다.</p> : null}
-      </div>
-
-      {listingId?<div className="photo-guide-tip">
-        <strong>실제 매물 사진 공개 확인</strong>
-        <p>원본이 아닌 재압축 JPEG만 저장합니다. 사람·문서·우편물·주소·반사된 개인정보를 직접 가린 뒤 게시하세요. 게시 시 누구나 사진을 볼 수 있습니다. AI가 가구를 없앤 가상 이미지는 저장하지 않습니다.</p>
-        <label className="photo-guide-consent"><input type="checkbox" checked={publicationConsent}
-          onChange={e=>setPublicationConsent(e.target.checked)}/>
-          <span>개인정보와 게시 권한을 확인했고, 가림 적용된 게시용 이미지의 공개에 동의합니다.</span></label>
-        {publishMessage?<p role="status">{publishMessage}</p>:null}
-      </div>:null}
+      <p className="photo-guide-disclaimer">AI는 사진에 보이는 내용만 추정해요. 실제 제공 옵션과 공간 상태는 집주인이 확인해야 합니다. 업로드 원본과 AI 편집 이미지는 서버에 영구 저장하지 않습니다.</p>
       {error ? <p className="error" role="alert">{error}</p> : null}
       {maskId !== null ? <div ref={maskPanelRef} className="photo-guide-mask" role="group" aria-label="사진 개인정보 가리기">
         <h3>가리고 싶은 부분을 사각형으로 드래그해 주세요</h3>

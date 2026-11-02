@@ -214,23 +214,10 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
   const filled = [form.title, form.address, form.area, form.moveIn, form.publisher].filter((value) => value.trim()).length;
   const stageInfo = STAGE_CONTENT[stage];
 
-  if (saved) return (
-    <div className="wizard-success">
-      <div className="wizard-success-mark" aria-hidden="true">✓</div>
-      <span className="eyebrow">ALL SET</span>
-      <h1>{editId ? "변경사항을 저장했어요." : "새 매물을 등록했어요."}</h1>
-      <p>입력하신 내용을 확인하고 다음 단계를 진행할 수 있습니다.</p>
-      <div className="wizard-success-actions">
-        {doneId ? <a className="btn" href={"/listings/" + doneId}>상세 보기 ↗</a> : null}
-         {doneId ? <a className="btn ghost" href={"/owner/listings/" + doneId}>내 집 관리 · AI 설정 →</a> : null}
-        {doneId ? <a className="btn ghost" href={"/owner/listings/" + doneId + "#owner-gallery"}>실제 사진 게시 · 갤러리 관리 →</a> : null}
-        <a className="btn ghost" href="/">매물 둘러보기</a>
-      </div>
-    </div>
-  );
-
   return (
     <div className="listing-wizard-page">
+      {!saved ? (
+      <>
       <div className="wizard-hero">
         <div>
           <span className="wizard-hero-label"><span className="wizard-label-dot" /> DIRECTHOME STUDIO</span>
@@ -260,9 +247,32 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
           );
         })}
       </nav>
+      </>
+      ) : null}
 
-      <div className="wizard-layout">
-        <section id="listing-wizard-content" className="wizard-main" aria-labelledby="wizard-stage-heading">
+      <div className={"wizard-layout" + (saved ? " wizard-layout--saved" : "")}>
+        <section id="listing-wizard-content" className="wizard-main" aria-label={saved ? "등록 완료 및 사진 게시" : undefined} aria-labelledby={!saved ? "wizard-stage-heading" : undefined}>
+          {saved ? (
+            <div className="wizard-success wizard-success--inline" role="status" aria-live="polite">
+              <div className="wizard-success-mark" aria-hidden="true">✓</div>
+              <span className="eyebrow">LISTING SAVED</span>
+              <h1>{editId ? "매물 정보를 수정했어요." : "매물 등록을 마쳤어요."}</h1>
+              <p>이제 사진도 마무리해 볼까요? 선택했던 사진은 이 화면에 그대로 남아 있어요. 원한다면 지금 추가할 수도 있습니다.</p>
+              <div className="wizard-success-next">
+                <span className="wizard-success-next-num" aria-hidden="true">02</span>
+                <div>
+                  <strong>사진 확인 · 공개</strong>
+                  <small>개인정보를 확인하고, 공개할 사진만 직접 선택해 주세요.</small>
+                </div>
+                <a className="btn" href="#after-register-photos">사진 마무리하기 ↓</a>
+              </div>
+              <div className="wizard-success-actions">
+                {doneId ? <a className="btn ghost" href={"/listings/" + doneId}>완성된 매물 보기 ↗</a> : null}
+                {doneId ? <a className="btn ghost" href={"/owner/listings/" + doneId}>집주인 관리 · AI 설정 →</a> : null}
+              </div>
+              <p className="wizard-success-disclaimer">사진은 현재 탭에서만 유지됩니다. 창을 닫거나 새로고침하면 다시 선택해야 합니다. 공개하기 전에는 사진이 게시되지 않습니다.</p>
+            </div>
+          ) : (
           <div className="wizard-content" key={stage}>
             <div className="wizard-stage-header">
               <span className="eyebrow">{stageInfo.kicker}</span>
@@ -423,16 +433,42 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
               </div>
             ) : null}
           </div>
-          {/* Keep photo state mounted when moving between Wizard stages. No bytes in sessionStorage. */}
+          )}
+          {/* The SAME photo editor stays mounted across save. Uploaded blobs stay local
+              in this tab; only explicit owner publication writes a JPEG derivative. */}
           {maxVisited >= 3 ? (
-            <div hidden={stage !== 3}>
-              <ListingPhotoGuide onSuggestOptions={(values) => {
-                const existing = form.options.split(",").map((x) => x.trim()).filter(Boolean);
-                set("options", Array.from(new Set([...existing, ...values])).join(", "));
-              }} />
+            <div id={saved ? "after-register-photos" : undefined}
+              className={saved ? "wizard-post-register-photos" : "wizard-stage-photo-panel"}
+              hidden={!saved && stage !== 3}>
+              {saved ? <div className="wizard-photo-followup-label">
+                <span className="eyebrow">FINISH YOUR LISTING</span>
+                <h2>내 집 사진을 마지막으로 확인해 주세요</h2>
+                <p>AI 분석은 선택 사항이에요. 사진을 직접 확인하고 별도로 동의한 경우에만 실제 매물에 공개됩니다.</p>
+              </div> : null}
+              <ListingPhotoGuide listingId={saved ? doneId || undefined : undefined}
+                onSuggestOptions={async (values) => {
+                  const existing = form.options.split(",").map((x) => x.trim()).filter(Boolean);
+                  const merged = Array.from(new Set([...existing, ...values]));
+                  if (saved && doneId) {
+                    const token = process.env.NEXT_PUBLIC_WRITE_TOKEN;
+                    const res = await fetch("/api/listings/" + encodeURIComponent(doneId), {
+                      method: "PATCH",
+                      headers: {"Content-Type":"application/json",
+                        ...(token ? {"x-write-token":token} : {}), ...authHeaders()},
+                      body: JSON.stringify({options:merged}),
+                    });
+                    if (!res.ok) {
+                      const body = await res.json().catch(() => ({})) as {error?:string};
+                      throw new Error(body.error ?? "옵션 저장에 실패했어요.");
+                    }
+                  }
+                  set("options", merged.join(", "));
+                }} />
             </div>
           ) : null}
 
+          {!saved ? (
+          <>
           {error ? <p className="wizard-error" role="alert">{error}</p> : null}
           <div className="wizard-action-bar">
             <button type="button" className="wizard-action-back"
@@ -445,9 +481,11 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
               <span aria-hidden="true">→</span>
             </button>
           </div>
+          </>
+          ) : null}
         </section>
 
-        <aside className="wizard-aside" aria-label="실시간 매물 미리보기">
+        {!saved ? <aside className="wizard-aside" aria-label="실시간 매물 미리보기">
           <div className="wizard-preview">
             <div className="wizard-preview-top"><span>LIVE PREVIEW</span><span className="wizard-preview-live"><i /> 미리보기</span></div>
             <div className="wizard-preview-illustration" aria-hidden="true">
@@ -472,9 +510,9 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
             <div><strong>한 번에 다 쓰지 않아도 괜찮아요.</strong>
               <p>입력 내용은 현재 브라우저 탭에 임시 보관됩니다. PDF 원본은 저장하지 않아요.</p></div>
           </div>
-        </aside>
+        </aside> : null}
       </div>
-      <p className="wizard-legal-note">DirectHome은 합성 매물 기반 AI 거래 시연 서비스입니다. 실제 부동산 광고·중개 또는 소유권 검증 서비스가 아닙니다.</p>
+      {!saved ? <p className="wizard-legal-note">DirectHome은 합성 매물 기반 AI 거래 시연 서비스입니다. 실제 부동산 광고·중개 또는 소유권 검증 서비스가 아닙니다.</p> : null}
     </div>
   );
 }

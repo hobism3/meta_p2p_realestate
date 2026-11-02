@@ -98,7 +98,7 @@ test("등록: 단계 입력 후 상세가 열린다", async ({ page }) => {
   await page.getByPlaceholder("예: 홍길동").fill("E2E");
   await page.getByRole("button", { name: /다음 단계/ }).click();
   await page.getByRole("button", { name: /매물 등록하기/ }).click();
-  await expect(page.getByRole("link", { name: /상세 보기/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /완성된 매물 보기/ })).toBeVisible();
 });
 
 test("시연방: 문의→AI 첫인사→대화→새로고침 유지", async ({ page }) => {
@@ -189,7 +189,7 @@ test("실거래방: AI가 끼지 않는다", async ({ browser }) => {
   await opage.getByPlaceholder("예: 홍길동").fill("E2E");
   await opage.getByRole("button", { name: /다음 단계/ }).click();
   await opage.getByRole("button", { name: /매물 등록하기/ }).click();
-  const href = await opage.getByRole("link", { name: "상세 보기" }).getAttribute("href");
+  const href = await opage.getByRole("link", { name: /완성된 매물 보기/ }).getAttribute("href");
   const bctx = await browser.newContext();
   const bpage = await bctx.newPage();
   await loginAs(bpage, "e2e-buyerx", "E2E구매X");

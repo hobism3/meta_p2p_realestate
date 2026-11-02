@@ -4,7 +4,7 @@
 
 **Live demo:** https://meta-p2p-realestate.vercel.app/  
 **Repository:** https://github.com/hobism3/meta_p2p_realestate  
-**2026-11-01 legal review baseline:** `main@94108e1` (legal patch branch changes are not verified production releases)
+**2026-11-02 integrated PoC code baseline:** `main@6f3643e` (P13 photo, P14 unverified registry brief, P15 neutral journey, P16 showcase; verify each Vercel production deployment SHA separately).
 
 > **Problem:** Finding a property is only the beginning. Buyers and sellers negotiate price, deposits, rent, visits, handover, and move-in dates in free-form messages. A wish, a counteroffer, and an accepted condition can be easily confused.
 >
@@ -90,8 +90,14 @@ Start with the Mock provider; real Meta calls require server-only `AGENT_PROVIDE
 - [P11 개발·검증·실패 수정 및 PR #31 병합 로그](docs/registry-cases/P11_DEVELOPMENT_LOG_20261102.md)
 - [P12 사용자 직접 라벨 없이 공개 웹 근거·교차 검증 설계](docs/registry-cases/P12_WEB_EVIDENCE_VALIDATION_20261102.md)
 - [P12 수집·검증·실패 수정 및 PR #32 병합 기록](docs/registry-cases/P12_DEVELOPMENT_LOG_20261102.md)
+- [P13 사진 게시·갤러리 PoC/개인정보·용량 제약](docs/P13_PHOTO_GALLERY_20261102.md)
+- [P14 등기 후보 로컬 분석 → 매물 공개 요약](docs/P14_REGISTRY_LISTING_BRIEF_20261102.md)
+- [P15 집톡이 실거래 중립 여정 UI](docs/P15_TRANSACTION_JOURNEY_20261102.md)
+- [P16 해커톤 역할별 통합 시연 안내](docs/P16_HACKATHON_SHOWCASE_20261102.md)
+- [P13–P16 전체 개발·CI·실패 수정 감사](docs/P13_P16_RELEASE_AUDIT_20261102.md)
+- **[체험 가이드: /showcase](https://meta-p2p-realestate.vercel.app/showcase)** (실제 서버에 최신 SHA 반영된 경우)
 
-> **배포 확인 필요 (2026-11-02):** P10 PR #29는 Git main 병합 및 CI 검증을 완료했지만 Vercel READY Production의 확인된 Git SHA는 그 이전입니다. [배포 정합성 Issue #30](https://github.com/hobism3/meta_p2p_realestate/issues/30) 해결 전까지 라이브 사이트에 최신 기능이 반영되었다고 보장하지 않습니다.
+> **운영과 Git은 별도 검증:** P13~P16은 Git main 병합/격리 CI 검증을 마쳤지만, Vercel production이 최신 병합 커밋을 반영하고 gallery migration/로컬 PDF worker가 정상 동작하는지는 별도로 확인해야 합니다. GitHub [Issue #30](https://github.com/hobism3/meta_p2p_realestate/issues/30)과 [통합 감사 로그](docs/P13_P16_RELEASE_AUDIT_20261102.md) 참고. 정식 신원·법률·개인정보 승인은 아직 미완료.
 
 Historical roadmap and initial product specs are retained for project history; use these linked documents for the current state.
 

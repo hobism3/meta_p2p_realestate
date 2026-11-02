@@ -45,6 +45,28 @@ async function fetchBounded(url){
   return {status:"not_pdf"};
  return {status:"acquired",bytes};
 }
+// Only categorical layout signals are logged. No original source characters,
+ // names, addresses, amounts, IDs or free-text substrings leave the runner.
+function structuralRows(text){
+ const pattern=/(?:가압류|경매개시|저당권|신탁등기|전세권|임차권등기|가등기)/;
+ const lines=text.split("\n");
+ const result=[];
+ for(let i=0;i<lines.length;i++){
+  const line=lines[i];
+  const match=line.match(pattern);
+  if(!match)continue;
+  const left=line.slice(0,match.index);
+  const head=Array.from(line.trim().slice(0,20));
+  const classify=ch=>/[0-9]/.test(ch)?"N":/[가-힣]/.test(ch)?"K":ch==="|"?"P":/\s/.test(ch)?"_":/[-.]/.test(ch)?"D":"O";
+  const headPattern=head.map(classify).join("").replace(/([NKPO_D])\1{2,}/g,"$1$1+");
+  result.push({row:i+1,keyword:match[0].replace(/\s/g,""),
+   headPattern,startsRank:/^\s*\d{1,5}\s*(?:\||\s)/.test(line),
+   pipes:(line.match(/\|/g)||[]).length,keywordInColumn:left.split("|").length,
+   leftLength:left.length,fullLength:line.length});
+  if(result.length>=15)break;
+ }
+ return result;
+}
 async function probePdf(bytes){
  const pdfjs=getDocument({data:new Uint8Array(bytes),isEvalSupported:false,
   disableFontFace:true,useSystemFonts:false,disableAutoFetch:true,disableStream:true});
@@ -84,7 +106,7 @@ async function probePdf(bytes){
    candidates:parsed.candidates.length,cancellationMentions:parsed.cancellationMentions,
    unmatchedCancellationRows:parsed.coverage.unresolvedCancellationRows,
    amountsWithExactManwon:parsed.candidates.filter(c=>c.entry.kind==="mortgage"&&c.entry.claimMaximumManwon!==null).length,
-   kinds,documentKind:parsed.documentKind};
+   kinds,documentKind:parsed.documentKind,rightRowShapes:structuralRows(result.text)};
  }catch{return {status:"pdf_parser_error"};}
  finally{
   console.warn=oldWarn;console.error=oldError;

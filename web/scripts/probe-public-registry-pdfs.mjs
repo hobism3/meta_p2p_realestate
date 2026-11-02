@@ -74,6 +74,22 @@ function structuralRows(text){
  }
  return result;
 }
+function structuralHeadingHints(text){
+ const lines=text.split("\n"),result=[];
+ for(let i=0;i<lines.length;i++){
+  const line=lines[i].replace(/\s+/g,"");
+  const match=line.match(/갑구|을구|表題部|표제부/);
+  if(!match)continue;
+  const prefix=line.slice(0,match.index);
+  const startChars=Array.from(line.slice(0,18));
+  const shape=startChars.map(ch=>/[0-9]/.test(ch)?"N":/[가-힣]/.test(ch)?"K":ch==="|"?"P":/[〖〗【】()\[\]]/.test(ch)?"B":"O")
+   .join("").replace(/([NKBPO])\1{2,}/g,"$1$1+");
+  result.push({row:i+1,section:match[0],prefixLength:prefix.length,
+   pipes:(line.match(/\|/g)||[]).length,shape});
+  if(result.length>=20)break;
+ }
+ return result;
+}
 async function probePdf(bytes){
  const pdfjs=getDocument({data:new Uint8Array(bytes),isEvalSupported:false,
   disableFontFace:true,useSystemFonts:false,disableAutoFetch:true,disableStream:true});
@@ -113,7 +129,7 @@ async function probePdf(bytes){
    candidates:parsed.candidates.length,cancellationMentions:parsed.cancellationMentions,
    unmatchedCancellationRows:parsed.coverage.unresolvedCancellationRows,
    amountsWithExactManwon:parsed.candidates.filter(c=>c.entry.kind==="mortgage"&&c.entry.claimMaximumManwon!==null).length,
-   kinds,documentKind:parsed.documentKind,rightRowShapes:structuralRows(result.text)};
+   kinds,documentKind:parsed.documentKind,rightRowShapes:structuralRows(result.text),headingShapes:structuralHeadingHints(result.text)};
  }catch{return {status:"pdf_parser_error"};}
  finally{
   console.warn=oldWarn;console.error=oldError;

@@ -12,7 +12,7 @@ test("P10: bundled local PDF worker extracts a fictional PDF without POST or ext
   name:"synthetic-textlayer.pdf",mimeType:"application/pdf",buffer:pdf,
  });
  await expect(page.locator("#registry-pasted-text")).toHaveValue(/DIRECTHOME - FICTIONAL PROPERTY RECORD/, {timeout:30000});
- await expect(page.getByText(/추출 규모:/)).toContainText("1페이지");
+ await expect(page.getByText("추출 규모:",{exact:true}).locator("..")).toContainText("1페이지");
  await expect(page.getByText(/PDF 텍스트는 추출했지만 갑구·을구 구조를 확인하지 못했습니다/)).toBeVisible();
  // Reading English demonstration material is not evidence of Korean title rights.
  await expect(page.getByText(/후보 0건 검토/)).toBeVisible();

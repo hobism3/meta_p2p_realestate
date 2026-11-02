@@ -11,6 +11,7 @@
 - 구현됨: 집주인/집 찾기 진입 선택, 지도·매물 탐색, Google 및 이메일 회원가입/로그인, 소유자 매물 등록, 사실 기반 AI 대리 응대, 집주인 확인 요청함, 실제 방문 슬롯 신청/승인/취소, 시연 거래방 집톡이·합의 카드, PostgreSQL 운영 DB.
 - **구현 완료**: Stage 3 집주인 AI 대리인의 서버 응대·DB 작업 원장·5회 재시도/집주인 수동 복구. Stage 0~4는 main 병합 완료. Stage 5 집주인 개별 작업함 PR #21까지 main 병합 완료. 다만 출시 관련 실제 사용자/법률·보안 검증은 보류. Stage 6 법률 리서치·신원/신고 기반 PR #22/#23은 main 반영. Stage 7 권리관계 구조화 분석·집톡이 서포트는 PR #24로 main 병합. Stage 8/9는 PR #26/#27로 main 반영. Stage 10은 PR #29로 PDF.js 자동 텍스트층 복원·사람 검토·P8 연결을 main에 병합.
 - **운영 전 잔여**: 실제 Supabase 두 계정 수동 E2E, 소유권 신원 확인, 법률 검토, 만료·슬롯 선점 악용 방지, 장애 복구/백업.
+- **2026-11-02 배포 정합성 OPEN**: Git main P10 `7453986` 병합/자동 CI PASS, Vercel READY Production에 확인된 마지막 SHA는 `2d13ed5`로 서로 다름. 배포가 최신이라고 주장하지 말 것. [Issue #30](https://github.com/hobism3/meta_p2p_realestate/issues/30)에서 Git 연동/배포/로컬 PDF worker 응답을 확인하기 전까지 Production 검증 미완료.
 - 기존 `docs/BACKLOG.md`, `PROGRESS.md` 등의 초반 작업 메모는 일부 과거 시점 상태를 포함함. 최신 상태는 이 로드맵과 `docs/DEVELOPMENT_LOG.md`를 따름.
 
 ## 단계별 실행 (각 단계 독립 PR + 자동 게이트)

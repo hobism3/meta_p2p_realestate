@@ -27,7 +27,7 @@ export type RegistryTextExtraction={
   candidates:RegistryTextCandidate[];
   cancellationMentions:number;
   warnings:string[];
-  coverage:{linesRead:number;sectionHeaders:number;candidateRows:number;unresolvedCancellationRows:number};
+  coverage:{linesRead:number;sectionHeaders:number;candidateRows:number;unresolvedCancellationRows:number;ambiguousNumberedRows:number};
 };
 export const REGISTRY_TEXT_MAX_CHARS=120_000;
 export const REGISTRY_TEXT_MAX_LINES=1800;
@@ -59,10 +59,13 @@ function kindOf(value:string):RightKind|null{
  return null;
 }
 function sectionOf(value:string):RightSection|null{
- const t=value.replace(/\s+/g,"");
- if(/^\s*(?:【|\[|\()?갑구(?:】|\]|\))?/.test(t) && /갑구/.test(t.slice(0,5)))return "갑구";
- if(/^\s*(?:【|\[|\()?을구(?:】|\]|\))?/.test(t) && /을구/.test(t.slice(0,5)))return "을구";
- if(/^\s*(?:【|\[|\()?표제부(?:】|\]|\))?/.test(t) && /표제부/.test(t.slice(0,5)))return "unknown";
+ const t=value.replace(/[\s|│¦·]/g,""); // PDF.js may insert table separators between spaced 甲/乙 header glyphs
+ // Published registry examples use 〖 갑 구 〗, 【 갑 구 】, [갑 구], and bare 갑구.
+ // Captions in ordinary prose are not legal right rows; a numbered purpose is
+ // still mandatory for a finding.
+ if(/^(?:【|〖|\[|\(|『)?갑구(?:】|〗|\]|\)|』)?/.test(t) && /갑구/.test(t.slice(0,6)))return "갑구";
+ if(/^(?:【|〖|\[|\(|『)?을구(?:】|〗|\]|\)|』)?/.test(t) && /을구/.test(t.slice(0,6)))return "을구";
+ if(/^(?:【|〖|\[|\(|『)?표제부(?:】|〗|\]|\)|』)?/.test(t) && /표제부/.test(t.slice(0,6)))return "unknown";
  return null;
 }
 function rankOf(line:string):number|null{
@@ -72,7 +75,7 @@ function rankOf(line:string):number|null{
  return Number.isSafeInteger(n)&&n>=1&&n<=100000?n:null;
 }
 function dateOf(text:string):string|undefined{
- const match=text.match(/(20\d{2})\s*(?:[.\-/]|년)\s*(\d{1,2})\s*(?:[.\-/]|월)\s*(\d{1,2})\s*(?:일)?/);
+ const match=text.match(/((?:19|20)\d{2})\s*(?:[.\-/]|년)\s*(\d{1,2})\s*(?:[.\-/]|월)\s*(\d{1,2})\s*(?:일)?/);
  if(!match)return undefined;
  const iso=match[1]+"-"+match[2].padStart(2,"0")+"-"+match[3].padStart(2,"0");
  const time=Date.parse(iso+"T00:00:00Z");
@@ -98,7 +101,7 @@ function smallKoreanNumber(raw:string):number|null{
 }
 function claimMaximum(text:string):number|null{
  // Only amounts explicitly introduced by 채권최고액 can enter the mortgage total.
- const match=text.replace(/\s+/g,"").match(/채권최고액(?:금)?([\d,천백십억만원정\.]+)(?=$|[|·;]|채무자|근저당권자|권리자|접수|등기원인)/);
+ const match=text.replace(/\s+/g,"").match(/채권최고액(?:금)?([\d,천백십억만원정\.]+)(?=$|[|·;/]|채무자|근저당권자|권리자|접수|등기원인)/);
  if(!match)return null;
  const token=match[1].replace(/정$/,"");
  let manwon:number|null=null;
@@ -125,11 +128,11 @@ function sourceLines(text:string):Array<{text:string;line:number;page:number|nul
  for(const raw of text.replace(/\r\n?/g,"\n").split(/(\f|\n)/)){
   if(raw==="\f"){page=page===null?2:page+1;continue;}
   if(raw==="\n")continue;
-  number++;
   const marker=raw.match(/^\s*\[PAGE\s+(\d{1,3})\]\s*$/i);
   if(marker){page=Number(marker[1]);continue;}
+  number++;
   out.push({text:raw,line:number,page});
-  if(number>REGISTRY_TEXT_MAX_LINES)break;
+  if(out.length>REGISTRY_TEXT_MAX_LINES)break;
  }
  return out;
 }
@@ -137,7 +140,7 @@ export function extractRegistryText(raw:unknown):RegistryTextExtraction{
  const out:RegistryTextExtraction={
   schema:"registry-text-extraction-v1",documentKind:"unrecognized",
   candidates:[],cancellationMentions:0,warnings:[],
-  coverage:{linesRead:0,sectionHeaders:0,candidateRows:0,unresolvedCancellationRows:0},
+  coverage:{linesRead:0,sectionHeaders:0,candidateRows:0,unresolvedCancellationRows:0,ambiguousNumberedRows:0},
  };
  if(typeof raw!=="string"||raw.length<10){
   out.warnings.push("문서 텍스트를 확인할 수 없습니다. PDF 뷰어에서 선택한 텍스트를 붙여넣었는지 확인하세요.");
@@ -148,8 +151,9 @@ export function extractRegistryText(raw:unknown):RegistryTextExtraction{
   return out;
  }
  const lines=sourceLines(raw);out.coverage.linesRead=lines.length;
- if(lines.length>=REGISTRY_TEXT_MAX_LINES){
-  out.warnings.push("줄 수 상한에 도달했습니다. 일부 기재가 누락됐을 수 있으니 페이지를 나누어 확인하세요.");
+ if(lines.length>REGISTRY_TEXT_MAX_LINES){
+  out.warnings.push("줄 수 상한을 초과했습니다. 일부만 추출한 불완전한 권리 후보를 제공하지 않습니다.");
+  return out;
  }
  let section:RightSection="unknown",headings=0;
  const cancellations:Array<{kind:RightKind;section:RightSection;target:number|null;line:number;page:number|null}>=[];
@@ -166,7 +170,13 @@ export function extractRegistryText(raw:unknown):RegistryTextExtraction{
   const purpose=columns.length>=2?(kindOf(columns[0])?columns[0]:columns[1]):line;
   const kind=kindOf(purpose);if(!kind)continue;
   const rank=rankOf(lines[i].text);
-  if(rank===null)continue; // not a recognizable numbered registry row
+  if(rank===null){
+   // 3-1, 3-2 and 전(10) are *not* ordinary numeric priorities. Never
+   // silently drop their existence or flatten them to rank 3.
+   if(/^\s*\d{1,5}\s*(?:-\s*\d{1,4}|전\s*\(\s*\d+\s*\))\s*(?:\||\s)/.test(lines[i].text))
+    out.coverage.ambiguousNumberedRows++;
+   continue;
+  }
   if(/말\s*소/.test(line)){
    out.cancellationMentions++;
    const match=line.match(/(\d{1,5})번\s*(?:근저당권|저당권|가압류|압류|가처분|경매|신탁|임차권|전세권|가등기)/);
@@ -175,8 +185,10 @@ export function extractRegistryText(raw:unknown):RegistryTextExtraction{
    continue;
   }
   if(out.candidates.length>=REGISTRY_TEXT_MAX_RIGHTS){
-   out.warnings.push("권리 후보 50건 상한에 도달했습니다. 다른 페이지는 별도로 검토하세요.");
-   break;
+   // Never return only the first 50 rights as though they were complete.
+   return {...out,documentKind:"unrecognized",candidates:[],
+    coverage:{...out.coverage,candidateRows:0},
+    warnings:["권리 후보 50건 상한을 초과했습니다. 일부만 추출한 권리목록을 제공하지 않습니다. 원문을 직접 확인하세요."]};
   }
   let amountEvidence:"same_row"|"next_row"|"missing"="missing";
   let amount=kind==="mortgage"?claimMaximum(line):null;
@@ -226,6 +238,8 @@ export function extractRegistryText(raw:unknown):RegistryTextExtraction{
   out.warnings.push("구조화된 권리 행을 찾지 못했습니다. 권리가 없다는 의미가 아닙니다.");
  }
  if(unmatched>0)out.warnings.push("대상 등기를 연결하지 못한 말소기재가 "+unmatched+"건 있습니다. 원문을 확인하세요.");
+ if(out.coverage.ambiguousNumberedRows>0)
+  out.warnings.push("부기/이기 등 복합 순위번호 행 "+out.coverage.ambiguousNumberedRows+"건을 자동 확정하지 않았습니다. 원문에서 별도로 확인하세요.");
  if(out.candidates.length>0)out.warnings.push("원본 PDF의 취소선·표 셀 병합·정렬·페이지 연결은 복사 텍스트만으로 검증할 수 없습니다.");
  return out;
 }

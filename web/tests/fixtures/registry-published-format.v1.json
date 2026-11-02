@@ -1,0 +1,127 @@
+{
+  "schema": "published-registry-format-adaptations-v1",
+  "createdAt": "2026-11-02",
+  "annotation": "These are manually adapted, synthetic excerpts informed by published educational materials. NOT raw PDF bytes, verbatim transcriptions, official records, or independent gold labels from a PDF's page image.",
+  "cases": [
+    {
+      "id": "P11-EBS-01",
+      "sourceId": "EBS-LEGAL-2008",
+      "category": "educational_exam_format",
+      "description": "2009학년도 모의평가의 갑·을구 권리 표 형태를 개인정보 없이 다시 작성",
+      "snippet": "[PAGE 1]\n[갑 구] (소유권에 관한 사항)\n1 | 소유권보존 | 2004년 3월 8일\n2 | 소유권이전 | 2007년 6월 6일\n[을 구] (소유권 이외의 권리에 관한 사항)\n1 | 근저당권설정 | 2007년 6월 4일 | 채권최고액 금 50,000,000원 / 채무자 생략",
+      "expected": {
+        "kinds": [
+          "mortgage"
+        ],
+        "amounts": [
+          5000
+        ],
+        "dates": [
+          "2007-06-04"
+        ],
+        "ambiguousNumberedRows": 0
+      }
+    },
+    {
+      "id": "P11-KOCW-02",
+      "sourceId": "KOCW-HANSUNG",
+      "category": "education_slide_embedded_table",
+      "description": "오래된 전세권 설정 예시의 1900년대 등기일 처리를 위한 합성 표",
+      "snippet": "[PAGE 1]\n〖 갑 구 〗 (소유권에 관한 사항)\n1 | 소유권보존 | 1984년 7월 11일\n〖 을 구 〗 (소유권 이외의 권리에 관한 사항)\n1 | 전세권설정 | 1995년 6월 12일 | 전세금 220,000,000원",
+      "expected": {
+        "kinds": [
+          "lease_right"
+        ],
+        "amounts": [
+          null
+        ],
+        "dates": [
+          "1995-06-12"
+        ],
+        "ambiguousNumberedRows": 0
+      }
+    },
+    {
+      "id": "P11-JOBGO-03",
+      "sourceId": "JOBGO-GA-2017",
+      "category": "provisional_subrank",
+      "description": "소유권이전청구권가등기와 부기등기 3-1의 순위번호 혼동 방지",
+      "snippet": "[PAGE 1]\n〖 갑 구 〗 (소유권에 관한 사항)\n3 | 소유권이전청구권가등기 | 2017년 4월 20일\n〖 을 구 〗 (소유권 이외의 권리에 관한 사항)\n3 | 근저당권설정 | 2013년 5월 7일 | 채권최고액 금 500,000,000원\n3-1 | 3번근저당권변경청구권가등기 | 2013년 5월 8일",
+      "expected": {
+        "kinds": [
+          "provisional_registration",
+          "mortgage"
+        ],
+        "amounts": [
+          null,
+          50000
+        ],
+        "dates": [
+          "2017-04-20",
+          "2013-05-07"
+        ],
+        "ambiguousNumberedRows": 1
+      }
+    },
+    {
+      "id": "P11-EDUSPA-04",
+      "sourceId": "EDUSPA-RECORDS",
+      "category": "historical_mortgage",
+      "description": "1992년 소유권 기록과 오래된 근저당/슬래시 금액 구분 예시",
+      "snippet": "[PAGE 1]\n〖 갑 구 〗 (소유권에 관한 사항)\n1 | 소유권보존 | 1992년 3월 5일\n2 | 소유권이전 | 2006년 6월 5일\n〖 을 구 〗 (소유권 이외의 권리에 관한 사항)\n1 | 근저당권설정 | 2006년 6월 5일 | 채권최고액 금500,000,000원 / 권리자 생략",
+      "expected": {
+        "kinds": [
+          "mortgage"
+        ],
+        "amounts": [
+          50000
+        ],
+        "dates": [
+          "2006-06-05"
+        ],
+        "ambiguousNumberedRows": 0
+      }
+    },
+    {
+      "id": "P11-DAANGDANG-05",
+      "sourceId": "DANGDANG-MULTI",
+      "category": "publisher_described_compound_not_transcribed",
+      "description": "당당의 다중 가압류·경매·근저당 유형 설명을 바탕으로 별도 구성한 가상 수치 사례. 실제 multi-risk.pdf 행 금액 아님",
+      "snippet": "[PAGE 1]\n【갑 구】\n2 | 가압류 | 2025년 5월 1일 | 청구금액 1,000만원\n3 | 강제경매개시결정 | 2026년 6월 1일\n[PAGE 2]\n【을 구】\n1 | 근저당권설정 | 2025년 2월 1일 | 채권최고액 금 2억원\n2 | 근저당권설정 | 2025년 3월 1일 | 채권최고액 금 9천만원",
+      "expected": {
+        "kinds": [
+          "provisional_seizure",
+          "auction_commencement",
+          "mortgage",
+          "mortgage"
+        ],
+        "amounts": [
+          null,
+          null,
+          20000,
+          9000
+        ],
+        "dates": [
+          "2025-05-01",
+          "2026-06-01",
+          "2025-02-01",
+          "2025-03-01"
+        ],
+        "ambiguousNumberedRows": 0
+      }
+    },
+    {
+      "id": "P11-FALSESAFE-06",
+      "sourceId": "EBS-LEGAL-2008",
+      "category": "no_registry_section",
+      "description": "교육 설명문에서 근저당 단어가 나와도 갑·을구 제목이 없으면 권리기재로 승격하지 않는 음성 사례",
+      "snippet": "이 문서는 시험의 교육용 해설입니다.\n근저당권은 소유권 이외의 권리에 해당할 수 있습니다.\n1 | 근저당권설정 | 2007년 6월 4일 | 채권최고액 금50,000,000원",
+      "expected": {
+        "kinds": [],
+        "amounts": [],
+        "dates": [],
+        "ambiguousNumberedRows": 0
+      }
+    }
+  ]
+}

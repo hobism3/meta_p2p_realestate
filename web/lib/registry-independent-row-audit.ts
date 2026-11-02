@@ -33,10 +33,16 @@ const PREFIX_KINDS:Array<[AuditedKind,RegExp]>=[
  ["mortgage",/^(?:근저당권|저당권)(?:설정|변경|이전|경정)?/],
  ["lease_right",/^전세권(?:설정|이전)?/],
 ];
-const TITLE=/^(?:【|〖|\\[|\\(|『)?([갑을])구(?:】|〗|\\]|\\)|』)?/;
 function section(line:string):Area|null{
- const m=line.trim().replace(/[\\s|│¦·]/g,"").match(TITLE);
- return m?(m[1]==="갑"?"갑구":"을구"):null;
+ // Avoid assuming one font/spacing style for 〖 갑 구 〗, 【을 구】 and
+ // the PDF.js form 〖갑|구〗. This independent audit only recognizes
+ // section titles at line start, not incidental mentions inside a table.
+ const normalized=Array.from(line.trim()).filter(ch=>
+  ch.charCodeAt(0)>32 && !["|","│","¦","·"].includes(ch)).join("");
+ const bare="【〖[(『".includes(normalized.charAt(0))?normalized.slice(1):normalized;
+ if(bare.startsWith("갑구"))return "갑구";
+ if(bare.startsWith("을구"))return "을구";
+ return null;
 }
 function purposeKind(raw:string):AuditedKind|null{
  const col=raw.trim().replace(/\s+/g,"");

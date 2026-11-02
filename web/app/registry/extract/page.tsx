@@ -26,7 +26,7 @@ function CandidateRow({candidate,selection,onUpdate}:{
   <p className="meta">근거 위치: {candidate.evidence.page===null?"페이지 미지정":candidate.evidence.page+"페이지"} · 복사 텍스트 {candidate.evidence.line}번째 줄 · 구조화 후보 {candidate.id}</p>
   <p className="meta">확인된 문자열을 그대로 표시하지 않고, 종류·순위·날짜·금액만 재구성합니다.</p>
   <p><b>추출 후보:</b> {candidate.evidence.label}</p>
-  {candidate.entry.kind==="mortgage"?<p>채권최고액 후보: <strong>{candidate.entry.claimMaximumManwon===null?"추출 불가":candidate.entry.claimMaximumManwon.toLocaleString("ko-KR")+"만원"}</strong>
+  {candidate.entry.kind==="mortgage"?<p>채권최고액 후보: <strong>{candidate.entry.claimMaximumManwon==null?"추출 불가":candidate.entry.claimMaximumManwon.toLocaleString("ko-KR")+"만원"}</strong>
    <small className="meta"> · {candidate.amountEvidence==="same_row"?"같은 행":candidate.amountEvidence==="next_row"?"다음 줄": "근거 누락"}</small></p>:null}
   {candidate.cancellationMentioned?<p role="status"><strong>말소 관련 별도 행이 연결된 것으로 추정됩니다.</strong> 취소선/말소 대상 등기의 실제 효력은 반드시 원본에서 확인하세요.</p>:null}
   {candidate.warnings.map((x,i)=><p key={i} className="meta">{x}</p>)}

@@ -84,6 +84,8 @@ Start with the Mock provider; real Meta calls require server-only `AGENT_PROVIDE
 - [P8 사례 검증 개발·실험 로그](docs/registry-cases/DEVELOPMENT_LOG_20261101.md)
 - [P9 문서 텍스트층 → 권리 근거 후보 → 사용자 검토 설계](docs/registry-cases/P9_TEXT_LAYER_PIPELINE_20261102.md)
 - [P9 개발·검증·병합 기록](docs/registry-cases/P9_DEVELOPMENT_LOG_20261102.md)
+- [P10 PDF.js 로컬 자동 텍스트층·좌표 복원 개발 설계](docs/registry-cases/P10_PDF_AUTOMATIC_TEXTLAYER_20261102.md)
+- [P10 개발·실패 수정·병합/CI 기록](docs/registry-cases/P10_DEVELOPMENT_LOG_20261102.md)
 
 Historical roadmap and initial product specs are retained for project history; use these linked documents for the current state.
 

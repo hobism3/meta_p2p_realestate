@@ -158,38 +158,77 @@ export class PgDal implements Dal {
     }
   }
 
-  private async rawEnsureKeys(): Promise<void> {
+  private async rawEnsureKeys(client?: PgClient): Promise<void> {
+    // Migration seed writes must use the same connection and transaction as DDL.
+    const query = (sql: string, params: unknown[] = []) =>
+      client ? client.query(toPg(sql), params) : this.pool.query(toPg(sql), params);
     for (const l of SEED_LISTINGS) {
-      await this.rawRun("INSERT INTO listing_keys (id) VALUES (?) ON CONFLICT (id) DO NOTHING", [l.id]);
+      await query("INSERT INTO listing_keys (id) VALUES (?) ON CONFLICT (id) DO NOTHING", [l.id]);
     }
-    const customs = await this.rawAll("SELECT id FROM custom_listings");
+    const customs = (await query("SELECT id FROM custom_listings")).rows;
     for (const c of customs) {
-      await this.rawRun("INSERT INTO listing_keys (id) VALUES (?) ON CONFLICT (id) DO NOTHING", [c.id]);
+      await query("INSERT INTO listing_keys (id) VALUES (?) ON CONFLICT (id) DO NOTHING", [c.id]);
     }
   }
 
-  private async migrateInner(only?: string[]): Promise<void> {
-    let rows: Record<string, unknown>[] = [];
+  private async rawExecInTransaction(sql: string, client: PgClient): Promise<void> {
+    // Legacy partially applied migrations may contain already-created objects.
+    // A PostgreSQL error aborts the transaction unless isolated by SAVEPOINT.
+    for (const part of sql.split(";")) {
+      const stmt = part.trim();
+      if (!stmt) continue;
+      await client.query("SAVEPOINT directhome_migration_stmt");
+      try {
+        await client.query(stmt);
+        await client.query("RELEASE SAVEPOINT directhome_migration_stmt");
+      } catch (e) {
+        await client.query("ROLLBACK TO SAVEPOINT directhome_migration_stmt");
+        await client.query("RELEASE SAVEPOINT directhome_migration_stmt");
+        if (!/already exists/i.test(e instanceof Error ? e.message : String(e))) throw e;
+      }
+    }
+  }
+
+  private async migrateInner(): Promise<void> {
+    // Serverless instances share a database but not the in-process ready promise.
+    // A transaction-scoped advisory lock serializes schema changes across them.
+    // Re-read versions only AFTER acquiring the lock to avoid stale snapshots.
+    const client = await this.pool.connect();
     try {
-      rows = await this.rawAll("SELECT version FROM schema_migrations");
-    } catch {
-      rows = [];
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock($1, $2)", [211231, 20261102]);
+      await client.query(
+        "CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TEXT NOT NULL)",
+      );
+      const rows = (await client.query("SELECT version FROM schema_migrations")).rows;
+      const applied = new Set(rows.map((r) => String(r.version)));
+      for (const m of migrationFiles()) {
+        if (applied.has(m.version)) continue;
+        await this.rawExecInTransaction(m.sql, client);
+        await client.query("INSERT INTO schema_migrations (version, applied_at) VALUES ($1, $2)", [
+          m.version,
+          new Date().toISOString(),
+        ]);
+        if (m.version === "001_initial") await this.rawEnsureKeys(client);
+      }
+      await this.rawEnsureKeys(client);
+      await client.query("COMMIT");
+    } catch (e) {
+      try { await client.query("ROLLBACK"); } catch { /* keep original error */ }
+      throw e;
+    } finally {
+      client.release();
     }
-    const applied = new Set(rows.map((r) => String(r.version)));
-    for (const m of migrationFiles()) {
-      if ((only && !only.includes(m.version)) || applied.has(m.version)) continue;
-      await this.rawExec(m.sql);
-      await this.rawRun("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)", [
-        m.version,
-        new Date().toISOString(),
-      ]);
-      if (m.version === "001_initial") await this.rawEnsureKeys();
-    }
-    await this.rawEnsureKeys();
   }
 
   private ensureReady(): Promise<void> {
-    if (!this.ready) this.ready = this.migrateInner();
+    if (!this.ready) {
+      this.ready = this.migrateInner().catch((e) => {
+        // A transient database error must not poison this serverless instance forever.
+        this.ready = null;
+        throw e;
+      });
+    }
     return this.ready;
   }
 

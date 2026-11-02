@@ -1,0 +1,55 @@
+# Real application screen recording with isolated synthetic data.
+# This is a REHEARSAL video: mocked Meta outputs are clearly labeled onscreen.
+name: hackathon-demo-rehearsal
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/record-hackathon-demo.yml"
+      - "web/scripts/record-hackathon-demo.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    env:
+      DB_PATH: "./data/hackathon-recording.db"
+      SUPABASE_JWT_SECRET: "test-e2e-secret"
+      AGENT_PROVIDER: "mock"
+      RATE_LIMIT_PER_MIN: "1000"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Record authentic product UI in a synthetic sandbox
+        run: node scripts/record-hackathon-demo.mjs
+      - name: Export captioned MP4 (under three minutes, no soundtrack)
+        run: |
+          ffmpeg -y -i demo-artifacts/directhome-hackathon-mock-rehearsal.webm \
+            -vf "scale=1280:720:flags=lanczos,fps=24,tpad=stop_mode=clone:stop_duration=3" \
+            -t 179 -c:v libx264 -preset veryfast -crf 22 -pix_fmt yuv420p \
+            -movflags +faststart -an demo-artifacts/directhome-hackathon-mock-rehearsal.mp4
+      - name: Preserve recording evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: directhome-demo-mock-rehearsal
+          path: web/demo-artifacts/
+          if-no-files-found: warn
+          retention-days: 7

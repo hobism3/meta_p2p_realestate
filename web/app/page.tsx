@@ -141,7 +141,11 @@ export default function HomePage() {
         <section className="listings-grid" aria-label="검색된 매물">
           {results.map((l) => (
             <a key={l.id} className="card listing" href={`/listings/${l.id}`}>
-              <div className="photo listing-photo"><img src={listingPhoto(l)} alt={listingPhotoAlt()} loading="lazy" /><span className="photo-stamp">AI 생성 시연 이미지</span></div>
+              <div className="photo listing-photo">
+                {l.synthetic?<><img src={listingPhoto(l)} alt={listingPhotoAlt()} loading="lazy"/><span className="photo-stamp">AI 생성 시연 이미지</span></>:
+                 l.coverPhotoUrl?<><img src={l.coverPhotoUrl} alt="게시자가 직접 공개한 매물 사진 · 소유권과 현장 상태 미검증" loading="lazy"/><span className="photo-stamp">게시자 등록 사진 · 미검증</span></>:
+                 <span className="photo-stamp">실제 매물 사진 준비 중</span>}
+              </div>
               <div className="listing-labels"><span className="listing-type">{l.tradeType}</span>{!l.editable ? <span className="ai-pill">AI {l.tradeType === "매매" ? "매도자" : "임대인"} 상담</span> : null}</div>
               <h3>{l.title}</h3>
               <div className="price">{formatPrice(l)}</div>
@@ -165,7 +169,11 @@ export default function HomePage() {
                 onMouseEnter={() => setSelected(l.id)}
                 onFocus={() => setSelected(l.id)}
               >
-                <div className="map-listing-thumbnail"><img src={listingPhoto(l)} alt={listingPhotoAlt()} loading="lazy" /></div>
+                <div className="map-listing-thumbnail">
+                  {l.synthetic?<img src={listingPhoto(l)} alt={listingPhotoAlt()} loading="lazy"/>:
+                   l.coverPhotoUrl?<img src={l.coverPhotoUrl} alt="게시자 등록 매물 사진" loading="lazy"/>:
+                   <span className="meta">사진 준비 중</span>}
+                </div>
                 <span className="listing-type">{l.tradeType}</span>
                 <h3>{l.title}</h3>
                 <div className="price">{formatPrice(l)}</div>

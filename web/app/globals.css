@@ -1231,3 +1231,123 @@ table.spec th{width:130px;color:#74849b;font-weight:700;white-space:nowrap}
 .photo-guide-sample:focus-visible{outline:3px solid #4686d6;outline-offset:2px}
 .photo-guide-sample:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:600px){.photo-guide-sample-list{grid-template-columns:repeat(2,minmax(0,1fr))}.photo-guide-sample img{height:96px}}
+
+
+/* Registration photo studio · unified selection > consent > review > publication. */
+.wizard-layout--saved{max-width:930px;margin:20px auto 60px;grid-template-columns:minmax(0,1fr)}
+.wizard-layout--saved .wizard-main{background:transparent;border:0;box-shadow:none;overflow:visible}
+.wizard-success--inline{max-width:none;margin:0 0 20px;padding:36px 28px;gap:10px}
+.wizard-success--inline p{max-width:650px;line-height:1.7}
+.wizard-success-next{display:flex;align-items:center;gap:13px;text-align:left;width:100%;max-width:700px;
+  padding:18px;border-radius:18px;background:#fff;border:1px solid #dce8f7;margin:14px 0 2px}
+.wizard-success-next-num{display:grid;place-items:center;flex:none;width:43px;height:43px;border-radius:13px;background:#eaf3ff;color:#2868c3;font-size:14px;font-weight:850}
+.wizard-success-next div{flex:1;min-width:0}
+.wizard-success-next strong{display:block;color:#163858;font-size:15px}
+.wizard-success-next small{display:block;color:#6a7c91;font-size:12px;line-height:1.65}
+.wizard-success-next .btn{white-space:nowrap}
+.wizard-success .wizard-success-disclaimer{margin:5px 0 0;color:#7d8da1;font-size:12px}
+.wizard-stage-photo-panel{padding:0 clamp(18px,4vw,44px) 20px;min-width:0}
+.wizard-post-register-photos{scroll-margin-top:28px;min-width:0}
+.wizard-photo-followup-label{padding:12px 6px 10px}
+.wizard-photo-followup-label h2{font-size:clamp(23px,2.7vw,30px);margin:8px 0}
+.wizard-photo-followup-label p{color:#60768f;font-size:13px;line-height:1.7}
+.wizard-stage-photo-panel .photo-guide,.wizard-post-register-photos .photo-guide{margin:0}
+.photo-guide.card{min-width:0;gap:19px;padding:clamp(16px,2.9vw,26px);border:1px solid #e0eaf5;border-radius:22px;background:#fff;box-shadow:0 8px 28px rgba(31,72,126,.035)}
+.photo-guide-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.photo-guide-heading h2{font-size:clamp(21px,2vw,25px);margin:6px 0 8px;color:#193650}
+.photo-guide-heading p{margin:0;color:#70829a;font-size:13px;line-height:1.7}
+.photo-guide-count{display:inline-flex;align-items:baseline;gap:2px;font-weight:850;font-size:25px;color:#225caa;
+  padding:6px 11px;border-radius:12px;background:#f0f6ff;white-space:nowrap}
+.photo-guide-count small{font-weight:650;font-size:12px;color:#8aa2bf}
+.photo-guide-milestones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.photo-guide-milestones>span{display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:11px 10px;border-radius:12px;
+  background:#f7f9fc;border:1px solid #e8edf5;color:#60738b;font-weight:750;font-size:12px;line-height:1.4}
+.photo-guide-milestones b{color:#8096ad;font-size:11px}
+.photo-guide-milestones small{margin-left:auto;color:#9aa9b9;font-size:10px;font-weight:600}
+.photo-guide-milestones .is-done{background:#f0f8f3;border-color:#d4e9da;color:#225b48}
+.photo-guide-milestones .is-done b,.photo-guide-milestones .is-done small{color:#3b8669}
+.photo-guide-picker{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:19px;
+  border:1.5px dashed #a7c3e7;background:linear-gradient(130deg,#f7fbff,#f0f6ff);border-radius:18px}
+.photo-guide-picker strong{font-size:15px;color:#234366}
+.photo-guide-picker p{font-size:12px;color:#7187a0;margin:4px 0 0}
+.photo-guide-picker .photo-guide-upload{flex:none;white-space:nowrap;background:#236be8;color:#fff;border-color:#236be8;padding:11px 18px;border-radius:11px;min-height:43px;font-weight:750}
+.photo-guide-picker .photo-guide-upload:has(input:disabled){opacity:.55}
+.photo-guide-samples-title{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.photo-guide-samples-title strong{font-size:12px;color:#3e5773}
+.photo-guide-samples-title span{color:#8797ab;font-size:11px}
+.photo-guide-sample-list{gap:10px}
+.photo-guide-sample{border-color:#e2e9f1;border-radius:13px;box-shadow:0 2px 6px rgba(30,50,80,.025);transition:border-color .2s, transform .2s}
+.photo-guide-sample:hover:not(:disabled){transform:translateY(-1px)}
+.photo-guide-sample img{height:112px;border-radius:9px}
+.photo-guide-permissions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.photo-guide-permission{display:grid;grid-template-columns:29px minmax(0,1fr);align-items:start;gap:10px;padding:16px;
+  border:1px solid #e0e9f4;border-radius:15px;background:#fbfdff;min-width:0}
+.photo-guide-permission-icon{display:grid;place-items:center;font-size:18px;border-radius:9px;color:#2d72bc;background:#edf4ff;height:29px}
+.photo-guide-permission strong{font-size:13px;color:#213d5b;display:block}
+.photo-guide-permission strong small{font-size:10px;color:#8aa0bb}
+.photo-guide-permission p{font-size:11px;line-height:1.6;color:#6d819a;margin:5px 0 10px}
+.photo-guide-permission .photo-guide-consent{font-size:11px;line-height:1.65;color:#435b78;font-weight:650;cursor:pointer}
+.photo-guide-consent input{width:16px;height:16px;accent-color:#246bf4}
+.photo-guide-permission .photo-guide-unavailable{margin:8px 0 0;color:#9a6a2e;font-size:11px}
+.photo-guide-publish-consent{border:1px solid #cbded4;background:#f4faf6;border-radius:15px;padding:17px}
+.photo-guide-publish-consent strong{color:#245744;font-size:14px}
+.photo-guide-publish-consent p{font-size:12px;color:#5c7566;line-height:1.7;margin:5px 0 10px}
+.photo-guide-publish-consent .photo-guide-consent{font-size:12px;color:#284b3b;font-weight:700}
+.photo-guide-publish-message{margin:8px 0 0!important;color:#237254!important}
+.photo-guide-save-note{padding:11px 15px;background:#f6f9fe;border-radius:12px;font-size:12px;color:#607997;line-height:1.6;margin:0}
+.photo-guide-progress{border-radius:10px;background:#eaf4ff;color:#2868b1;padding:11px 13px;font-size:12px;margin:0}
+.photo-guide-grid{display:grid;gap:12px}
+.photo-guide-item{grid-template-columns:minmax(130px,195px) minmax(0,1fr);gap:16px;padding:15px;border-radius:15px;
+  border-color:#e1e9f2;background:#fff;box-shadow:0 2px 8px rgba(29,61,93,.025)}
+.photo-guide-item.is-reviewed{border-color:#c5dcec}
+.photo-guide-thumbnail{position:relative;min-width:0}
+.photo-guide-item .photo-guide-thumbnail img{display:block;width:100%;height:175px;object-fit:cover;border-radius:11px;background:#eaf0f6}
+.photo-guide-room-badge{position:absolute;left:9px;bottom:9px;font-size:11px;font-weight:850;padding:5px 10px;color:#fff;
+  background:rgba(20,45,73,.88);border-radius:999px}
+.photo-guide-item-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0}
+.photo-guide-item-heading strong{font-size:14px;color:#1e3856;min-width:0;overflow-wrap:anywhere}
+.photo-guide-status{flex:none;border-radius:999px;background:#f2f4f7;color:#7e91a5;padding:4px 8px;font-size:10px;font-weight:750}
+.photo-guide-status.is-ready{background:#edf7f0;color:#287a52}
+.photo-guide-item-text{gap:8px}
+.photo-guide-empty-action{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}
+.photo-guide-empty-action .btn{font-size:12px;min-height:41px;min-width:0;padding:8px 11px;border-radius:10px}
+.photo-guide-empty-action .photo-guide-primary{flex:1;min-height:41px;justify-content:center}
+.photo-guide-actions{border-top:1px solid #edf0f5;padding-top:9px;align-items:center;margin-top:4px}
+.photo-guide-actions .btn{border-radius:9px;font-size:11px;min-height:35px}
+.photo-guide-actions .photo-guide-publish{margin-left:auto;background:#f0f8f3;color:#207451;border:1px solid #bcdac6}
+.photo-guide-actions .photo-guide-publish:hover:not(:disabled){background:#def5e6}
+.photo-guide-privacy{border:1px solid #e4ebf2;border-radius:11px;padding:11px 14px;color:#65778a;background:#fafcfe}
+.photo-guide-privacy summary{cursor:pointer;font-size:12px;font-weight:700}
+.photo-guide-privacy p{margin:8px 0 0;font-size:12px;line-height:1.7}
+.photo-guide-disclaimer{font-size:11px;line-height:1.65;color:#8593a5;margin:0}
+.photo-guide-suggestions{background:linear-gradient(160deg,#f3f8ff,#fbfdff);border:1px solid #d8e7f6;border-radius:16px;gap:12px}
+.photo-guide-suggestions h3{font-size:16px;color:#1c456e}
+.photo-guide-option-chips .feature-chip{border-radius:999px}
+@media(max-width:850px){
+  .photo-guide-permissions{grid-template-columns:minmax(0,1fr)}
+  .photo-guide-milestones small{width:100%;margin-left:0}
+}
+@media(max-width:650px){
+  .wizard-layout--saved{margin:10px auto 35px}
+  .wizard-success--inline{padding:24px 16px}
+  .wizard-success-next{flex-wrap:wrap}
+  .wizard-success-next .btn{width:100%;text-align:center}
+  .wizard-stage-photo-panel{padding:0 14px 20px}
+  .photo-guide.card{border-radius:17px;padding:17px 13px;gap:15px}
+  .photo-guide-heading h2{font-size:21px}
+  .photo-guide-count{font-size:20px;padding:5px 9px}
+  .photo-guide-milestones{gap:5px}
+  .photo-guide-milestones>span{font-size:10px;padding:10px 7px;gap:4px}
+  .photo-guide-milestones small{font-size:9px}
+  .photo-guide-picker{flex-wrap:wrap;padding:15px}
+  .photo-guide-picker .photo-guide-upload{width:100%;justify-content:center}
+  .photo-guide-samples-title{display:block}
+  .photo-guide-samples-title span{display:block;margin-top:4px}
+  .photo-guide-item{grid-template-columns:minmax(0,1fr);padding:12px;gap:10px}
+  .photo-guide-item .photo-guide-thumbnail img{height:215px}
+  .photo-guide-item-heading{align-items:center}
+  .photo-guide-empty-action{flex-direction:column}
+  .photo-guide-empty-action .btn{width:100%}
+  .photo-guide-actions .photo-guide-publish{width:100%;margin-left:0}
+}
+@media(prefers-reduced-motion:reduce){.photo-guide-sample{transition:none}}

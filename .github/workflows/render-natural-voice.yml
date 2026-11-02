@@ -1,0 +1,27 @@
+name: directhome-natural-narration
+on:
+  push:
+    branches: [feat/three-chapter-hackathon-film-20261103]
+    paths:
+      - .github/workflows/render-natural-voice.yml
+      - web/scripts/generate-natural-demo-voice.py
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install neural English narration client
+        run: python3 -m pip install --quiet --break-system-packages 'edge-tts>=7,<8'
+      - name: Generate narrated sections
+        run: python3 web/scripts/generate-natural-demo-voice.py web/demo-artifacts/voice
+      - uses: actions/upload-artifact@v4
+        with:
+          name: directhome-three-chapter-neural-narration
+          path: web/demo-artifacts/voice/
+          retention-days: 30
+          if-no-files-found: error

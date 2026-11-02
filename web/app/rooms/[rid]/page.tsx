@@ -181,6 +181,8 @@ function ProposalCard({ p, approvals, sides, demo, me, onDecide, onSuggest, onHo
   onHold: (pid: string) => void;
   onEvidence: (id: string) => void;
 }) {
+  const {tr,en}=useUiLocale();
+  const agreementLabel=(status:string)=>en?status==="대기"?"Pending":status==="동의함"?"Agreed":status==="거절함"?"Declined":status;
   const mine = (approvals[p.id] ?? []).some((a) => a.actor_id === me);
   const open = p.status === "proposed";
   const badge = p.status === "agreed" ? "양측 동의" : p.status === "refused" ? "거절됨" : "동의 대기";
@@ -188,32 +190,32 @@ function ProposalCard({ p, approvals, sides, demo, me, onDecide, onSuggest, onHo
   return (
     <div className="card proposal-card">
       <div>
-        {isFinal ? <strong>{p.value} 조건에 동의할까요?</strong> : <><strong>{p.name}</strong>: {p.value}</>}{" "}
-        <span className={p.status === "agreed" ? "badge ok" : "badge no"}>{badge}</span>
+        {isFinal ? <strong>{p.value} {tr("조건에 동의할까요?","— do you agree to these terms?")}</strong> : <><strong>{p.name}</strong>: {p.value}</>}{" "}
+        <span className={p.status === "agreed" ? "badge ok" : "badge no"}>{en?(badge==="양측 동의"?"Both confirmed":badge==="거절됨"?"Declined":"Awaiting consent"):badge}</span>
       </div>
       <ul>
         {sides.map((s) => (
-          <li key={s.key}>{s.label}: {approvalOf(approvals, p.id, s.key, demo)}</li>
+          <li key={s.key}>{s.label}: {agreementLabel(approvalOf(approvals, p.id, s.key, demo))}</li>
         ))}
       </ul>
       {p.reason ? <p className="meta">{p.reason}</p> : null}
       {p.source_msg_ids[0] ? (
         <div>
-          <button className="btn ghost" onClick={() => onEvidence(p.source_msg_ids[0])}>근거 보기</button>
+          <button className="btn ghost" onClick={() => onEvidence(p.source_msg_ids[0])}>{tr("근거 보기","View source")}</button>
         </div>
       ) : null}
       {open && !mine ? (
         <div>
-          <button className="btn ghost" onClick={() => onDecide(p.id, "agree", p.version)}>동의하기</button>{" "}
-          <button className="btn ghost" onClick={() => onDecide(p.id, "refuse", p.version)}>거절하기</button>{" "}
-          <button className="btn ghost" onClick={() => onSuggest(p.name, p.value)}>변경 제안</button>
+          <button className="btn ghost" onClick={() => onDecide(p.id, "agree", p.version)}>{tr("동의하기","Agree")}</button>{" "}
+          <button className="btn ghost" onClick={() => onDecide(p.id, "refuse", p.version)}>{tr("거절하기","Decline")}</button>{" "}
+          <button className="btn ghost" onClick={() => onSuggest(p.name, p.value)}>{tr("변경 제안","Suggest changes")}</button>
           {isFinal ? null : (
-            <>{" "}<button className="btn ghost" onClick={() => onHold(p.id)}>보류</button></>
+            <>{" "}<button className="btn ghost" onClick={() => onHold(p.id)}>{tr("보류","Hold")}</button></>
           )}
         </div>
       ) : null}
-      {open && mine ? <p className="meta">상대방의 동의를 기다립니다.</p> : null}
-      {demo && isFinal ? <p className="meta">AI 시연 동의는 실제 계약이 아닙니다.</p> : null}
+      {open && mine ? <p className="meta">{tr("상대방의 동의를 기다립니다.","Waiting for the other person's approval.")}</p> : null}
+      {demo && isFinal ? <p className="meta">{tr("AI 시연 동의는 실제 계약이 아닙니다.","Demo AI consent is not a legal agreement.")}</p> : null}
     </div>
   );
 }

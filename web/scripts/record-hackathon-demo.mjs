@@ -98,15 +98,15 @@ try{
  await page.evaluate(t=>localStorage.setItem("directhome.access_token",t),owner);
  await page.goto(base+"/register");
  await caption(page,"01  Create a listing","A five-step wizard reduces repetitive manual entry.",5200);
- await page.getByRole("button",{name:/직접 입력해서 시작/}).click();
+ await page.getByRole("button",{name:/직접 입력해서 시작|Start from scratch/}).click();
  await type(page.locator("#title"),"Demo home | bright two-room rental");
  await type(page.locator("#address"),"서울시 가상구 데모로 12 (합성)");
  await type(page.locator("#area"),"46");
  await caption(page,"Property facts stay editable","No photo or model output is published automatically.",5200);
- await page.getByRole("button",{name:/다음 단계/}).click();
+ await page.getByRole("button",{name:/다음 단계|Continue/}).click();
  await type(page.locator("#deposit"),"2000");
  await type(page.locator("#rent"),"85");
- await page.getByRole("button",{name:/다음 단계/}).click();
+ await page.getByRole("button",{name:/다음 단계|Continue/}).click();
 
  // Entirely synthetic room drawing, not an actual listing photo.
  const jpeg=await page.evaluate(()=>{
@@ -142,28 +142,28 @@ try{
    mimeType:"image/jpeg",buffer:Buffer.from(jpeg,"base64")});
  await caption(page,"02  Review photos with AI","Explicit opt-in, per-photo analysis, and clear control over every result.",7800);
  await page.getByRole("checkbox",{name:/Meta Vision AI/}).check();
- await page.getByRole("button",{name:"이 사진 AI 분석"}).click();
- await page.getByRole("heading",{name:/AI가 사진 1장에서 찾아낸 내용/}).waitFor();
+ await page.getByRole("button",{name:/이 사진 AI 분석|Analyze this photo/}).click();
+ await page.getByRole("heading",{name:/AI가 사진 1장에서 찾아낸 내용|AI findings from 1 photo/}).waitFor();
  await caption(page,"Muse Spark Vision · feature flow (Mock replay)","Room label: living room. Candidate amenities: air conditioner and refrigerator.",8000);
  const chip=page.locator(".photo-guide-option-chips .feature-chip").filter({hasText:"에어컨"});
  await chip.click();
- await page.getByRole("button",{name:/선택한 1개를 매물 옵션 입력란에 추가/}).click();
+ await page.getByRole("button",{name:/선택한 1개를 매물 옵션 입력란에 추가|선택한 1개를 실제 매물에 저장/}).click();
  await caption(page,"Humans confirm every candidate","AI suggestions never become binding listing facts on their own.",7000);
  await page.getByRole("checkbox",{name:/Meta Muse Image|AI 가상 이미지 생성을 위해/}).check();
- await page.getByRole("button",{name:"가구 없는 모습 미리보기"}).click();
+ await page.getByRole("button",{name:/가구 없는 모습 미리보기|Preview empty room/}).click();
  await page.locator(".photo-guide-comparison img").first().waitFor();
  await caption(page,"Muse Image · virtual staging (Mock replay)","Furniture-free previews are labeled simulations, never evidence of real property condition.",8000);
  await type(page.locator("#moveIn"),"2026-12-01");
  await type(page.locator("#publisher"),"Demo owner");
- await page.getByRole("button",{name:/다음 단계/}).click();
+ await page.getByRole("button",{name:/다음 단계|Continue/}).click();
  await caption(page,"Review before publication","Every field and selected option remains under the owner's control.",5500);
- await page.getByRole("button",{name:"매물 등록하기"}).click();
- await page.getByRole("heading",{name:/매물 등록을 마쳤어요/}).waitFor();
+ await page.getByRole("button",{name:/매물 등록하기|Save listing/}).click();
+ await page.getByRole("heading",{name:/매물 등록을 마쳤어요|Listing saved/}).waitFor();
  await caption(page,"03  Keep the same photos after saving","No second upload. Review, mask, and explicitly approve photo publication.",8000);
- await page.getByRole("checkbox",{name:/검토한 게시용 JPEG 사진 공개/}).check();
+ await page.getByRole("checkbox",{name:/검토한 게시용 JPEG 사진 공개|approve the reviewed JPEG/}).check();
  const publicationResult=page.waitForResponse(r=>
    r.url().includes("/gallery")&&r.request().method()==="POST",{timeout:15000});
- await page.getByRole("button",{name:"검토한 사진 공개하기"}).click();
+ await page.getByRole("button",{name:/검토한 사진 공개하기|Publish approved photo/}).click();
  const publication=await publicationResult;
  const publicationData=await publication.json().catch(()=>({}));
  const publicationError=typeof publicationData.error==="string"?
@@ -174,11 +174,11 @@ try{
    await caption(page,"Photo publishing needs a follow-up check",
      "The owner must approve each real photo. This rehearsal did not confirm gallery publication.",3500);
  } else {
-   await page.getByRole("button",{name:/게시 완료/}).waitFor();
+   await page.getByRole("button",{name:/게시 완료|Published/}).waitFor();
  }
  await caption(page,publication.ok()?"Published with owner approval":"Photo publishing: verification required",
    publication.ok()?"Only a compressed real-photo JPEG is public; simulated edits stay private.":"This isolated rehearsal could not publish the synthetic test photo.",7300);
- const detail=page.getByRole("link",{name:/완성된 매물 보기|상세 보기/}).first();
+ const detail=page.getByRole("link",{name:/완성된 매물 보기|상세 보기|View listing/}).first();
  const href=await detail.getAttribute("href");
  if(!href)throw Error("missing generated listing link");
  const listingId=href.split("/").pop();
@@ -194,15 +194,15 @@ try{
      await api("/api/rooms/"+rid+"/messages","POST",owner,{text:"보증금 3,000만원 / 월세 68만원이면 괜찮습니다."});
      await page.evaluate(t=>localStorage.setItem("directhome.access_token",t),visitor);
      await page.goto(base+"/rooms/"+rid);
-     await page.getByRole("log",{name:"거래 대화"}).waitFor();
+     await page.getByRole("log",{name:/거래 대화|Deal conversation/}).waitFor();
      await caption(page,"05  A neutral assistant tracks the deal","Jiptok surfaces proposed terms, sources, and unresolved next steps.",8200);
      const proposal=page.locator(".proposal-card").filter({hasText:"보증금 3,000만원/월세 68만원"}).first();
-     await proposal.getByRole("button",{name:"동의하기"}).click();
+     await proposal.getByRole("button",{name:/동의하기|Agree/}).click();
      await caption(page,"One person's agreement is not enough","The same version must be acknowledged by both participants.",6500);
      await page.evaluate(t=>localStorage.setItem("directhome.access_token",t),owner);
      await page.reload();
      const ownerCard=page.locator(".proposal-card").filter({hasText:"보증금 3,000만원/월세 68만원"}).first();
-     await ownerCard.getByRole("button",{name:"동의하기"}).click();
+     await ownerCard.getByRole("button",{name:/동의하기|Agree/}).click();
      await caption(page,"Both parties confirmed this version","No automated bargaining, signing, deposit payment, or legal guarantee.",7200);
    });
  await page.goto(base+"/showcase?lang=en");

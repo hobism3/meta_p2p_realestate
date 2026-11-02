@@ -2,6 +2,7 @@
 import {useEffect,useMemo,useRef,useState} from "react";
 import {extractRegistryPdfLocally} from "../../../lib/registry-pdf-local-reader";
 import samples from "../../../tests/fixtures/registry-text-layer.v1.json";
+import publicEducationalSamples from "../../../tests/fixtures/registry-public-sources.v1.json";
 import {
  extractRegistryText,REGISTRY_TEXT_MAX_CHARS,
  type RegistryTextCandidate,type RegistryTextExtraction,
@@ -180,6 +181,19 @@ export default function LocalRegistryTextExtractor(){
     </select>
    </label>
    <p className="meta">{statusText}</p>
+  </section>
+  <section className="card">
+   <h2>P11 · 공개 교육용 가상 등기부 PDF 5종</h2>
+   <p>실제로 게시자가 공개한 <strong>교육용 가상 문서</strong>입니다. 원본 페이지로 이동해 내려받은 다음, 위 PDF 선택란에서 로컬 분석을 시험할 수 있습니다. 실제 부동산 등기사항증명서가 아닙니다.</p>
+   <div className="grid" style={{gap:10}}>
+    {publicEducationalSamples.references.map(s=>(
+     <div key={s.id} style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",gap:8,padding:"10px 12px",border:"1px solid var(--line)",borderRadius:12}}>
+      <span><strong>{s.id.replace("DANGDANG-","")}</strong><br/><small className="meta">{s.expectedDescription}</small></span>
+      <a href={s.url} target="_blank" rel="noopener noreferrer" className="btn ghost">공개 원본 PDF 보기 ↗</a>
+     </div>
+    ))}
+   </div>
+   <p className="meta" style={{marginTop:10}}>5종 원본 URL·SHA-256 및 임시 CI 재검증 결과는 P11 출처 원장에서 관리합니다. 원본은 우리 서버·Meta로 전송되지 않으며, 다운로드한 교육용 PDF의 재배포/상업적 활용 허락까지 의미하지 않습니다. 원본의 모든 권리·효력을 자동으로 확정하지 않습니다.</p>
   </section>
   <section className="card">
    <h2>2. 자동 추출된 텍스트 확인 또는 직접 붙여넣기</h2>

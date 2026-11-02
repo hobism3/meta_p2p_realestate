@@ -4,12 +4,11 @@ import { clientKey } from "@/lib/api";
 import { checkRate } from "@/lib/ratelimit";
 import { parseChatResponse } from "@/lib/meta";
 import { parsePhotoModelText } from "@/lib/photo-guide";
+import { checkedJpegDataUrl, readLimitedPhotoJson, PHOTO_MAX_BODY_BYTES } from "@/lib/photo-image";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-const MAX_BODY_BYTES = 1_550_000;
-const MAX_IMAGE_BYTES = 950_000;
 const HOURLY_LIMIT = 6;
 const quota = new Map<string, { count: number; resetsAt: number }>();
 
@@ -38,42 +37,6 @@ function takeQuota(userId: string): boolean {
   return true;
 }
 
-async function readLimitedJson(req: Request): Promise<Record<string, unknown> | null> {
-  if (!req.body) return null;
-  const reader = req.body.getReader();
-  const chunks: Buffer[] = [];
-  let size = 0;
-  try {
-    for (;;) {
-      const part = await reader.read();
-      if (part.done) break;
-      size += part.value.byteLength;
-      if (size > MAX_BODY_BYTES) return null;
-      chunks.push(Buffer.from(part.value));
-    }
-    const value: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
-  } catch {
-    return null;
-  } finally {
-    reader.releaseLock();
-  }
-}
-
-function checkedImageUrl(value: unknown): string | null {
-  if (typeof value !== "string" || value.length > MAX_BODY_BYTES) return null;
-  const prefix = "data:image/jpeg;base64,";
-  if (!value.startsWith(prefix)) return null;
-  const base64 = value.slice(prefix.length);
-  if (base64.length < 100 || base64.length > Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 4 ||
-      !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return null;
-  const bytes = Buffer.from(base64, "base64");
-  if (bytes.length > MAX_IMAGE_BYTES || bytes.length < 75 ||
-      bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff ||
-      bytes.toString("base64") !== base64) return null;
-  return value;
-}
-
 /**
  * Optional user-triggered, single-photo VLM inference.
  * The client creates a resized JPEG without EXIF and with any user masks applied;
@@ -89,10 +52,10 @@ export async function POST(req: Request): Promise<Response> {
   if (!enabled()) return json({ error: "사진 AI 검토가 비활성화되어 있어요. 기본 사진 가이드는 계속 이용할 수 있습니다." }, 503);
   if (!req.headers.get("content-type")?.includes("application/json")) return json({ error: "JSON만 허용됩니다." }, 415);
   const contentLength = Number(req.headers.get("content-length") ?? 0);
-  if (!Number.isFinite(contentLength) || contentLength > MAX_BODY_BYTES) return json({ error: "사진 크기 제한 초과" }, 413);
-  const body = await readLimitedJson(req);
+  if (!Number.isFinite(contentLength) || contentLength > PHOTO_MAX_BODY_BYTES) return json({ error: "사진 크기 제한 초과" }, 413);
+  const body = await readLimitedPhotoJson(req);
   if (!body || body.consent !== true) return json({ error: "사진의 외부 AI 전송에 대한 명시적 동의가 필요합니다." }, 400);
-  const image = checkedImageUrl(body.image);
+  const image = checkedJpegDataUrl(body.image);
   if (!image) return json({ error: "사진을 JPEG로 압축한 뒤 950KB 이하로 전송해 주세요." }, 422);
   if (!takeQuota(auth.identity.userId)) return json({ error: "계정당 사진 AI 검토는 시간당 최대 6장입니다." }, 429);
 

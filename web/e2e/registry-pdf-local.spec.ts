@@ -46,3 +46,17 @@ test("P10: invalid PDF bytes never become rights evidence",async({page})=>{
  await expect(page.getByText(/PDF 로컬 텍스트 추출에 실패했습니다/)).toBeVisible();
  await expect(page.getByText(/후보 [0-9]+건 검토/)).toHaveCount(0);
 });
+
+test("P11: five externally published fictional registry PDFs are linked without fetching them automatically",async({page})=>{
+ const outbound:string[]=[];
+ page.on("request",r=>outbound.push(r.url()));
+ await page.goto("/registry/extract");
+ await expect(page.getByRole("heading",{name:/공개 교육용 가상 등기부 PDF 5종/})).toBeVisible();
+ const pdfLinks=page.locator('a[href^="https://dangdang.io/blog/registry-samples/"]');
+ await expect(pdfLinks).toHaveCount(5);
+ const hrefs=await pdfLinks.evaluateAll(anchors=>anchors.map(a=>(a as HTMLAnchorElement).href));
+ expect(new Set(hrefs).size).toBe(5);
+ for(const link of hrefs)expect(link.endsWith(".pdf")).toBe(true);
+ expect(outbound.filter(url=>url.includes("registry-samples/"))).toEqual([]);
+ await expect(page.getByText(/실제 부동산 등기사항증명서가 아닙니다/)).toBeVisible();
+});

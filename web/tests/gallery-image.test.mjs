@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {validateGalleryJpeg,validRoom,GALLERY_MAX_PHOTOS,parseBoundedGalleryJson} from "../lib/gallery-image.ts";
+import {stripJpegMetadata} from "../lib/jpeg-scrub.ts";
 
 function fakeJpeg({exif=false,width=128,height=128}={}){
  const header=Buffer.from([0xff,0xd8]);
@@ -38,4 +39,23 @@ test("consumes bounded JSON; never reads an unbounded request body",async()=>{
  const bad=await parseBoundedGalleryJson(new Request("http://localhost/test",{
   method:"POST",body:"a".repeat(260000)}));
  assert.equal(bad,null);
+});
+
+test("Chrome-style ICC APP2 is stripped before gallery publication; EXIF does not survive", () => {
+  const raw=fakeJpeg();
+  // Browser Canvas JPEG contains an ICC_PROFILE APP2 segment in some Chromium
+  // builds, despite being produced by toBlob(). Server still rejects raw APP2.
+  const icc=Buffer.from([0xff,0xe2,0,0x14,0x49,0x43,0x43,0x5f,0x50,0x52,0x4f,0x46,0x49,0x4c,0x45,0,1,1,0,0,0,0]);
+  const withIcc=Buffer.concat([raw.subarray(0,2),icc,raw.subarray(2)]);
+  assert.equal(validateGalleryJpeg("data:image/jpeg;base64,"+withIcc.toString("base64")),null);
+  const scrubbed=Buffer.from(stripJpegMetadata(withIcc));
+  assert.equal(scrubbed.includes(Buffer.from("ICC_PROFILE")),false);
+  const parsed=validateGalleryJpeg("data:image/jpeg;base64,"+scrubbed.toString("base64"));
+  assert.equal(parsed?.width,128);
+  assert.equal(parsed?.height,128);
+  assert.equal(parsed?.sha256,validateGalleryJpeg("data:image/jpeg;base64,"+stripJpegMetadata(raw).toString("base64"))?.sha256);
+
+  const exif=Buffer.concat([raw.subarray(0,2),Buffer.from([0xff,0xe1,0,6,0x45,0x58,0x49,0x46]),raw.subarray(2)]);
+  assert.equal(validateGalleryJpeg("data:image/jpeg;base64,"+Buffer.from(stripJpegMetadata(exif)).toString("base64"))?.width,128);
+  assert.throws(()=>stripJpegMetadata(new Uint8Array([0xff,0xd8,0xff,0xe2,0,0])),/JPEG/);
 });

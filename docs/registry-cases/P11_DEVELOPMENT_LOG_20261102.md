@@ -55,3 +55,22 @@ P8(38개 권리 구조 입력) → P9(문자층 정형 후보 15개) → P10(PDF
 - 실거래 2인 E2E/본인확인 제휴/등기소 API·재배포 허가/법률 자문은 사용자 계획상 별도 단계.
 - 최종 PR main squash SHA/CI 수치 및 사용 권한 관련 근거는 병합 시 후속 이력 append.
 - 화면 `/registry/extract`에 적용되는 실제 파서 개선은 다음 배포에서만 반영. Vercel Production이 최신인지 불확실한 문제는 기존 Issue #30 별도.
+
+## 2026-11-02 · P11 최종 자동 검증·Git 병합 (확정 로그)
+
+- 작업 PR [#31](https://github.com/hobism3/meta_p2p_realestate/pull/31) head `66e301478b0e4ae72c8c0035224003031036dbaf`. `main` squash merge **`26ed25a89ce8f616f3e0c107a8a20ae7d19dcfd5`**.
+- `verify-fast` **SUCCESS** — Next.js production build PASS, Node unit+DAL **340/340 PASS**, API+READ_ONLY **206/206 PASS**.
+- `verify-e2e` **SUCCESS** — Playwright 데스크톱·모바일 **90 PASS / 4 SKIP / 0 FAIL**. P11 추가된 웹 페이지 테스트는 공개 가상 원본 PDF 5종 링크를 표시하되 최초 방문 시 원본을 자동 요청하지 않음을 검증.
+- `public-registry-educational-corpus` **SUCCESS** — 실제 외부 PDF 7개 SHA256/규모 검사, P10 전체 페이지 범위 내 6개 파싱, 24페이지 실무 PDF는 상한 초과 중단. **당당 가상 등기부 5종 중 5/5 독립 게이트 PASS**(SHA + 페이지/구역 + 타입 최소 검출 + 공개 설명의 2억9천만원 합계). [해당 실원본 재검증 Actions #41371365593](https://github.com/hobism3/meta_p2p_realestate/actions/runs/41371365593).
+- 기존 CI 실패/수정: 1800줄/50건 입력 제한을 강화하면서 줄번호 지역변수 누락으로 TS build/Probe ReferenceError 발생 → `a4caf237` 수정 후 위 검증 모두 PASS. 테스트 기준을 완화하지 않았음.
+- 사용자 화면 `web/app/registry/extract/page.tsx`에 제작자가 게시한 가상 PDF 5종 직접 링크 추가; 클릭하여 외부 제공자 원본을 사용자가 내려받은 후 **로컬 PDF.js 자동 추출**으로 검토하도록 UX 연결. 초기 페이지 접근만으로 제3자 PDF 자동 fetch 없음.
+- 개인 로컬 수집용 `web/scripts/cache-fictional-registry-pdfs.mjs`는 명시적 `--private-corpus` 옵션 없이는 다운로드하지 않고, 허구 교육용 5개 URL/해시/크기를 확인해 `web/.local-registry-training-docs/`(Gitignore) 파일 0600으로 보존·기존 파일 덮어쓰기 금지. 사용 조건이 허락하는 개인 개발 테스트 외 재배포 안 함.
+- 사진·VLM 병렬 PR #25와 P11 PR #31의 GitHub changed-file 교집합은 최종 확인 **0개**. 사진 PR #25의 코드/상태는 이번 병합에서 변경하지 않음.
+- **법률 결론/제품 출시는 미완료**: 모든 후보는 status=unknown, 원문 대조 필수. 원본 교육용 PDF 5종에서 검출된 권리타입·29,000만원 합계 일부만 공개 발행자 설명과 대조한 게이트임. 개별 줄/취소선/실제 소유권·채무잔액·임차인 선순위/실발급본 진위는 전문가 truth set 미구축.
+- **Vercel production 자동배포와 Git main 병합은 별개**. P10 시점의 불일치는 [#30](https://github.com/hobism3/meta_p2p_realestate/issues/30)으로 관리 중이므로, 배포 SHA/워커를 확인하기 전까지 라이브 사이트에 P11이 반영됐다고 단정하지 않는다.
+
+### 후속 P12 후보 (기능/품질)
+1. 공식 서식에 가까운 **허가받은 교육용 PDF의 페이지별 권리 행 bounding box / 취소선 / 금액 열 truth set** 정립. P11의 공개 문서 타입 게이트는 아직 전문가의 완전한 문서별 정답이 아님.
+2. 근저당 말소 여부, 여러 장에서 이어지는 같은 등기번호, 부기번호/압류·신탁·임차권 등 다양한 공개 사례 확장.
+3. 스캔 이미지 페이지 OCR의 *문자 정확도*와 *권리 해석 정확도*를 분리 평가하고 로컬/서버 전송·재이용 조건을 검토.
+4. Vercel 배포 #30 조사, 본인 B/임대권한 C 확인, 실제 사용자 거래·법률 자문은 별도 운영 게이트 유지.

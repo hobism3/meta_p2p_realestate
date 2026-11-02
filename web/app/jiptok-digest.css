@@ -56,3 +56,19 @@
  .jiptok-digest-next .btn{width:100%;text-align:center}
 }
 @media(prefers-reduced-motion:reduce){.jiptok-digest{scroll-behavior:auto}}
+
+/* Persistent chat-level neutral companion preview; no autonomous decisions. */
+.jiptok-peek{display:flex;align-items:center;gap:10px;padding:12px 15px;margin:8px 12px 10px;
+ border-radius:14px;background:#f1f8f5;border:1px solid #cce5d9;min-width:0}
+.jiptok-peek-icon{position:relative;display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:12px;
+ background:#217660;color:#fff;font-size:23px;line-height:1}
+.jiptok-peek-icon i{font-size:11px;position:absolute;top:-4px;right:-3px;color:#f0c96f;font-style:normal}
+.jiptok-peek>div{flex:1;min-width:0}
+.jiptok-peek strong{font-size:12px;line-height:1.35;color:#214d3e;display:block}
+.jiptok-peek p{font-size:11px;line-height:1.5;color:#557c69;margin:3px 0 0;overflow-wrap:anywhere}
+.jiptok-peek-action{flex:none;display:inline-flex;min-height:36px;align-items:center;justify-content:center;padding:6px 10px;
+ border-radius:9px;background:#fff;color:#1e7058;font-size:11px;font-weight:800;border:1px solid #c8e2d5;text-decoration:none}
+.jiptok-peek-action:hover{background:#e3f4ed}
+@media(max-width:580px){.jiptok-peek{margin:6px 8px 10px;padding:10px;flex-wrap:wrap}
+ .jiptok-peek>div{flex-basis:calc(100% - 49px)}
+ .jiptok-peek-action{width:100%}}

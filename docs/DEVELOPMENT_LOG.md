@@ -115,3 +115,14 @@
 - 환경 제약: 외부 네트워크 Git clone에 실패(Could not resolve host: github.com); 로컬 `npm ci`/`npm run build` 테스트를 실행하지 못함. CI 검증으로 대체 확인 필요.
 - 정식 출시 전 누락: 스토리지/게시 사진, 비공개 원본 접근 권한, 사진 복구/삭제, 실제 Meta 유료 호출, 개인정보 노출 자동 탐지 성능, 법률·운영 QA.
 - 설계·잔여 과제: [Visual Listing Guide](VISUAL_LISTING_GUIDE_20261101.md).
+
+
+### 2026-11-02 · PR #25 Visual AI v2 (P8 병렬)
+- P8 인터페이스 VISUAL_PARALLEL_INTERFACE_20261101.md 및 현재 main 대조. P8 PR #26은 main에 병합된 별도 권리분석 변경으로, 사진 개발은 P8 소스에 접근·수정하지 않음.
+- UX 수정: 사진 품질 점검 중심 → 사진으로 우리 집 정보 정리하기. 사진별 기술적인 Meta 분석 버튼을 없애고, 일괄 공간 분류·옵션 후보·욕실 사진 보완 안내. 선택한 후보만 집주인이 기존 매물 옵션란에 명시 반영.
+- 개인정보 보호: 로컬 불투명 사각형 가림 유지, 외부 Meta 전송 전 집주인 확인·동의. VLM의 개인정보 후보는 완전 자동 탐지가 아님.
+- 신규: 가구 없는 모습 미리보기(Meta Muse Image 이미지 편집). 별도 동의/사진별 호출/원본과 병치/AI 생성 라벨. 가림 영역은 생성 결과에 재적용. 실제 구조·면적·하자 증빙 아님.
+- 서버: PHOTO_AI_ENABLED / PHOTO_EMPTY_VIEW_ENABLED 별도 제어, 서버 인증·용량·응답검증·유료 호출 한도. 이미지 DB 저장·매물 자동 게시 없음.
+- 테스트: 순수 사진 가이드 로직/이미지 검증, 가상 Meta API 통합, Playwright 가상 이미지 및 가상 응답 E2E 추가. 실제 CI 결과 확인 전 IMPLEMENTED, NOT DONE.
+- 실제 Muse 호출/모델 정확도, 가상 이미지 구조 보존도, 실제 주거 사진·법률·보안 검증 미실시.
+- 설계/다음 단계: docs/VISUAL_LISTING_GUIDE_20261101.md.

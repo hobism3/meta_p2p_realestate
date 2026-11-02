@@ -12,7 +12,7 @@
 - **구현 완료**: Stage 3 집주인 AI 대리인의 서버 응대·DB 작업 원장·5회 재시도/집주인 수동 복구. Stage 0~4는 main 병합 완료. Stage 5 집주인 개별 작업함 PR #21까지 main 병합 완료. 다만 출시 관련 실제 사용자/법률·보안 검증은 보류. Stage 6 법률 리서치·신원/신고 기반 PR #22/#23은 main 반영. Stage 7 권리관계 구조화 분석·집톡이 서포트는 PR #24로 main 병합. Stage 8/9는 PR #26/#27로 main 반영. Stage 10은 PR #29로 PDF.js 자동 텍스트층 복원·사람 검토·P8 연결을 main에 병합. Stage 11은 PR #31로 실제 공개 교육용 등기 PDF 원본 7개를 해시 검증하고 5개 가상 등기 시나리오 의미 게이트/파서 개선을 main에 병합. Stage 12는 PR #32로 **사용자 직접 정답 라벨링 요구 없이** HUG/당당/HF/법령의 공개 근거, 독립 권리행 검출, PDF 변형 불변성 검증을 main에 병합. 개인 정보가 드러나는 실제 증명서를 무단 크롤링하지 않는다.
 - **운영 전 잔여**: 실제 Supabase 두 계정 수동 E2E, 소유권 신원 확인, 법률 검토, 만료·슬롯 선점 악용 방지, 장애 복구/백업.
 - **검증 체계 변경(P12)**: 개발자가 직접 전문가 정답을 생성/전수 라벨링할 필요 없음. 공개 기관·발행자의 부분 기준, 별도 목적셀 탐지, 동일 PDF의 변형 불변성으로 실험. 정확도/재현율 100% 등 주장을 금지하고 unsupported/uncertain을 유지. 관련 [P12 검증 설계](registry-cases/P12_WEB_EVIDENCE_VALIDATION_20261102.md)와 [개발 로그](registry-cases/P12_DEVELOPMENT_LOG_20261102.md).
-- **2026-11-02 배포 정합성 재점검**: Vercel Production에 `bf33ee1`(P12) READY 배포가 확인돼 종전 P10 시점 SHA 지연은 해소됨. 단 현재 최신 main `ae5e441`까지 Production READY인지, PDF worker/권한/실제 경로가 작동하는지는 미확인. 검증 전 전체 배포 완료 주장 금지. [Issue #30](https://github.com/hobism3/meta_p2p_realestate/issues/30)에서 Git 연동/배포/로컬 PDF worker 응답을 확인하기 전까지 Production 검증 미완료.
+- **2026-11-02 배포 정합성 재점검**: Vercel Production에 `ae5e441`(P13–P16 및 로그인 복귀 수정) 커밋의 READY 배포가 확인됨. 종전 P10 시점 SHA 지연은 해소. 다만 PDF worker/권한/실제 경로·실운영 API 검증 및 본 문서 후속 커밋 반영은 별도 확인해야 하며 정식 출시 인증이 아님. [Issue #30](https://github.com/hobism3/meta_p2p_realestate/issues/30)에서 Git 연동/배포/로컬 PDF worker 응답을 확인하기 전까지 Production 검증 미완료.
 - 기존 `docs/BACKLOG.md`, `PROGRESS.md` 등의 초반 작업 메모는 일부 과거 시점 상태를 포함함. 최신 상태는 이 로드맵과 `docs/DEVELOPMENT_LOG.md`를 따름.
 
 ## 단계별 실행 (각 단계 독립 PR + 자동 게이트)

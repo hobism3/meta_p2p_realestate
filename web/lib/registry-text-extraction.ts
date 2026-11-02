@@ -98,7 +98,7 @@ function smallKoreanNumber(raw:string):number|null{
 }
 function claimMaximum(text:string):number|null{
  // Only amounts explicitly introduced by 채권최고액 can enter the mortgage total.
- const match=text.replace(/\s+/g,"").match(/채권최고액(?:금)?([\d,천백십억만원정\.]+?)(?=(?:채무자|근저당권자|권리자|접수|등기원인|$))/);
+ const match=text.replace(/\s+/g,"").match(/채권최고액(?:금)?([\d,천백십억만원정\.]+)(?=$|[|·;]|채무자|근저당권자|권리자|접수|등기원인)/);
  if(!match)return null;
  const token=match[1].replace(/정$/,"");
  let manwon:number|null=null;

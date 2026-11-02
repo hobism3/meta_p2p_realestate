@@ -96,4 +96,22 @@ describe("P12 external-publisher-sourced fact comparison, not user labels",()=>{
   assert.deepEqual(q.candidates.map(c=>c.entry.claimMaximumManwon),p.candidates.map(c=>c.entry.claimMaximumManwon));
   assert.equal(auditIndependentRightsRows(altered,q).missingInPrimary,0);
  });
+ it("public HUG trust and promised-removal examples never certify a completed cancellation",()=>{
+  const trustSource=sources.sources.find(s=>s.id==="HUG-TRUST");
+  const promiseSource=sources.sources.find(s=>s.id==="HUG-PROMISED-REMOVAL");
+  assert.ok(trustSource&&promiseSource);
+  assert.match(trustSource.url,/khug\.or\.kr/);
+  assert.match(promiseSource.url,/khug\.or\.kr/);
+  assert.equal(sources.claims.find(c=>c.id==="GUIDE-HUG-CANCEL-PROMISE").not,"cancelled_status");
+  // This is an entirely synthetic anti-hallucination case inspired by the
+  // public HUG narrative; HUG did NOT publish these dates/rank numbers.
+  const synthetic="[PAGE 1]\n〖 갑 구 〗\n2 | 신탁등기 | 2025.01.02\n3 | 2번신탁등기말소 예정 | 2026.01.03";
+  const parsed=extractRegistryText(synthetic);
+  assert.equal(parsed.candidates.length,1);
+  assert.equal(parsed.candidates[0].entry.kind,"trust");
+  assert.equal(parsed.candidates[0].entry.status,"unknown");
+  assert.equal(parsed.candidates[0].cancellationMentioned,true);
+  assert.ok(parsed.candidates[0].reviewRequired);
+ });
+
 });

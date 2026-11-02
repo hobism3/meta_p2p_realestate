@@ -33,10 +33,10 @@ const MAX_LINE_CHARS=1600;
 const Y_TOLERANCE=3.5;
 
 function asChunk(raw:PdfTextChunk):PdfTextChunk|null{
- if(!raw||typeof raw.str!=="string"||!raw.str.trim())return null;
+ if(!raw||typeof raw.str!=="string"||!raw.str.trim()||raw.str.length>MAX_LINE_CHARS)return null;
  if(![raw.x,raw.y,raw.width,raw.height].every(Number.isFinite))return null;
  if(Math.abs(raw.x)>1e6||Math.abs(raw.y)>1e6||raw.width<0||raw.width>1e6||raw.height<0||raw.height>1e6)return null;
- return {str:raw.str.replace(/[\u200b-\u200d\ufeff\x00-\x08\x0b\x0e-\x1f]/g,"").slice(0,MAX_LINE_CHARS),
+ return {str:raw.str.replace(/[\u200b-\u200d\ufeff\x00-\x08\x0b\x0e-\x1f]/g,""),
   x:raw.x,y:raw.y,width:raw.width,height:raw.height,hasEOL:raw.hasEOL===true};
 }
 function lineText(items:PdfTextChunk[]):string{
@@ -54,19 +54,23 @@ function lineText(items:PdfTextChunk[]):string{
   }
   text+=current.str;
   prev=current;
-  if(text.length>MAX_LINE_CHARS)return text.slice(0,MAX_LINE_CHARS);
+  if(text.length>MAX_LINE_CHARS)throw new Error("PDF 글자 행이 너무 길어 복원을 중단했습니다.");
  }
  return text.trim().replace(/\s{2,}/g," ");
 }
 function rowsOnPage(items:PdfTextChunk[]):string[]{
  const buckets:Array<{y:number;items:PdfTextChunk[]}>=[];
- for(const item of items){
-  let target=buckets.find(row=>Math.abs(row.y-item.y)<=Math.max(Y_TOLERANCE,Math.min(5,item.height*0.4)));
-  if(!target){target={y:item.y,items:[]};buckets.push(target);}
+ // O(n log n) not O(n^2). Untrusted PDFs can contain thousands of glyphs.
+ const ordered=items.slice().sort((a,b)=>b.y-a.y);
+ for(const item of ordered){
+  let target=buckets[buckets.length-1];
+  if(!target||Math.abs(target.y-item.y)>Math.max(Y_TOLERANCE,Math.min(5,item.height*0.4))){
+   target={y:item.y,items:[]};
+   buckets.push(target);
+  }
   target.items.push(item);
  }
  // PDF coordinates grow from bottom to top; rank needs to preserve on-page rows.
- buckets.sort((a,b)=>b.y-a.y);
  return buckets.map(row=>lineText(row.items)).filter(Boolean);
 }
 export function reconstructPdfText(pages:readonly PdfTextPage[]):PdfTextAssembly{
@@ -83,8 +87,18 @@ export function reconstructPdfText(pages:readonly PdfTextPage[]):PdfTextAssembly
    out.warnings.push("페이지 순서 또는 문자 객체 제한을 확인할 수 없어 복원을 중단했습니다.");
    return {...out,text:"",pages:0,pagesWithoutText:[],lines:0,items:0};
   }
-  const valid=pg.items.map(asChunk).filter((v):v is PdfTextChunk=>v!==null);
-  const lines=rowsOnPage(valid);
+  const valid:PdfTextChunk[]=[];
+  for(const original of pg.items){
+   if(typeof original?.str!=="string"||!original.str.trim())continue;
+   const cleaned=asChunk(original);
+   if(!cleaned)return {text:"",pages:0,pagesWithoutText:[],lines:0,items:0,
+    warnings:["PDF의 일부 문자 좌표가 비정상적이거나 너무 깁니다. 부분 복원 결과를 사용하지 않습니다."]};
+   valid.push(cleaned);
+  }
+  let lines:string[];
+  try{lines=rowsOnPage(valid);}
+  catch{return {text:"",pages:0,pagesWithoutText:[],lines:0,items:0,
+   warnings:["PDF 글자 행이 너무 길어 부분 추출을 중단했습니다."]};}
   out.items+=valid.length;out.pages++;
   out.lines+=lines.length;
   if(lines.length===0)out.pagesWithoutText.push(pg.page);

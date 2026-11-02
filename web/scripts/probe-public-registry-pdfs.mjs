@@ -134,7 +134,14 @@ async function probePdf(bytes){
    amountsWithExactManwon:parsed.candidates.filter(c=>c.entry.kind==="mortgage"&&c.entry.claimMaximumManwon!==null).length,
    mortgageTotalManwon,
    kinds,documentKind:parsed.documentKind,rightRowShapes:structuralRows(result.text),headingShapes:structuralHeadingHints(result.text)};
- }catch{return {status:"pdf_parser_error"};}
+ }catch(err){
+  // Only a safe JavaScript error class and this script's stack line are
+  // recorded; NEVER expose error.message (may embed raw PDF text/PII).
+  const where=String(err?.stack??"").split("\n").find(x=>x.includes("probe-public-registry-pdfs.mjs"))??"";
+  const match=where.match(/:(\d+):(\d+)/);
+  return {status:"pdf_parser_error",errorName:String(err?.name??"Unknown").slice(0,28),
+   sourceLine:match?Number(match[1]):null};
+ }
  finally{
   console.warn=oldWarn;console.error=oldError;
   try{await doc?.destroy();}catch{}

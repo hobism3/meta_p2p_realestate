@@ -11,7 +11,7 @@ import sys
 out=Path(sys.argv[1]);out.parent.mkdir(parents=True,exist_ok=True)
 pdfmetrics.registerFont(TTFont("Nanum","/usr/share/fonts/truetype/nanum/NanumGothic.ttf"))
 pdfmetrics.registerFont(TTFont("NanumB","/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf"))
-c=canvas.Canvas(str(out),pagesize=A4,pageCompression=0)
+c=canvas.Canvas(str(out),pagesize=A4,pageCompression=0,invariant=1)
 w,h=A4
 c.setFillColor(HexColor("#f6f8fc"));c.rect(0,0,w,h,fill=1,stroke=0)
 c.setFillColor(HexColor("#14384f"));c.roundRect(33,h-145,w-66,112,12,fill=1,stroke=0)

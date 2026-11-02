@@ -4,6 +4,7 @@ on:
     paths:
       - ".github/workflows/public-registry-educational-corpus.yml"
       - "web/scripts/probe-public-registry-pdfs.mjs"
+      - "web/scripts/cache-fictional-registry-pdfs.mjs"
       - "web/tests/fixtures/registry-public-sources.v1.json"
       - "web/lib/registry-pdf-layout.ts"
       - "web/lib/registry-text-extraction.ts"
@@ -27,5 +28,7 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+      - name: Validate local private educational PDF downloader syntax
+        run: node --check scripts/cache-fictional-registry-pdfs.mjs
       - name: Fetch explicit educational registry PDFs, inspect PDF.js text layer, redact output
         run: node --experimental-strip-types scripts/probe-public-registry-pdfs.mjs

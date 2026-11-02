@@ -9,7 +9,7 @@ const ALLOWED_SECTIONS=new Set<RightSection>(["갑구","을구","unknown"]);
 const safeNum=(n:unknown,max:number):number|null=>
  typeof n==="number"&&Number.isSafeInteger(n)&&n>=0&&n<=max?n:null;
 const safeDate=(date:unknown):string|undefined=>{
- if(typeof date!=="string"||!/^20\d{2}-\d{2}-\d{2}$/.test(date))return undefined;
+ if(typeof date!=="string"||!/^(?:19|20)\d{2}-\d{2}-\d{2}$/.test(date))return undefined;
  const value=Date.parse(date+"T00:00:00Z");
  return Number.isFinite(value)&&new Date(value).toISOString().slice(0,10)===date?date:undefined;
 };

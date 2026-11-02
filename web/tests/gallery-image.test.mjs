@@ -53,7 +53,7 @@ test("Chrome-style ICC APP2 is stripped before gallery publication; EXIF does no
   const parsed=validateGalleryJpeg("data:image/jpeg;base64,"+scrubbed.toString("base64"));
   assert.equal(parsed?.width,128);
   assert.equal(parsed?.height,128);
-  assert.equal(parsed?.sha256,validateGalleryJpeg("data:image/jpeg;base64,"+stripJpegMetadata(raw).toString("base64"))?.sha256);
+  assert.equal(parsed?.sha256,validateGalleryJpeg("data:image/jpeg;base64,"+Buffer.from(stripJpegMetadata(raw)).toString("base64"))?.sha256);
 
   const exif=Buffer.concat([raw.subarray(0,2),Buffer.from([0xff,0xe1,0,6,0x45,0x58,0x49,0x46]),raw.subarray(2)]);
   assert.equal(validateGalleryJpeg("data:image/jpeg;base64,"+Buffer.from(stripJpegMetadata(exif)).toString("base64"))?.width,128);

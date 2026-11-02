@@ -14,6 +14,7 @@ export default function DetailPage({ params }: { params: { id: string } }) {
   const [existingRid, setExistingRid] = useState<string | null>(null);
   const [askError, setAskError] = useState("");
   const [isCustom, setIsCustom] = useState(false);
+  const [gallery,setGallery]=useState<Array<{id:string;url:string;room:string;masked:boolean}>>([]);
 
   useEffect(() => {
     findListing(params.id)
@@ -26,6 +27,13 @@ export default function DetailPage({ params }: { params: { id: string } }) {
       })
       .catch(() => setMissing(true));
   }, [params.id]);
+
+  useEffect(()=>{
+    fetch("/api/listings/"+encodeURIComponent(params.id)+"/gallery",{cache:"no-store"})
+      .then(r=>r.ok?r.json():null)
+      .then(data=>setGallery(Array.isArray(data?.photos)?data.photos:[]))
+      .catch(()=>setGallery([]));
+  },[params.id]);
 
   useEffect(() => {
     if (!getAccessToken()) return;
@@ -61,12 +69,24 @@ export default function DetailPage({ params }: { params: { id: string } }) {
     <div className="grid detail-page">
       <nav className="detail-breadcrumb" aria-label="위치 경로"><a href="/">매물 탐색</a><span aria-hidden="true">›</span><span>{listing.tradeType}</span><span aria-hidden="true">›</span><span>{listing.title}</span></nav>
       <section className="detail-top">
-        <div className="detail-gallery">
-          <div className="detail-primary-photo"><img src={listingPhoto(listing)} alt={listingPhotoAlt()} /><span className="photo-stamp">AI 생성 시연 이미지 · 실제 매물 사진 아님</span></div>
-          <div className="detail-secondary-photos">
-            <img src="/images/demo-living-light.webp" alt="AI 생성 시연용 실내 이미지" loading="lazy" />
-            <img src="/images/demo-living-warm.webp" alt="AI 생성 시연용 실내 이미지" loading="lazy" />
-          </div>
+        <div className="detail-gallery" aria-label={listing.synthetic?"AI 시연 이미지":"게시자 등록 매물 사진"}>
+          {listing.synthetic?<><div className="detail-primary-photo">
+            <img src={listingPhoto(listing)} alt={listingPhotoAlt()}/>
+            <span className="photo-stamp">AI 생성 시연 이미지 · 실제 매물 사진 아님</span>
+          </div><div className="detail-secondary-photos">
+            <img src="/images/demo-living-light.webp" alt="AI 생성 시연용 실내 이미지" loading="lazy"/>
+            <img src="/images/demo-living-warm.webp" alt="AI 생성 시연용 실내 이미지" loading="lazy"/>
+          </div></>:
+          gallery.length?<><div className="detail-primary-photo">
+            <img src={gallery[0].url} alt="게시자가 공개한 실제 매물 사진 · 현장·권리관계 미검증"/>
+            <span className="photo-stamp">게시자 등록 사진 · 권리관계 인증 아님</span>
+          </div><div className="detail-secondary-photos">
+           {gallery.slice(1).map((photo,i)=><img key={photo.id} src={photo.url}
+             alt={"게시자 등록 실내 사진 "+(i+2)} loading="lazy"/>)}
+          </div></>:
+          <div className="detail-primary-photo" style={{display:"grid",placeItems:"center",minHeight:220}}>
+           <p>아직 게시된 실제 매물 사진이 없습니다. 게시자에게 사진을 요청해 주세요.</p>
+          </div>}
         </div>
         <div className="card listing-detail-head">
           <div className="listing-labels"><span className="listing-type">{listing.tradeType}</span>{!isCustom ? <span className="ai-pill">AI {listing.tradeType === "매매" ? "매도자" : "임대인"} 시연</span> : null}</div>

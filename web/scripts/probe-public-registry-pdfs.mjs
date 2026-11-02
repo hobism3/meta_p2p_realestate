@@ -78,6 +78,24 @@ async function probePdf(bytes){
   if(!result.text)
    return {status:"nonreconstructable",pages:doc.numPages,textPages};
   const parsed=extractRegistryText(result.text);
+  // Metamorphic check on real, publisher-hosted PDFs: the geometry-to-row
+  // projection MUST not depend on input glyph enumeration order or absolute
+  // x/y coordinate origins. Uses the same source bytes, no external labels.
+  const signature=out=>JSON.stringify({
+   documentKind:out.documentKind,
+   rights:out.candidates.map(x=>[x.entry.kind,x.entry.section,x.entry.rankNumber,
+    x.entry.registrationDate??null,x.entry.claimMaximumManwon??null,
+    x.cancellationMentioned]),
+   cancellations:out.cancellationMentions,
+   unresolved:out.coverage.unresolvedCancellationRows,
+  });
+  const expectedSig=signature(parsed);
+  const reordered=reconstructPdfText(pages.map(pg=>({...pg,items:pg.items.slice().reverse()})));
+  const shifted=reconstructPdfText(pages.map(pg=>({...pg,items:pg.items.map(it=>({
+   ...it,x:it.x+35,y:it.y+19,
+  }))})));
+  const reorderStable=Boolean(reordered.text)&&signature(extractRegistryText(reordered.text))===expectedSig;
+  const offsetStable=Boolean(shifted.text)&&signature(extractRegistryText(shifted.text))===expectedSig;
   const kinds=Object.create(null);
   for(const found of parsed.candidates)kinds[found.entry.kind]=(kinds[found.entry.kind]||0)+1;
   const mortgages=parsed.candidates.filter(c=>c.entry.kind==="mortgage");
@@ -89,7 +107,8 @@ async function probePdf(bytes){
    unmatchedCancellationRows:parsed.coverage.unresolvedCancellationRows,
    amountsWithExactManwon:parsed.candidates.filter(c=>c.entry.kind==="mortgage"&&c.entry.claimMaximumManwon!==null).length,
    mortgageTotalManwon,
-   kinds,documentKind:parsed.documentKind};
+   kinds,documentKind:parsed.documentKind,
+   metamorphic:{reorderStable,offsetStable}};
  }catch(err){
   // Only a safe JavaScript error class and this script's stack line are
   // recorded; NEVER expose error.message (may embed raw PDF text/PII).
@@ -113,6 +132,8 @@ function evaluatePublisherExpectation(source,measured){
   return {status:"FAIL",reason:"not_registry_structure"};
  if(measured.pages!==measured.textPages)
   return {status:"FAIL",reason:"missing_text_page"};
+ if(!measured.metamorphic?.reorderStable||!measured.metamorphic?.offsetStable)
+  return {status:"FAIL",reason:"pdf_layout_transform_instability"};
  if(Number.isSafeInteger(expectation.totalCandidates)&&measured.candidates!==expectation.totalCandidates)
   return {status:"FAIL",reason:"unexpected_candidates"};
  for(const [kind,min] of Object.entries(expectation.atLeast??{})){

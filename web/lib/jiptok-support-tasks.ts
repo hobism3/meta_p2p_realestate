@@ -9,7 +9,7 @@ export type CompanionTask={
  id:string;
  kind:"pending_confirmation"|"next_check"|"rights_check";
  title:string;description:string;
- target:"#deal-condition-cards"|"/registry/check"|null;
+ target:string|null;
  actionLabel:string|null;
 };
 const stageText:Record<TransactionStageKey,{waiting:string;next:string;description:string}>={
@@ -61,7 +61,7 @@ const registryTask:CompanionTask={
  description:"소유자·게시자 신원, 대리 권한, 근저당·신탁, 선순위 임차인·체납세금 등은 채팅만으로 검증되지 않습니다.",
  target:"/registry/check",actionLabel:"등기 권리관계 점검 열기",
 };
-export function buildCompanionTasks(snapshot:TransactionSnapshot,max=4):CompanionTask[]{
+export function buildCompanionTasks(snapshot:TransactionSnapshot,max=4,listingId=""):CompanionTask[]{
  if(!snapshot||!Array.isArray(snapshot.stages))return [];
  const bounded=Math.max(1,Math.min(6,Number.isInteger(max)?max:4));
  const stages=snapshot.stages;
@@ -77,6 +77,7 @@ export function buildCompanionTasks(snapshot:TransactionSnapshot,max=4):Companio
   if(nextStage)result.push(next(nextStage));
  }
  const visible=result.slice(0,tailSpace);
- visible.push(registryTask);
+ visible.push({...registryTask,target:/^[a-zA-Z0-9_-]{1,100}$/.test(listingId)?
+  "/listings/"+encodeURIComponent(listingId)+"#registry-rights":registryTask.target});
  return visible;
 }

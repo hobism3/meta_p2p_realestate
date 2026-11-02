@@ -92,12 +92,12 @@ export function auditIndependentRightsRows(text:unknown,parsed:RegistryTextExtra
   const id=key(e.section,e.rankNumber,e.kind as AuditedKind);
   primary.set(id,(primary.get(id)??0)+1);
  }
- for(const [id,n] of observed){
+ for(const [id,n] of Array.from(observed.entries())){
   const m=primary.get(id)??0;
   out.matched+=Math.min(n,m);
   out.missingInPrimary+=Math.max(0,n-m);
  }
- for(const [id,n] of primary){
+ for(const [id,n] of Array.from(primary.entries())){
   const m=observed.get(id)??0;
   out.notIndependentlyConfirmed+=Math.max(0,n-m);
  }

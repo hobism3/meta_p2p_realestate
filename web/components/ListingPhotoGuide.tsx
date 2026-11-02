@@ -236,36 +236,28 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
     throw new Error("사진 용량을 줄이지 못했어요.");
   };
 
-  const analyzeAll = async () => {
-    if (analyzing || editingId !== null || !consent || !available.vision) return;
-    const pending = items.filter((v) => !v.reviewed);
-    if (!pending.length) return;
-    setError(""); setAnalyzing(true); setChosenOptions([]);
-    const failures: string[] = [];
-    for (let index = 0; index < pending.length; index++) {
-      const item = pending[index];
-      setAnalysisProgress("사진에서 공간과 옵션을 찾는 중 · " + (index + 1) + "/" + pending.length);
-      try {
-        const jpeg = await modelJpeg(item.blob);
-        const reply = await fetch("/api/listings/photo-review", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json", ...authHeaders(),
-            ...(process.env.NEXT_PUBLIC_WRITE_TOKEN ? { "x-write-token": process.env.NEXT_PUBLIC_WRITE_TOKEN } : {}),
-          },
-          body: JSON.stringify({ consent: true, image: await toDataUrl(jpeg) }),
-        });
-        const data = await reply.json() as { error?: string; review?: PhotoReview };
-        if (!reply.ok || !data.review) throw new Error(data.error || "사진 분석 실패");
-        setItems((old) => old.map((v) => v.id === item.id ? { ...v, review: data.review, reviewed: true } : v));
-      } catch (err) {
-        failures.push((index + 1) + "번째 사진: " + (err instanceof Error ? err.message : "분석 불가"));
-      }
-    }
-    setAnalyzing(false); setAnalysisProgress("");
-    if (failures.length) setError(failures.join(" / ") + " · 성공한 사진은 보존되며 자동 재시도하지 않아요.");
+  const analyzeOne = async (item: Item) => {
+    if (locked || !consent || !available.vision || item.reviewed) return;
+    setError(""); setAnalyzing(true); setAnalysisProgress("사진 AI 분석 중: " + item.name);
+    try {
+      const jpeg = await modelJpeg(item.blob);
+      const reply = await fetch("/api/listings/photo-review", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json", ...authHeaders(),
+          ...(process.env.NEXT_PUBLIC_WRITE_TOKEN ? { "x-write-token": process.env.NEXT_PUBLIC_WRITE_TOKEN } : {}),
+        },
+        body: JSON.stringify({ consent: true, image: await toDataUrl(jpeg) }),
+      });
+      const data = await reply.json() as { error?: string; review?: PhotoReview };
+      if (!reply.ok || !data.review) throw new Error(data.error || "사진 분석 실패");
+      setItems((old) => old.map((v) => v.id === item.id ? { ...v, review: data.review, reviewed: true } : v));
+      setChosenOptions([]);
+    } catch (err) {
+      setError(item.name + ": " + (err instanceof Error ? err.message : "분석 불가") + " · 자동 재시도하지 않아요.");
+    } finally { setAnalyzing(false); setAnalysisProgress(""); }
   };
-
+  
   const previewEmptyRoom = async (item: Item) => {
     if (!editConsent || !available.imageEdit || locked) return;
     setError(""); setEditingId(item.id);
@@ -399,6 +391,11 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
                 </button>:null}
               </div>
               <div className="photo-guide-empty-action">
+                <button type="button" className="btn photo-guide-primary"
+                  disabled={locked || item.reviewed || !consent || !available.vision}
+                  onClick={() => void analyzeOne(item)}>
+                  {analyzing ? analysisProgress : item.reviewed ? "이 사진 분석 완료" : "이 사진 AI 분석"}
+                </button>
                 <button type="button" className="btn ghost"
                   disabled={!editConsent || !available.imageEdit || locked}
                   onClick={() => void previewEmptyRoom(item)}>
@@ -425,13 +422,9 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
         <span>사진을 확인했고, 매물 정보 초안 추출을 위해 선택한 사진을 Meta Vision AI로 보내는 데 동의합니다.</span>
       </label>
-      <button type="button" className="btn photo-guide-primary"
-        disabled={!items.length || !pendingCount || !consent || !available.vision || locked}
-        onClick={() => void analyzeAll()}>
-        {analyzing ? analysisProgress : reviewed.length ? "추가한 사진까지 매물 정보 정리하기" : "사진에서 옵션·공간 자동 정리"}
-      </button>
+      <p className="meta">각 사진 카드의 <b>이 사진 AI 분석</b>을 눌러 원하는 사진만 분석하세요. 호출 한도 초과 시 과금 없이 차단합니다.</p>
       {!available.vision ? <p className="meta">현재 사진 AI 분석이 비활성화되어 있어요. 사진 확인과 가림 기능은 사용할 수 있습니다.</p> : (
-        <p className="meta">선택한 사진을 1장씩 분석합니다. 분석이 끝나도 매물 정보는 자동 확정하지 않아요.</p>
+        <p className="meta">사진별 분석 버튼을 눌러야 외부 모델을 호출합니다. 완료 후에도 옵션은 직접 확인해야 해요.</p>
       )}
 
       {reviewed.length ? (

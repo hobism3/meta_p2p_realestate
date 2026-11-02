@@ -58,9 +58,9 @@ test("사진 등록: 전체 분석 후 옵션 후보·욕실 사진 누락 제�
   await page.getByRole("button",{name:"가림 적용"}).click();
   await expect(page.getByText("개인 영역 가림 적용")).toBeVisible();
   expect(calls).toBe(0); // Selecting a photo or covering private areas must not call Meta.
-  await expect(page.getByRole("button",{name:"사진에서 옵션·공간 자동 정리"})).toBeDisabled();
+  await expect(page.getByRole("button",{name:"이 사진 AI 분석"})).toBeDisabled();
   await page.getByRole("checkbox",{name:/매물 정보 초안 추출/}).check();
-  await page.getByRole("button",{name:"사진에서 옵션·공간 자동 정리"}).click();
+  await page.getByRole("button",{name:"이 사진 AI 분석"}).click();
   await expect(page.getByRole("heading",{name:/AI가 사진 1장에서 찾아낸 내용/})).toBeVisible();
   await expect(page.getByText(/욕실 사진은 아직 확인되지 않았어요/)).toBeVisible();
   await expect(page.getByText(/생활 공간\(거실·침실\) 사진은 아직 확인되지 않았어요/)).toBeVisible();

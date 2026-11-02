@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authenticate } from "@/lib/auth";
+import { reservePhotoAiAttempt } from "@/lib/photo-ai-budget";
 import { clientKey } from "@/lib/api";
 import { checkRate } from "@/lib/ratelimit";
 import {
@@ -78,6 +79,7 @@ export async function POST(req: Request): Promise<Response> {
   const image = checkedJpegDataUrl(data.image);
   if (!image) return json({ error: "950KB 이하의 JPEG 이미지만 허용합니다." }, 422);
   if (!allowance(auth.identity.userId)) return json({ error: "이미지 생성은 계정당 시간당 최대 2회입니다." }, 429);
+  if (!await reservePhotoAiAttempt("edit")) return json({ error: "가구 없는 이미지 시연의 전체 호출 한도를 모두 사용했어요." }, 429);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 45_000);

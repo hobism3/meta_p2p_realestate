@@ -207,23 +207,41 @@ const SAMPLE_SHA256 = createHash("sha256").update(makeSampleRegistryPdf()).diges
 // the user for offline workflow tests. PDF bytes / owner entries are NOT in this repository.
 // This branch is a mock fixture ONLY; it is NOT a real Meta extraction or a risk check.
 const KOREAN_EDUCATIONAL_NORMAL_SHA256 = "2ddff3f07aa134c04456685db796ffb8029e007159eabc3c07c6c0fad1e87b50";
+/** One self-authored, entirely fictional Korean sample used in BOTH listing and
+ * local rights-review parts of the video. ReportLab invariant=1 fixes byte hash. */
+const THREE_CHAPTER_EDUCATIONAL_SHA256 = "7624c8384271e6ebd5bc092263066432db3656b74454272d9fb33a5144d59403";
 
 /** Legal safety gate: only these exact fictional fixtures may leave our server.
  * A filename, checkbox, or output filter never means a PDF has been redacted.
  * Unknown uploads must NOT be sent to any external model provider.
  */
 export function syntheticRegistryDemoHashes(): string[] {
-  return [SAMPLE_SHA256, KOREAN_EDUCATIONAL_NORMAL_SHA256];
+  return [SAMPLE_SHA256, KOREAN_EDUCATIONAL_NORMAL_SHA256, THREE_CHAPTER_EDUCATIONAL_SHA256];
 }
 export function isSyntheticRegistryDemoPdf(buffer: Buffer): boolean {
   const hash = createHash("sha256").update(buffer).digest("hex");
-  return hash === SAMPLE_SHA256 || hash === KOREAN_EDUCATIONAL_NORMAL_SHA256;
+  return hash === SAMPLE_SHA256 || hash === KOREAN_EDUCATIONAL_NORMAL_SHA256 ||
+    hash === THREE_CHAPTER_EDUCATIONAL_SHA256;
 }
 
 
 /** Offline Mock is deliberately limited to the supplied synthetic fixture. */
 export function mockRegistryDraft(buffer: Buffer): RegistryDraft | null {
   const digest = createHash("sha256").update(buffer).digest("hex");
+  if (digest === THREE_CHAPTER_EDUCATIONAL_SHA256) {
+    const draft=validateRegistryDraft({
+      documentKind:"registry",
+      address:{value:"서울특별시 가상구 데모로 101",evidence:"주소 | 서울특별시 가상구 데모로 101 (교육용 가상주소)"},
+      exclusiveAreaSqm:{value:"59.84",evidence:"전유부분 | 아파트 59.84㎡ · 주거용"},
+      buildingType:{value:"아파트",evidence:"전유부분 | 아파트 59.84㎡ · 주거용"},
+      buildingName:{value:"데모아파트",evidence:"건물 | 데모아파트 제105동 제5층 제501호"},
+      buildingDong:{value:"105",evidence:"건물 | 데모아파트 제105동 제5층 제501호"},
+      floor:{value:"5",evidence:"건물 | 데모아파트 제105동 제5층 제501호"},
+      unit:{value:"501",evidence:"건물 | 데모아파트 제105동 제5층 제501호"},
+    });
+    if(draft)draft.cautions.unshift("동일한 교육용 합성 PDF에서 주소·면적 후보만 가져왔습니다. 기록된 가압류·근저당 후보는 별도 권리 점검에서만 검토하세요. 실제 Meta 문서분석 결과가 아닙니다.");
+    return draft;
+  }
   if (digest === KOREAN_EDUCATIONAL_NORMAL_SHA256) {
     const mock = validateRegistryDraft({
       documentKind: "registry",

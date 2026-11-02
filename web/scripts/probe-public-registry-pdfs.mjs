@@ -30,6 +30,7 @@ async function fetchBounded(url){
   redirect:"follow",signal:AbortSignal.timeout(maxSeconds*1000),
   headers:{Accept:"application/pdf"},
  });
+ if(new URL(res.url).hostname!==target.hostname)return {status:"untrusted_redirect"};
  if(!res.ok)return {status:"http_"+res.status};
  const length=Number(res.headers.get("content-length")||0);
  if(length>PDF_TEXT_MAX_BYTES)return {status:"over_limit"};
@@ -44,51 +45,6 @@ async function fetchBounded(url){
  if(bytes.byteLength<100||bytes.subarray(0,5).toString("ascii")!=="%PDF-")
   return {status:"not_pdf"};
  return {status:"acquired",bytes};
-}
-// Only categorical layout signals are logged. No original source characters,
- // names, addresses, amounts, IDs or free-text substrings leave the runner.
-function structuralRows(text){
- const pattern=/(?:가압류|경매개시|저당권|신탁등기|전세권|임차권등기|가등기)/;
- const lines=text.split("\n");
- const result=[];
- for(let i=0;i<lines.length;i++){
-  const line=lines[i];
-  const match=line.match(pattern);
-  if(!match)continue;
-  const left=line.slice(0,match.index);
-  const head=Array.from(line.trim().slice(0,20));
-  const classify=ch=>/[0-9]/.test(ch)?"N":/[가-힣]/.test(ch)?"K":ch==="|"?"P":/\s/.test(ch)?"_":/[-.]/.test(ch)?"D":"O";
-  const headPattern=head.map(classify).join("").replace(/([NKPO_D])\1{2,}/g,"$1$1+");
-  const isolated=extractRegistryText("[PAGE 1]\n【갑 구】\n"+line);
-  const headlines=lines.slice(0,i+1).map((value,idx)=>{
-   const v=value.replace(/\s/g,"");
-   const section=/^.{0,3}갑구/.test(v)?"갑구":/^.{0,3}을구/.test(v)?"을구":/^.{0,3}표제부/.test(v)?"표제부":null;
-   return section?{row:idx+1,section}:null;
-  }).filter(Boolean);
-  result.push({row:i+1,keyword:match[0].replace(/\s/g,""),
-   headPattern,startsRank:/^\s*\d{1,5}\s*(?:\||\s)/.test(line),
-   pipes:(line.match(/\|/g)||[]).length,keywordInColumn:left.split("|").length,
-   leftLength:left.length,fullLength:line.length,
-   isolatedCandidates:isolated.candidates.length,lastHead:headlines.slice(-1)[0]??null});
-  if(result.length>=15)break;
- }
- return result;
-}
-function structuralHeadingHints(text){
- const lines=text.split("\n"),result=[];
- for(let i=0;i<lines.length;i++){
-  const line=lines[i].replace(/\s+/g,"");
-  const match=line.match(/갑구|을구|表題部|표제부/);
-  if(!match)continue;
-  const prefix=line.slice(0,match.index);
-  const startChars=Array.from(line.slice(0,18));
-  const shape=startChars.map(ch=>/[0-9]/.test(ch)?"N":/[가-힣]/.test(ch)?"K":ch==="|"?"P":/[〖〗【】()\[\]]/.test(ch)?"B":"O")
-   .join("").replace(/([NKBPO])\1{2,}/g,"$1$1+");
-  result.push({row:i+1,section:match[0],prefixLength:prefix.length,
-   pipes:(line.match(/\|/g)||[]).length,shape});
-  if(result.length>=20)break;
- }
- return result;
 }
 async function probePdf(bytes){
  const pdfjs=getDocument({data:new Uint8Array(bytes),isEvalSupported:false,
@@ -133,7 +89,7 @@ async function probePdf(bytes){
    unmatchedCancellationRows:parsed.coverage.unresolvedCancellationRows,
    amountsWithExactManwon:parsed.candidates.filter(c=>c.entry.kind==="mortgage"&&c.entry.claimMaximumManwon!==null).length,
    mortgageTotalManwon,
-   kinds,documentKind:parsed.documentKind,rightRowShapes:structuralRows(result.text),headingShapes:structuralHeadingHints(result.text)};
+   kinds,documentKind:parsed.documentKind};
  }catch(err){
   // Only a safe JavaScript error class and this script's stack line are
   // recorded; NEVER expose error.message (may embed raw PDF text/PII).
@@ -148,6 +104,26 @@ async function probePdf(bytes){
   if(!doc){try{await pdfjs.destroy();}catch{}}
  }
 }
+function evaluatePublisherExpectation(source,measured){
+ const expectation=source.automatedCorpusExpectation;
+ if(!expectation)return {status:"not_applicable"};
+ if(measured.status!=="parsed_text_layer")
+  return {status:"FAIL",reason:"no_parse"};
+ if(measured.documentKind!=="registry_like")
+  return {status:"FAIL",reason:"not_registry_structure"};
+ if(measured.pages!==measured.textPages)
+  return {status:"FAIL",reason:"missing_text_page"};
+ if(Number.isSafeInteger(expectation.totalCandidates)&&measured.candidates!==expectation.totalCandidates)
+  return {status:"FAIL",reason:"unexpected_candidates"};
+ for(const [kind,min] of Object.entries(expectation.atLeast??{})){
+  if((measured.kinds?.[kind]??0)<min)
+   return {status:"FAIL",reason:"missing_required_kind",kind};
+ }
+ if(Number.isSafeInteger(expectation.mortgageTotalManwon)
+    &&measured.mortgageTotalManwon!==expectation.mortgageTotalManwon)
+  return {status:"FAIL",reason:"publisher_mortgage_sum_mismatch"};
+ return {status:"PASS"};
+}
 for(const source of corpus){
  let result={id:source.id,category:source.category,status:"unavailable"};
  try{
@@ -161,6 +137,8 @@ for(const source of corpus){
    }else{
     const evaluated=await probePdf(response.bytes);
     Object.assign(result,evaluated);
+    if(source.automatedCorpusExpectation)
+     result.educationalEvidenceGate=evaluatePublisherExpectation(source,evaluated).status;
    }
   }
  }catch{result.status="network_or_other_error";}
@@ -175,4 +153,19 @@ console.log("PUBLIC_REGISTRY_SUMMARY "+JSON.stringify({
  externalAccess:"ephemeral-runner-memory-only",rawFilesSaved:false,rawTextLogged:false,
  verdict:acquired?"ACQUIRED_EDUCATIONAL_SOURCE_BYTES":"NO_DOWNLOAD_AVAILABLE",
 }));
-if(!acquired)process.exitCode=2;
+const core=manifest.references.map(ref=>{
+ const item=statuses.find(s=>s.id===ref.id);
+ return {id:ref.id,acquired:item?.sha256===ref.sha256,
+  passed:item?.educationalEvidenceGate==="PASS",status:item?.status??"missing"};
+});
+const allPass=core.every(x=>x.acquired&&x.passed);
+const indeterminate=core.filter(x=>!x.acquired);
+console.log("PUBLIC_REGISTRY_EVIDENCE_GATE "+JSON.stringify({
+ corpus:"five explicitly fictional educational title PDFs",
+ checked:core.length,pass:core.filter(x=>x.passed).length,
+ failed:core.filter(x=>x.acquired&&!x.passed).length,
+ unavailable:indeterminate.length,
+ status:allPass?"PASS":"FAIL",
+ conditions:"sha256 + PDF structure + rights kinds + publisher-declared fictional mortgage sum",
+}));
+if(!allPass)process.exitCode=2;

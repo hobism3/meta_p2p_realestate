@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useMemo,useRef,useState} from "react";
-import {REGISTRY_TRANSFER_KEY,parseSanitizedTransfer} from "../../../lib/registry-extraction-transfer";
+import {REGISTRY_TRANSFER_KEY,parseSanitizedTransfer,toSanitizedTransfer} from "../../../lib/registry-extraction-transfer";
+import {authHeaders,getAccessToken} from "../../../lib/client-auth";
 import {REGISTRY_SIGNALS,registryReview,type RegistryFlag} from "../../../lib/registry-review";
 import {
  REVIEW_CHECKS,RIGHT_LABELS,REVIEW_AGE_REMINDER_DAYS,reviewRegistryRights,
@@ -29,8 +30,17 @@ export default function RegistryReadingGuide(){
  const [checks,setChecks]=useState<Partial<Record<ReviewCheckKey,UserReviewStatus>>>({});
  const [example,setExample]=useState(false);
  const [copyNotice,setCopyNotice]=useState("");
+ const [shareListingId,setShareListingId]=useState("");
+ const [shareConsent,setShareConsent]=useState(false);
+ const [acceptUnverified,setAcceptUnverified]=useState(false);
+ const [sharing,setSharing]=useState(false);
+ const [shareNotice,setShareNotice]=useState("");
  const [transferNotice,setTransferNotice]=useState("");
  const id=useRef(0);
+ useEffect(()=>{
+  const listing=new URLSearchParams(window.location.search).get("listingId")??"";
+  if(/^[a-f0-9-]{36}$/i.test(listing))setShareListingId(listing);
+ },[]);
  useEffect(()=>{
   try{
    const raw=sessionStorage.getItem(REGISTRY_TRANSFER_KEY);
@@ -72,6 +82,28 @@ export default function RegistryReadingGuide(){
    {id:"fictional-2",kind:"trust",section:"갑구",status:"unknown",rankNumber:2},
   ]);
   setChecks({});setExample(true);setCopyNotice("");
+ };
+ const share=async()=>{
+  if(sharing||!shareListingId||example||!shareConsent||!acceptUnverified||!getAccessToken())return;
+  if(!rights.length||rights.length>20){
+   setShareNotice("공유할 권리기재를 1~20건만 선택해 주세요. 0건은 권리가 없다는 증거가 아닙니다.");return;
+  }
+  setSharing(true);setShareNotice("");
+  try{
+   const sanitized=toSanitizedTransfer(rights);
+   if(sanitized.rights.length!==rights.length)throw new Error("권리기재 형식이 불완전합니다.");
+   const res=await fetch("/api/listings/"+encodeURIComponent(shareListingId)+"/rights-brief",{
+    method:"POST",headers:{"Content-Type":"application/json",...authHeaders(),
+      ...(process.env.NEXT_PUBLIC_WRITE_TOKEN?{"x-write-token":process.env.NEXT_PUBLIC_WRITE_TOKEN}:{})},
+    body:JSON.stringify({
+     rights:sanitized.rights,issuedOn,confirmSharing:true,acceptUnverified:true,synthetic:false,
+    }),
+   });
+   const data=await res.json() as {error?:string};
+   if(!res.ok)throw new Error(data.error||"요약 공유 실패");
+   setShareNotice("게시자 제공·미검증 권리기재 요약을 공유했습니다. 공식 확인이나 안전 인증은 아닙니다.");
+  }catch(e){setShareNotice(e instanceof Error?e.message:"공유 실패");}
+  finally{setSharing(false);}
  };
  const copy=async()=>{
   const text=[
@@ -178,5 +210,20 @@ export default function RegistryReadingGuide(){
    <button className="btn ghost" type="button" onClick={()=>void copy()}>확인 메모 복사 (사용자 선택)</button>
    {copyNotice?<p role="status">{copyNotice}</p>:null}
   </section>
+  {shareListingId?<section className="card" aria-label="이 매물에 정형 권리기재 후보 공유">
+   <span className="eyebrow">P14 · OWNER-REVIEWED EVIDENCE</span>
+   <h2>이 매물에 권리기재 참고 정보를 공유하기</h2>
+   <p>지금 화면에서 선택한 권리 종류·갑구/을구·순위·채권최고액·등기일만 공개됩니다. 실제 PDF 원문, 인물명, 주소와 개인정보, 자유 메모는 저장하지 않습니다.</p>
+   <p className="meta">공유된 권리는 모두 <strong>현행·말소 효력 미확인</strong>으로 표시됩니다. 내가 표시한 말소 여부, '자료를 확인했다'는 체크가 플랫폼의 법적 인증이 되지는 않습니다.</p>
+   <label style={{display:"flex",gap:9,alignItems:"center",marginBottom:9}}><input type="checkbox" checked={shareConsent}
+     onChange={e=>setShareConsent(e.target.checked)}/>이 매물의 등록 계정이며 해당 정형 권리정보를 공개하기로 선택했습니다.</label>
+   <label style={{display:"flex",gap:9,alignItems:"center",marginBottom:9}}><input type="checkbox" checked={acceptUnverified}
+     onChange={e=>setAcceptUnverified(e.target.checked)}/>공식 소유권 확인·법률 검토·안전 보증이 아님을 이해했습니다.</label>
+   <button className="btn" type="button" disabled={sharing||example||!shareConsent||!acceptUnverified||rights.length<1||rights.length>20}
+     onClick={()=>void share()}>{sharing?"공유 중...":"선택한 권리기재 요약 공유하기"}</button>
+   {example?<p className="meta">가상 예시는 실제 매물에 공유할 수 없습니다.</p>:null}
+   {shareNotice?<p role="status">{shareNotice}</p>:null}
+   <a className="btn ghost" href={"/listings/"+encodeURIComponent(shareListingId)+"#registry-rights"}>매물 상세에서 안내 확인 →</a>
+  </section>:null}
  </div>;
 }

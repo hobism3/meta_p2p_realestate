@@ -78,7 +78,7 @@ export default function LocalRegistryTextExtractor(){
    return;
   }
   const header=new Uint8Array(await file.slice(0,5).arrayBuffer());
-  if(String.fromCharCode(...header)!=="%PDF-"){
+  if(String.fromCharCode(...Array.from(header))!=="%PDF-"){
    setError("PDF 파일의 기본 형식이 일치하지 않습니다.");
    return;
   }

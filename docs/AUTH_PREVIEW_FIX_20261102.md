@@ -18,7 +18,7 @@
 - `web/e2e/preview-login-return.spec.ts`: Mock 이메일 인증, OAuth Callback 모의 토큰, 등록 복귀, 악성 URL. 실제 인증 서비스 로그인 테스트 아님.
 - `verify-fast`에 unit 테스트 추가. `verify-e2e`는 모든 Playwright 파일 실행.
 - **최초 코드 SHA**: `c0004157716ada0ea13429e0cb5eb141d682fec4`.
-- **CI 상태**: 본 문서 작성 당시 verify-fast SUCCESS, verify-e2e IN_PROGRESS. UI 수동 로그인/Google real OAuth 미검증.
+- **최종 코드 CI** (c0004157): [verify-fast #41384787316](https://github.com/hobism3/meta_p2p_realestate/actions/runs/41384787316) SUCCESS (Next 빌드, unit/DAL **360/360 PASS**, API **214/214 PASS**); [verify-e2e #41384787355](https://github.com/hobism3/meta_p2p_realestate/actions/runs/41384787355) SUCCESS (**104 PASS / 4 SKIP**). 인증 복귀 3종 시나리오가 PC/모바일 각각 통과. 실제 Google OAuth 및 사용자 계정 로그인은 미검증.
 
 ## 외부 설정·배포 차단
 - GitHub PR #33, 기준 main `bb4fe7a`. PR #25는 2026-11-02 03:40:35Z에 다른 작업에서 main에 병합되었음. 따라서 로그인 변경은 별도 PR #33에 격리. Production 배포/병합 안 함.
@@ -32,3 +32,9 @@
 - CI 완료 확인.
 - 실제 Google Login에 대한 Supabase Preview redirect allowlist 설정과 Preview 배포 할당량 확보.
 - 향후 사진 유료 요청은 서버리스 인스턴스별 제한이 **전역 과금 상한은 아님**. 사진 분석 기능을 공개 환경에 계속 열기 전에 전역 비용 쿼터 또는 소유자 승인 게이트 필요.
+
+## 병렬 PR 관리와 사용자 조치
+- Draft PR #33에는 **사진 등록 분석/권리 분석 동작 로직 변경 없음**. 새 Preview 배포는 Vercel 100회/일 무료 배포 한도로 진행 불가. 코드 검증은 성공했지만 실접속 수동 검증은 BLOCKED.
+- Google 로그인까지 Preview에서 직접 사용하려면 Supabase Authentication → URL Configuration → Redirect URLs에 테스트할 Preview URL의 정확한 `/auth/callback` 주소 허용이 필요. 새로운 PR의 `?next=%2Fregister` 쿼리가 붙는 Callback도 허용목록에 포함돼야 함.
+- Supabase 공개 권장 `https://*-<team-slug>.vercel.app/**` 는 많은 Preview 도메인에 인증 토큰을 전달할 수 있으므로, 제한된 실험에서는 도메인 단위 최소 범위 허용을 선호함.
+- Meta 잔여 크레딧 15달러. 현재 검증 세션에서 유료 호출 0회. 사용자 계정으로 브라우저에서 1회만 실행하는 것이 비용을 통제하며, API 게이트의 인스턴스별 quota는 전역 상한이 아님.

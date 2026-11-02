@@ -80,7 +80,46 @@ export default function TransactionProgressPanel({rid,tradeType,listingId="",rev
    <button type="button" className="btn ghost" onClick={()=>void refresh()}>현황 새로고침</button>
   </div>
   <p className="meta">이 화면은 당사자가 입력한 조건의 <strong>플랫폼 내 확인 이력</strong>입니다. 계약서 작성·전자서명·법적 계약 성립 판단 기능은 제공하지 않습니다. 다만 실제 채팅·동의 표현 자체가 법적 의사표시로 평가될 수 있어 주의가 필요합니다. 방문 예약은 집주인 승인 후에만 확정 표시됩니다.</p>
-  {summary?<><section className="card" aria-label="지금부터 계약 준비까지의 진행 순서" style={{margin:"12px 0 16px"}}>
+  {summary?<><section className="jiptok-digest" aria-label="집톡이 한눈에 정리">
+   <header className="jiptok-digest-header">
+    <div className="jiptok-digest-avatar" aria-hidden="true">⌂<span>✦</span></div>
+    <div>
+     <span className="eyebrow">JIPTOK · DEAL COMPANION</span>
+     <h3>집톡이가 지금까지 정리했어요</h3>
+     <p>두 사람의 대화와 실제 확인 기록을 바탕으로 중요한 내용만 모았어요.</p>
+    </div>
+    <span className="jiptok-digest-live"><i aria-hidden="true" /> 최신 확인 기록</span>
+   </header>
+   <div className="jiptok-digest-metrics" aria-label="확인된 항목과 확인 대기 항목">
+    <div><strong>{summary.stages.filter(s=>s.status==="confirmed").length}</strong><span>앱 내 확인 항목</span></div>
+    <div><strong>{summary.stages.filter(s=>s.status==="pending"||s.status==="partial").length}</strong><span>확인 대기</span></div>
+    <div><strong>{summary.stages.filter(s=>s.status==="discussing").length}</strong><span>논의 중</span></div>
+   </div>
+   <div className="jiptok-digest-columns">
+    <div className="jiptok-digest-list">
+     <h4><span aria-hidden="true">✓</span> 확인된 내용</h4>
+     {summary.stages.filter(s=>s.status==="confirmed" && s.confirmedValue).length?
+      summary.stages.filter(s=>s.status==="confirmed" && s.confirmedValue).slice(0,3).map(step=>
+       <p key={step.key}><strong>{step.label}</strong><span>{step.confirmedValue}</span></p>):
+      <p className="jiptok-digest-empty">아직 앱에서 확인 완료로 기록된 조건이 없어요.</p>}
+    </div>
+    <div className="jiptok-digest-list">
+     <h4><span aria-hidden="true">◐</span> 아직 확인할 내용</h4>
+     {summary.stages.filter(s=>s.status!=="confirmed" && s.pendingValue).length?
+      summary.stages.filter(s=>s.status!=="confirmed" && s.pendingValue).slice(0,3).map(step=>
+       <p key={step.key}><strong>{step.label}</strong><span>{step.pendingValue}</span></p>):
+      <p className="jiptok-digest-empty">현재 기록된 미확인 제안은 없어요. 진행 순서에서 남은 절차를 확인해 주세요.</p>}
+    </div>
+   </div>
+   <div className="jiptok-digest-next">
+    <div><span className="eyebrow">WHAT'S NEXT</span>
+     <strong>다음은 ‘{summary.nextStep.title}’을 확인해 주세요.</strong>
+     <p>{summary.nextStep.hint}</p>
+    </div>
+    <a href="#deal-condition-cards" className="btn">조건 확인 카드 보기 ↓</a>
+   </div>
+   <p className="jiptok-digest-disclaimer">집톡이는 제안·대기·완료 상태를 정리할 뿐 협상하거나 동의를 대신하지 않아요. ‘확인 완료’는 앱에 기록된 확인 상태이며 법적 계약 체결을 의미하지 않습니다.</p>
+  </section><section className="card" aria-label="지금부터 계약 준비까지의 진행 순서" style={{margin:"12px 0 16px"}}>
    <span className="eyebrow">YOUR NEXT STEPS</span><h3>집톡이가 챙기는 다음 단계</h3>
    <p className="meta">저장된 방문 승인과 양측 확인 카드만 실제 앱 진행에 반영합니다. 권리 확인·법적 계약·송금 완료는 자동으로 체크하지 않습니다.</p>
    <div className="real-progress-grid">

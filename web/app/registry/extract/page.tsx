@@ -1,5 +1,6 @@
 "use client";
-import {useEffect,useMemo,useState} from "react";
+import {useEffect,useMemo,useRef,useState} from "react";
+import {extractRegistryPdfLocally} from "../../../lib/registry-pdf-local-reader";
 import samples from "../../../tests/fixtures/registry-text-layer.v1.json";
 import {
  extractRegistryText,REGISTRY_TEXT_MAX_CHARS,
@@ -52,6 +53,11 @@ export default function LocalRegistryTextExtractor(){
  const [error,setError]=useState("");
  const [chosenExample,setChosenExample]=useState("");
  const [busy,setBusy]=useState(false);
+ const [pdfProgress,setPdfProgress]=useState("");
+ const [pdfWarnings,setPdfWarnings]=useState<string[]>([]);
+ const [pdfStats,setPdfStats]=useState("");
+ const [incompletePdf,setIncompletePdf]=useState(false);
+ const requestId=useRef(0);
  useEffect(()=>{
   if(!pdf){setLocalUrl("");return;}
   const url=URL.createObjectURL(pdf);
@@ -63,26 +69,54 @@ export default function LocalRegistryTextExtractor(){
  const loadSample=(id:string)=>{
   const sample=sampleCases.find(c=>c.id===id);
   if(!sample)return;
+  requestId.current++;
   setPdf(null);setChosenExample(id);setText(sample.text);
-  setParsed(null);setReviews({});setError("");
+  setParsed(null);setReviews({});setError("");setBusy(false);
+  setPdfProgress("");setPdfWarnings([]);setPdfStats("");setIncompletePdf(false);
  };
  const clear=()=>{
+  requestId.current++;
   setPdf(null);setLocalUrl("");setText("");setParsed(null);setReviews({});
-  setChosenExample("");setError("");
+  setChosenExample("");setError("");setBusy(false);setPdfProgress("");
+  setPdfWarnings([]);setPdfStats("");setIncompletePdf(false);
  };
  const choosePdf=async(file:File|null)=>{
-  setPdf(null);setError("");setParsed(null);setReviews({});setChosenExample("");
-  if(!file)return;
+  const ticket=++requestId.current;
+  setPdf(null);setText("");setError("");setParsed(null);setReviews({});setChosenExample("");
+  setPdfProgress("");setPdfWarnings([]);setPdfStats("");setIncompletePdf(false);
+  if(!file){setBusy(false);return;}
   if(!/\.pdf$/i.test(file.name)||file.size>8*1024*1024||file.size<100){
    setError("8MB 이하의 PDF만 브라우저에서 열 수 있습니다. 파일은 전송되지 않았습니다.");
    return;
   }
-  const header=new Uint8Array(await file.slice(0,5).arrayBuffer());
-  if(String.fromCharCode(...Array.from(header))!=="%PDF-"){
-   setError("PDF 파일의 기본 형식이 일치하지 않습니다.");
-   return;
+  setPdf(file);setBusy(true);setPdfProgress("PDF.js 로컬 텍스트층 준비 중");
+  try{
+   const layout=await extractRegistryPdfLocally(file,(n,total)=>{
+    if(requestId.current===ticket)setPdfProgress(n+"/"+total+"페이지 텍스트 복원 중");
+   });
+   if(requestId.current!==ticket)return;
+   setPdfWarnings(layout.warnings);
+   setPdfStats(layout.pages+"페이지 · "+layout.items+"개 문자 객체 · "+layout.lines+"개 복원 행");
+   if(!layout.text.trim()||layout.items===0){
+    setError("PDF에서 선택 가능한 글자를 찾지 못했습니다. 스캔형 문서는 현재 OCR을 지원하지 않습니다.");
+    return;
+   }
+   setText(layout.text);
+   if(layout.pagesWithoutText.length>0){
+    setIncompletePdf(true);
+    setError("텍스트층이 없는 페이지가 있습니다. 누락된 권리관계를 배제할 수 없어 자동 분석·전달을 중단합니다.");
+    return;
+   }
+   const result=extractRegistryText(layout.text);
+   setParsed(result);
+   if(result.documentKind==="unrecognized")
+    setError("PDF 텍스트는 추출했지만 갑구·을구 구조를 확인하지 못했습니다. 원문을 직접 확인하세요.");
+   setPdfProgress("브라우저 로컬 텍스트 추출 완료");
+  }catch{
+   if(requestId.current===ticket)setError("PDF 로컬 텍스트 추출에 실패했습니다. 암호화·파손·스캔본이거나 지원하지 않는 PDF일 수 있습니다.");
+  }finally{
+   if(requestId.current===ticket)setBusy(false);
   }
-  setPdf(file);
  };
  const parse=()=>{
   if(busy)return;
@@ -98,6 +132,7 @@ export default function LocalRegistryTextExtractor(){
   }finally{setBusy(false);}
  };
  const transfer=()=>{
+  if(incompletePdf){setError("텍스트층이 누락된 페이지가 있어 후보를 P8로 가져올 수 없습니다.");return;}
   if(approved.length===0){setError("먼저 원본과 대조한 항목을 하나 이상 선택하세요.");return;}
   try{
    const entries=approved.map(c=>({
@@ -116,24 +151,27 @@ export default function LocalRegistryTextExtractor(){
  const statusText=chosenExample?"가상의 테스트용 텍스트를 사용 중입니다. 실제 등기가 아닙니다.":"문서나 텍스트를 서버·Meta에 업로드하지 않습니다.";
 
  return <div className="grid owner-page registry-review-page">
-  <header className="owner-hero"><span>P9 · TEXT-LAYER EVIDENCE WORKBENCH</span>
+  <header className="owner-hero"><span>P10 · LOCAL PDF TEXT-LAYER READER</span>
    <h1>등기 권리기재 후보 추출</h1>
-   <p>PDF 뷰어에서 <strong>복사 가능한 표 텍스트</strong>를 선택해 붙여넣으면 권리 종류·채권최고액·등기일·말소 언급을 후보로 정리합니다. 원문 판단은 사람이 하고, 검토한 필드만 자가점검 화면에 가져옵니다.</p>
-   <p><strong>현재 단계는 PDF 자동 판독/OCR이 아닙니다.</strong> 입력은 이 탭에서만 처리하며 서버·Meta 모델로 전송하지 않습니다. 사진 분석 기능과 별개입니다.</p>
+   <p><strong>PDF를 선택하면</strong> 브라우저에 포함된 PDF.js로 글자와 페이지·좌표를 추출해 권리기재 후보를 자동 정리합니다. 결과는 사람이 원문과 대조한 후에만 점검 화면으로 전달할 수 있습니다.</p>
+   <p><strong>복사 가능한 텍스트층만 읽습니다.</strong> 스캔 이미지 OCR·취소선의 법적 효력·문서 진위는 판정하지 않습니다. PDF·텍스트는 서버·Meta 모델로 전송하지 않습니다.</p>
   </header>
   <section className="card">
-   <h2>1. PDF를 내 브라우저에서 열고 텍스트를 복사</h2>
-   <p>개인정보가 포함된 실제 등기 원문은 외부 서비스에 제출하지 마세요. 이 도구는 로컬 텍스트 선택 및 분석만 지원합니다.</p>
+   <h2>1. PDF 자동 텍스트 추출 (브라우저 안에서만)</h2>
+   <p>PDF 선택 후 별도 업로드 없이 로컬 텍스트층을 분석합니다. 개인정보가 담긴 PDF는 원문 대조 후 화면의 텍스트·결과 삭제를 사용해 지우세요.</p>
    <label style={{display:"grid",gap:8}}>
-    내 PDF 선택 (로컬 미리보기·서버 전송 없음)
-    <input type="file" accept="application/pdf,.pdf" onChange={ev=>void choosePdf(ev.target.files?.[0]??null)}/>
+    PDF 선택 → 자동 글자 추출·행 복원 (서버 전송 없음)
+    <input type="file" aria-label="로컬 PDF 파일 선택" accept="application/pdf,.pdf" disabled={busy} onChange={ev=>void choosePdf(ev.target.files?.[0]??null)}/>
    </label>
    {pdf&&localUrl?<div style={{marginTop:12}}>
     <p><strong>{pdf.name}</strong> · {Math.round(pdf.size/1024)}KB · 브라우저 로컬</p>
-    <a className="btn ghost" href={localUrl} target="_blank" rel="noopener noreferrer">이 PDF를 새 탭으로 열어 텍스트 복사 ↗</a>
-    <p className="meta">브라우저 PDF 뷰어에서 권리 표의 텍스트를 선택해 복사하세요. 문서에 글자 선택 기능이 없다면 스캔형 PDF일 수 있으며 이번 추출기는 지원하지 않습니다.</p>
+    <a className="btn ghost" href={localUrl} target="_blank" rel="noopener noreferrer">원본 PDF 새 탭에서 대조하기 ↗</a>
+    <p className="meta">글자가 누락되거나 레이아웃이 섞이면 원문을 직접 확인하세요. 스캔형 PDF에는 OCR이 없으므로 완전한 분석을 진행하지 않습니다.</p>
    </div>:null}
-   <p className="meta">별도 PDF 뷰어를 사용해도 됩니다. 복사할 때 페이지를 구분하려면 [PAGE 1], [PAGE 2]를 줄로 적어주세요. 페이지가 지정되지 않으면 근거 위치에는 줄 번호만 표시됩니다.</p>
+   {pdfProgress?<p className="meta" role="status">{busy?"PDF 처리 중: ":""}{pdfProgress}</p>:null}
+   {pdfStats?<p className="meta"><strong>추출 규모:</strong> {pdfStats}</p>:null}
+   {pdfWarnings.map((w,i)=><p role="note" className="meta" key={i}>⚠ {w}</p>)}
+   <p className="meta">PDF 구조가 불분명하면 아래 텍스트를 직접 수정할 수 있습니다. [PAGE 1]처럼 페이지 구분을 표시할 수 있으며 자동 추출 결과를 공식 권리기록으로 인증하지 않습니다.</p>
    <label style={{display:"grid",gap:8,marginTop:16}}>
     가상 복사 텍스트 실험
     <select value={chosenExample} onChange={ev=>ev.target.value?loadSample(ev.target.value):clear()}>
@@ -144,16 +182,16 @@ export default function LocalRegistryTextExtractor(){
    <p className="meta">{statusText}</p>
   </section>
   <section className="card">
-   <h2>2. 등기 표 텍스트 붙여넣기</h2>
+   <h2>2. 자동 추출된 텍스트 확인 또는 직접 붙여넣기</h2>
    <label htmlFor="registry-pasted-text">복사된 문자 자료 (최대 {REGISTRY_TEXT_MAX_CHARS.toLocaleString("ko-KR")}자)</label>
    <textarea id="registry-pasted-text" spellCheck={false}
     style={{width:"100%",minHeight:225,padding:14,border:"1px solid #cbdad2",borderRadius:10,font:"inherit",lineHeight:1.5}}
     maxLength={REGISTRY_TEXT_MAX_CHARS+1}
     placeholder={"【갑 구】 소유권에 관한 사항\n1 | 가압류 | 2026.01.01\n【을 구】 소유권 이외의 권리에 관한 사항\n1 | 근저당권설정 | 2026.02.01 | 채권최고액 금1억2천만원정"}
-    value={text} onChange={ev=>{setText(ev.target.value);setParsed(null);setReviews({});setError("");setChosenExample("");}}/>
+    value={text} onChange={ev=>{requestId.current++;setBusy(false);setPdfProgress("");setText(ev.target.value);setParsed(null);setReviews({});setError("");setChosenExample("");}}/>
    <p className="meta">이 텍스트는 저장하지 않습니다. 원본의 주소·성명·개인번호가 복사됐을 수 있으므로 공유하거나 Git·로그에 붙이지 마세요. 결과에는 허용된 권리정보만 표시합니다.</p>
    <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-    <button className="btn" onClick={parse} disabled={busy||text.trim().length<10||text.length>REGISTRY_TEXT_MAX_CHARS}>권리기재 후보 찾기</button>
+    <button className="btn" onClick={parse} disabled={busy||incompletePdf||text.trim().length<10||text.length>REGISTRY_TEXT_MAX_CHARS}>직접 수정한 텍스트로 다시 분석하기</button>
     <button className="btn ghost" onClick={clear}>텍스트·결과 삭제</button>
    </div>
    {error?<p role="alert" className="error">{error}</p>:null}
@@ -169,13 +207,13 @@ export default function LocalRegistryTextExtractor(){
     onUpdate={next=>setReviews(old=>({...old,[c.id]:next}))}/>)}
    {parsed.candidates.length>0?<div>
     <p>원문 대조 후 선택한 항목: <strong>{approved.length}/{parsed.candidates.length}</strong></p>
-    <button className="btn" onClick={transfer} disabled={approved.length===0}>선택한 정형 값만 권리관계 점검으로 가져오기 →</button>
+    <button className="btn" onClick={transfer} disabled={incompletePdf||approved.length===0}>선택한 정형 값만 권리관계 점검으로 가져오기 →</button>
     <p className="meta">가져오는 데이터는 권리종류·상태·등기일·순위번호·채권최고액만 포함합니다. 전체 PDF/복사 텍스트·주소·소유자 이름·근거 문장은 저장하지 않습니다. 가져와도 공식 인증이 아닙니다.</p>
    </div>:null}
   </section>:null}
   <section className="card">
    <h2>4. 추출기의 한계</h2>
-   <p>이 방식은 텍스트 선택이 가능한 PDF의 **표 일부**를 도와주는 보조도구입니다. PDF의 진위, 실제 등기소의 최신 권리관계, 이미지 스캔본, 표 안 취소선, 선순위 임차인·세금, 소유자 신원·위임권한을 확인할 수 없습니다.</p>
+   <p>로컬 PDF.js에서 읽은 텍스트층의 <strong>잠정 후보</strong>입니다. 문자 간 좌표 복원만으로 취소선·말소 대상·병합 셀·소유권·실제 효력은 확인할 수 없습니다. PDF의 진위, 최신 등기, 이미지 스캔본, 선순위 임차인·세금, 소유자 신원·위임권한을 확인할 수 없습니다.</p>
    <a className="btn ghost" href="/registry/cases">P8 권리 유형 사례집 보기 ↗</a>{" "}
    <a className="btn ghost" href="/registry/check">직접 권리관계 점검하기 ↗</a>
   </section>

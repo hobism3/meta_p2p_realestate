@@ -45,6 +45,19 @@ test("사진 등록: 전체 분석 후 옵션 후보·욕실 사진 누락 제�
     name:"synthetic-room.jpg",mimeType:"image/jpeg",buffer:blob,
   });
   await expect(page.getByText("synthetic-room.jpg")).toBeVisible();
+  await page.getByRole("button",{name:"개인 물품 가리기"}).click();
+  const maskCanvas=page.locator(".photo-guide-mask canvas");
+  await maskCanvas.scrollIntoViewIfNeeded();
+  const rect=await maskCanvas.boundingBox();
+  expect(rect).not.toBeNull();
+  if(!rect)throw new Error("No canvas bounds");
+  await page.mouse.move(rect.x + rect.width * 0.18, rect.y + rect.height * 0.20);
+  await page.mouse.down();
+  await page.mouse.move(rect.x + rect.width * 0.52, rect.y + rect.height * 0.45,{steps:5});
+  await page.mouse.up();
+  await page.getByRole("button",{name:"가림 적용"}).click();
+  await expect(page.getByText("개인 영역 가림 적용")).toBeVisible();
+  expect(calls).toBe(0); // Selecting a photo or covering private areas must not call Meta.
   await expect(page.getByRole("button",{name:"사진에서 옵션·공간 자동 정리"})).toBeDisabled();
   await page.getByRole("checkbox",{name:/매물 정보 초안 추출/}).check();
   await page.getByRole("button",{name:"사진에서 옵션·공간 자동 정리"}).click();

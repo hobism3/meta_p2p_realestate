@@ -3,7 +3,7 @@ import { authenticate } from "@/lib/auth";
 import { clientKey } from "@/lib/api";
 import { checkRate } from "@/lib/ratelimit";
 import { parseChatResponse } from "@/lib/meta";
-import { reservePhotoAiAttempt } from "@/lib/photo-ai-budget";
+import { reservePhotoAiAttempt, photoAiTotalCap } from "@/lib/photo-ai-budget";
 import { parsePhotoModelText } from "@/lib/photo-guide";
 import { checkedJpegDataUrl, readLimitedPhotoJson, PHOTO_MAX_BODY_BYTES } from "@/lib/photo-image";
 
@@ -26,7 +26,7 @@ function enabled(): boolean {
 }
 
 export function GET(): Response {
-  return json({ enabled: enabled(), provider: enabled() ? "meta" : "disabled", maxImagesPerHour: hourlyLimit() });
+  return json({ enabled: enabled(), provider: enabled() ? "meta" : "disabled", maxImagesPerHour: hourlyLimit(), maxTotalAttempts: photoAiTotalCap("vision") });
 }
 
 function takeQuota(userId: string): boolean {

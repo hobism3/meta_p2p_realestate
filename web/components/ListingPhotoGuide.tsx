@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
 import { authHeaders } from "../lib/client-auth";
 import { PHOTO_DEMO_ASSETS } from "../lib/photo-demo-assets";
+import { scrubCanvasJpeg } from "../lib/jpeg-scrub";
 import {
   imageDifferenceHash, nearDuplicateHash, photoQualityHints, recommendedPhotoRooms,
   photoCoverageMessages, photoOptionCandidates,
@@ -311,7 +312,10 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
       const source=await imageFromBlob(item.blob);
       let publishJpeg:Blob|null=null;
       for(const edge of [960,800,640,480]){
-        const jpeg=await jpegBlob(canvasFor(source,edge),0.60);
+        const encoded = await jpegBlob(canvasFor(source,edge),0.60);
+        // Chromium adds an ICC APP2 segment even after canvas re-encoding.
+        // Remove all JPEG metadata; keep the server's strict format guard.
+        const jpeg = await scrubCanvasJpeg(encoded);
         if(jpeg.size<=180000){publishJpeg=jpeg;break;}
       }
       if(!publishJpeg)throw new Error("게시용 JPEG 용량을 180KB 이하로 줄일 수 없습니다.");

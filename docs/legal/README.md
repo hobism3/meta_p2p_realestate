@@ -10,6 +10,8 @@
 |---|---|---|
 |[P8 권리 유형 사례 출처 원장](../registry-cases/CASE_CATALOG_20261101.md)|HUG·공개 블로그 13개 출처 / 38개 합성 사례 / 엔진 검출 범위와 한계|권리 분석·테스트|
 |[P8 전용 개발·실험 로그](../registry-cases/DEVELOPMENT_LOG_20261101.md)|PR #26 골든, CI 실패 수정·병렬 사진 PR 경계 및 병합 SHA|개발·감사|
+|[P9 문서 텍스트층·증거 기반 후보](../registry-cases/P9_TEXT_LAYER_PIPELINE_20261102.md)|복사 가능한 등기 PDF 글자→권리기재 후보→사람 확인→P8 분석; 자동 OCR 아님|개발·권리 분석|
+|[P9 검증/개발 로그](../registry-cases/P9_DEVELOPMENT_LOG_20261102.md)|PR #27 테스트·빌드 오류 수정·320+206 PASS 및 다음 검증 게이트|개발·감사|
 |[법률 심층 감사 v2](LEGAL_DEEP_DIVE_20261101.md)|2026~27 법률 시행 시점, 공인중개사법·개인정보·전자적 의사표시, 실제 코드 감사 및 제한|제품·법무·개발|
 |[중개행위 해당성](BROKERAGE_CLASSIFICATION_20261101.md)|각 집톡이 행위와 객관적 알선성·보수·업성, 판례/행정 Q&A, 허용·법무 추가확인 경계|제품·법무|
 |[등기 공개자료와 상용 API](REGISTRY_PUBLIC_DATA_AND_API_20261101.md)|부동산등기법 제19조/109조의2, Open API와 민간 API 구분, 개인정보 적법성/계약 실사|권리 분석·제휴|

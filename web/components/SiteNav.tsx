@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { clearAccessToken, getAccessToken } from "../lib/client-auth";
 
 type Me = { userId: string; name: string; mode: string };
@@ -8,6 +9,10 @@ type Me = { userId: string; name: string; mode: string };
 // 로그인되면 로그인 링크를 숨기고 이름+로그아웃을 보여준다.
 export default function SiteNav() {
   const [me, setMe] = useState<Me | null>(null);
+  const pathname = usePathname();
+  const loginUrl = pathname && pathname !== "/" && pathname !== "/login"
+    ? "/login?next=" + encodeURIComponent(pathname)
+    : "/login";
 
   const refresh = async () => {
     const token = getAccessToken();
@@ -67,7 +72,7 @@ export default function SiteNav() {
           </button>
         </>
       ) : (
-        <><a href="/login?mode=signup">회원가입</a><a href="/login">로그인</a></>
+        <><a href="/login?mode=signup">회원가입</a><a href={loginUrl}>로그인</a></>
       )}
     </nav>
   );

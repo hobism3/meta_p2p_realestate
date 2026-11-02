@@ -1,0 +1,59 @@
+{
+  "schema": "publisher-authored-example-derived-v1",
+  "disclaimer": "These are MINIMAL RECONSTRUCTED right rows containing only facts expressly stated in HUG's publicly published masked educational table; NOT a transcription of the original whole document, not an actual certificate, and no expert labels supplied by the user.",
+  "cases": [
+    {
+      "id": "P12-HUG-01",
+      "sourceId": "HUG-EXAMPLE",
+      "sourceUrl": "https://www.khug.or.kr/jeonse/web/s03/s030105.jsp",
+      "title": "HUG 공공기관 교육용 표 갑구 3번 압류 + 을구 1번 근저당 설정",
+      "text": "[PAGE 1]\n【표제부】\n1 | 건물 표시 | 1989년10월30일\n【갑 구】 소유권에 관한 사항\n1 | 소유권보존 | 1989년10월30일\n2 | 소유권이전 | 1991년11월21일\n3 | 압류 | 2022년1월13일\n【을 구】 소유권 이외의 권리에 관한 사항\n1 | 근저당권설정 | 2018년8월6일 | 채권최고액 금2,000,000,000원",
+      "expectedRights": [
+        {
+          "kind": "seizure",
+          "section": "갑구",
+          "rankNumber": 3,
+          "registrationDate": "2022-01-13",
+          "claimMaximumManwon": null
+        },
+        {
+          "kind": "mortgage",
+          "section": "을구",
+          "rankNumber": 1,
+          "registrationDate": "2018-08-06",
+          "claimMaximumManwon": 200000
+        }
+      ],
+      "externalEvidenceLevel": "publisher_authored_masked_example",
+      "assertLimit": "This tests reconstruction of separately published structured facts, not PDF OCR or current legal effect."
+    },
+    {
+      "id": "P12-HUG-02",
+      "sourceId": "HUG-EXAMPLE",
+      "sourceUrl": "https://www.khug.or.kr/jeonse/web/s03/s030105.jsp",
+      "title": "HUG 교육용 표제부 대지권 별도등기(토지 근저당 언급)는 을구 권리로 승격 불가",
+      "text": "[PAGE 1]\n【표제부】 대지권 표시\n1 | 소유권대지권 | 별도등기 있음 1토지(근저당권 설정 등기)\n【갑 구】\n1 | 소유권이전 | 1991년11월21일\n【을 구】\n해당 구 권리기재 없음",
+      "expectedRights": [],
+      "externalEvidenceLevel": "publisher_authored_masked_example",
+      "assertLimit": "No detected rights in the selected page does not mean the separate land title is clear."
+    },
+    {
+      "id": "P12-HUG-03",
+      "sourceId": "HUG-EXAMPLE",
+      "sourceUrl": "https://www.khug.or.kr/jeonse/web/s03/s030105.jsp",
+      "title": "HUG 교육용 20억원은 대출잔액 아닌 근저당권 채권최고액",
+      "text": "[PAGE 1]\n【을 구】\n1 | 근저당권설정 | 2018년 8월 6일 | 채권최고액 금 2,000,000,000원 | 채무자·권리자 생략",
+      "expectedRights": [
+        {
+          "kind": "mortgage",
+          "section": "을구",
+          "rankNumber": 1,
+          "registrationDate": "2018-08-06",
+          "claimMaximumManwon": 200000
+        }
+      ],
+      "externalEvidenceLevel": "publisher_authored_masked_example",
+      "assertLimit": "No automatic debt balance or repayment guarantee from recorded ceiling."
+    }
+  ]
+}

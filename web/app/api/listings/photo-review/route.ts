@@ -36,7 +36,7 @@ function takeQuota(userId: string): boolean {
     quota.set(userId, { count: 1, resetsAt: n + 3_600_000 });
     return true;
   }
-  if (previous.count >= HOURLY_LIMIT) return false;
+  if (previous.count >= hourlyLimit()) return false;
   previous.count++;
   return true;
 }

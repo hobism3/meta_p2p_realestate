@@ -57,7 +57,8 @@ describe("등기 문서 AI 등록 초안", () => {
     const synthetic=makeSampleRegistryPdf();
     assert.equal(isSyntheticRegistryDemoPdf(synthetic), true);
     const hashes=syntheticRegistryDemoHashes();
-    assert.equal(hashes.length,2);
+    assert.equal(hashes.length,3);
+    assert.ok(hashes.includes("7624c8384271e6ebd5bc092263066432db3656b74454272d9fb33a5144d59403"));
     assert.ok(hashes.every(x=>/^[a-f0-9]{64}$/.test(x)));
     const altered=Buffer.from(synthetic);
     altered[100] ^= 1;

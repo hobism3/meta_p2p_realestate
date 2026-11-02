@@ -14,7 +14,10 @@
       "sha256": "2ddff3f07aa134c04456685db796ffb8029e007159eabc3c07c6c0fad1e87b50",
       "priorObservedBytes": 908854,
       "distribution": "source-link-only",
-      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted"
+      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted",
+      "automatedCorpusExpectation": {
+        "totalCandidates": 0
+      }
     },
     {
       "id": "DANGDANG-PROVISIONAL",
@@ -27,7 +30,13 @@
       "distribution": "source-link-only",
       "sha256": "f4acf20a41cae0ab33b40cfe70c26a28f2ef4021125f06875aef0cb4251f07f1",
       "priorObservedBytes": 909534,
-      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted"
+      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted",
+      "automatedCorpusExpectation": {
+        "atLeast": {
+          "provisional_seizure": 1,
+          "mortgage": 1
+        }
+      }
     },
     {
       "id": "DANGDANG-MORTGAGE",
@@ -40,7 +49,14 @@
       "distribution": "source-link-only",
       "sha256": "c0d795a2c6dd883106a248d8e8d926d1fc072f10b191c546c728053e506c13f9",
       "priorObservedBytes": 908370,
-      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted"
+      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted",
+      "automatedCorpusExpectation": {
+        "atLeast": {
+          "mortgage": 2
+        },
+        "mortgageTotalManwon": 29000,
+        "explanation": "Publisher describes combined mortgage maximum of 2억9천만원. Treat as educational exercise, not debt balance."
+      }
     },
     {
       "id": "DANGDANG-MULTI",
@@ -53,7 +69,14 @@
       "distribution": "source-link-only",
       "sha256": "b2ea6887d7540d668f75dc99d3cee02b3c80aa64e05cd61af394d879192dab09",
       "priorObservedBytes": 913157,
-      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted"
+      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted",
+      "automatedCorpusExpectation": {
+        "atLeast": {
+          "provisional_seizure": 1,
+          "auction_commencement": 1,
+          "mortgage": 2
+        }
+      }
     },
     {
       "id": "DANGDANG-FIXED-DATE",
@@ -66,7 +89,14 @@
       "distribution": "source-link-only",
       "sha256": "b65aed6cd76d125e5d72453e282f6ea01915e3996e7820c9ba47c7fe2c1aed7b",
       "priorObservedBytes": 1087433,
-      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted"
+      "observation": "2026-11-02 GitHub Actions public-registry-educational-corpus #41369533054; raw file not persisted",
+      "automatedCorpusExpectation": {
+        "atLeast": {
+          "lease_registration": 0
+        },
+        "totalCandidates": 0,
+        "explanation": "Sample illustrates fixed-date evidence not a registered 임차권등기. Zero candidates is NOT proof of legal safety."
+      }
     }
   ],
   "otherPublicPdfExamples": [
@@ -112,5 +142,6 @@
   "excludedActualRecords": {
     "reason": "공개 검색에 실재 부동산 등기사항증명서 PDF도 있으나 개인 신원·주소·채권자 관계 등 개인정보/사생활이 드러날 수 있어 자동 수집·원본 재배포·Git 추적 대상으로 삼지 않음.",
     "policy": "실제 파일을 적법하게 보유한 사용자가 로컬 P10에 직접 제공하는 경로와 공개 검색 결과의 임의 전송은 다름."
-  }
+  },
+  "corpusSemantics": "Expectations are approximate source/publisher-level educational types, not page-level line-by-line expert label truth. Failure blocks benchmark gate; exact legal validity remains unknown."
 }

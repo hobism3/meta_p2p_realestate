@@ -17,14 +17,14 @@ import {extractRegistryText} from "../lib/registry-text-extraction.ts";
 const manifest=JSON.parse(await readFile(new URL("../tests/fixtures/registry-public-sources.v1.json",import.meta.url),"utf8"));
 const corpus=[
  ...manifest.references.map(x=>({...x,category:"fictional_registry_pdf"})),
- ...manifest.otherPublicPdfExamples.filter(x=>["EBS-LEGAL-2008","JOBGO-GA-2017"].includes(x.id)).map(x=>({...x,category:"educational_material_with_example"})),
+ ...manifest.otherPublicPdfExamples.filter(x=>["EBS-LEGAL-2008","JOBGO-GA-2017","KOCW-HANSUNG","EDUSPA-RECORDS"].includes(x.id)).map(x=>({...x,category:"educational_material_with_example"})),
 ];
 const statuses=[];
 const maxSeconds=22;
 
 async function fetchBounded(url){
  const target=new URL(url);
- if(target.protocol!=="https:"||!["dangdang.io","wdown.ebsi.co.kr","cont0.jobgo.ne.kr"].includes(target.hostname))
+ if(target.protocol!=="https:"||!["dangdang.io","wdown.ebsi.co.kr","cont0.jobgo.ne.kr","kocw-n.xcache.kinxcdn.com","att.eduspa.com"].includes(target.hostname))
   throw new Error("not_allowlisted");
  const res=await fetch(url,{
   redirect:"follow",signal:AbortSignal.timeout(maxSeconds*1000),

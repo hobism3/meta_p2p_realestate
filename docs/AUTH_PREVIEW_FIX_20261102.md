@@ -49,3 +49,12 @@
 - **중요:** 현재 Preview는 PR #33 이전 코드이므로, 허용 URL만 추가해도 Google callback의 `window.location.replace('/')` 문제는 해결되지 않는다. 실제 개선은 PR #33 새 Preview 빌드 및 Supabase 허용목록 둘 다 필요하다.
 - OAuth 서버 인증 기록을 집계로만 살펴봤으며 (개별 사용자·토큰 불조회), 로그인 성공/Preview 우회 여부를 입증할 만큼의 증거는 없었다. 따라서 실 Google 로그인 PASS 선언 금지.
 - Meta 실호출은 여전히 **0회**. Supabase 커넥터만으로 외부 사진 분석 API를 POST 호출하는 능력이 생기는 것은 아니다.
+
+
+## 2026-11-02 15:00 KST · 인증 복귀 Preview 직접 확인 / AI 원샷 설정
+- Vercel login-fix 브랜치 새 Preview URL: `https://meta-p2p-realestate-mn5ft53mq-direct-home1.vercel.app` (READY; 수정 커밋 f87bb583). `GET /register` 및 `GET /login?next=%2Fregister` HTTP 200.
+- 해당 Preview의 `GET /api/auth/oauth?provider=google&next=%2Fregister` HTTP 307, Supabase Google authorize의 `redirect_to`는 `https://meta-p2p-realestate-mn5ft53mq-direct-home1.vercel.app/auth/callback?next=%2Fregister` 로 정상 구성. 단, Supabase Redirect URL 허용 목록에 포함되는지는 검사 불가. 실제 Google 로그인 성공 여부 미검증.
+- 신규 Preview 처음 조회 시 `GET /api/listings/photo-review`: `enabled:false`, 6장 기본 설정. 해당 브랜치 Preview 전용으로 `PHOTO_AI_ENABLED=true`, `PHOTO_AI_MAX_HOURLY=1` 생성. **설정은 변경 시 기존 Preview에 자동 반영되지 않으므로 새 배포에서 재검증해야 함**.
+- `PHOTO_EMPTY_VIEW_ENABLED`는 계속 미설정. 운영 Production, 다른 PR 브랜치 및 실거주 사진 데이터는 수정하지 않음.
+- 1회/시간 제한은 계정/서버 인스턴스별로만 동작하므로 $15 글로벌 절대 상한이 아님. JWT 인증과 사진별 명시적 동의 요구. 실제 Meta 호출 아직 0회.
+- 이번 기록 수정 후 CI/새 Preview 배포를 확인한 뒤 사용 가능한 URL을 안내. 사용자에게 계정 비밀번호·Meta API 키를 채팅에 보내도록 요청하지 않음.

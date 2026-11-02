@@ -115,8 +115,13 @@ test("가상 시연 사진을 서버 저장 없이 불러와 사용자 동의 �
   await page.route("**/api/listings/photo-empty-view", async route =>
     route.fulfill({json:{enabled:false}}));
   await reachPhotoStep(page);
-  await page.getByRole("button",{name:"가상 시연 사진 불러오기"}).click();
-  await expect(page.getByText("synthetic-demo-living.webp")).toBeVisible();
+  for (const room of ["거실", "주방", "라운지"]) {
+    await page.getByRole("button",{name:room + " 예시 사진 추가"}).click();
+  }
+  await expect(page.getByText("synthetic-demo-living.jpg")).toBeVisible();
+  await expect(page.getByText("synthetic-demo-kitchen.jpg")).toBeVisible();
+  await expect(page.getByText("synthetic-demo-lounge.jpg")).toBeVisible();
+  await expect(page.locator(".photo-guide-item")).toHaveCount(3);
   await expect(page.getByRole("button",{name:"사진에서 옵션·공간 자동 정리"})).toBeDisabled();
   expect(paidCalls).toBe(0);
 });

@@ -61,11 +61,17 @@ function toDataUrl(blob: Blob): Promise<string> {
 
 
 /** One integrated photo-to-listing workflow. AI analysis is an implementation detail, not a separate product tab. */
-export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptions: (values: string[]) => void }) {
+export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPublished }: {
+  onSuggestOptions?: (values: string[]) => void; listingId?: string; onPublished?: () => void;
+ }) {
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState("");
   const [consent, setConsent] = useState(false);
   const [editConsent, setEditConsent] = useState(false);
+  const [publicationConsent,setPublicationConsent] = useState(false);
+  const [publishingId,setPublishingId] = useState<number|null>(null);
+  const [publishedIds,setPublishedIds] = useState<number[]>([]);
+  const [publishMessage,setPublishMessage] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -79,7 +85,7 @@ export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptio
   const maskPanelRef = useRef<HTMLDivElement>(null);
   const seq = useRef(0);
   const urls = useRef<string[]>([]);
-  const locked = analyzing || editingId !== null || maskId !== null;
+  const locked = analyzing || editingId !== null || publishingId !== null || maskId !== null;
 
   useEffect(() => {
     Promise.all([
@@ -286,6 +292,44 @@ export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptio
     } finally { setEditingId(null); }
   };
 
+  const publishPhoto = async (item:Item) => {
+    if (!listingId || !publicationConsent || locked || publishedIds.includes(item.id)) return;
+    if (item.name.startsWith("synthetic-demo-")) {
+      setError("시연용 합성 이미지는 실제 매물 사진으로 게시할 수 없습니다.");return;
+    }
+    if (item.review?.privacyFlags.length && !item.masked) {
+      setError("AI에서 개인정보 노출 가능성을 발견했습니다. 해당 영역을 먼저 가려 주세요.");return;
+    }
+    setError("");setPublishMessage("");setPublishingId(item.id);
+    try {
+      // Photo is always a newly compressed, metadata-free canvas derivative.
+      // Neither the original nor the AI empty-room preview is submitted.
+      const source=await imageFromBlob(item.blob);
+      let publishJpeg:Blob|null=null;
+      for(const edge of [960,800,640,480]){
+        const jpeg=await jpegBlob(canvasFor(source,edge),0.60);
+        if(jpeg.size<=180000){publishJpeg=jpeg;break;}
+      }
+      if(!publishJpeg)throw new Error("게시용 JPEG 용량을 180KB 이하로 줄일 수 없습니다.");
+      const response=await fetch("/api/listings/"+encodeURIComponent(listingId)+"/gallery",{
+        method:"POST",
+        headers:{"Content-Type":"application/json",...authHeaders(),
+          ...(process.env.NEXT_PUBLIC_WRITE_TOKEN?{"x-write-token":process.env.NEXT_PUBLIC_WRITE_TOKEN}:{})},
+        body:JSON.stringify({
+          image:await toDataUrl(publishJpeg),room:item.review?.room??"unknown",
+          masked:item.masked,consentToPublish:true,checkedPersonalInfo:true,clientReencoded:true,
+          aiGenerated:false,
+        }),
+      });
+      const answer=await response.json() as {error?:string};
+      if(!response.ok)throw new Error(answer.error||"사진 게시에 실패했습니다.");
+      setPublishedIds(old=>[...old,item.id]);
+      setPublishMessage("게시용 변환 사진을 저장했습니다. 공개 매물 상세 페이지에서 확인할 수 있습니다.");
+      onPublished?.();
+    }catch(e){setError(e instanceof Error?e.message:"사진 게시 실패");}
+    finally{setPublishingId(null);}
+  };
+
   const reviewed = items.filter((v) => v.reviewed && v.review).map((v) => v.review!);
   const options = photoOptionCandidates(reviewed);
   const missing = photoCoverageMessages(reviewed);
@@ -307,7 +351,7 @@ export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptio
       </label>
       <button type="button" className="btn ghost" disabled={locked || items.length >= 6}
         onClick={() => void loadSyntheticDemo()}>가상 시연 사진 불러오기</button>
-      <p className="meta">선택한 사진은 아직 매물에 저장되거나 공개되지 않아요. 가구 제거 결과도 매물에 게시되지 않습니다.</p>
+      <p className="meta">선택한 사진은 자동으로 저장·게시되지 않아요. 등록된 매물의 집주인 관리 페이지에서 개인정보를 확인하고 게시용 사진만 따로 공개할 수 있습니다. AI 빈 공간 이미지는 게시하지 않습니다.</p>
 
       <div className="photo-guide-grid">
         {items.map((item) => (
@@ -331,6 +375,11 @@ export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptio
                   개인 물품 가리기
                 </button>
                 <button type="button" className="btn ghost" disabled={locked} onClick={() => remove(item.id)}>삭제</button>
+                {listingId ? <button type="button" className="btn"
+                  disabled={locked||!publicationConsent||publishedIds.includes(item.id)||item.name.startsWith("synthetic-demo-")}
+                  onClick={()=>void publishPhoto(item)}>
+                  {publishingId===item.id?"게시용 사진 저장 중...":publishedIds.includes(item.id)?"게시 완료":"확인한 사진 공개하기"}
+                </button>:null}
               </div>
               <div className="photo-guide-empty-action">
                 <button type="button" className="btn ghost"
@@ -382,10 +431,10 @@ export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptio
                   {chosenOptions.includes(value) ? "✓ " : "+ "}{value}
                 </button>)}
               </div>
-              <button type="button" className="btn ghost" disabled={!chosenOptions.length}
+              {onSuggestOptions?<button type="button" className="btn ghost" disabled={!chosenOptions.length}
                 onClick={() => { onSuggestOptions(chosenOptions); setChosenOptions([]); }}>
                 선택한 {chosenOptions.length}개를 매물 옵션 입력란에 추가
-              </button>
+              </button>:null}
             </>
           ) : <p className="meta">제안할 가전·가구 옵션이 아직 확인되지 않았어요.</p>}
           {missing.length ? (
@@ -408,6 +457,14 @@ export default function ListingPhotoGuide({ onSuggestOptions }: { onSuggestOptio
         {!available.imageEdit ? <p className="meta">현재 가구 없는 이미지 생성 기능은 서버에서 비활성화되어 있습니다.</p> : null}
       </div>
 
+      {listingId?<div className="photo-guide-tip">
+        <strong>실제 매물 사진 공개 확인</strong>
+        <p>원본이 아닌 재압축 JPEG만 저장합니다. 사람·문서·우편물·주소·반사된 개인정보를 직접 가린 뒤 게시하세요. 게시 시 누구나 사진을 볼 수 있습니다. AI가 가구를 없앤 가상 이미지는 저장하지 않습니다.</p>
+        <label className="photo-guide-consent"><input type="checkbox" checked={publicationConsent}
+          onChange={e=>setPublicationConsent(e.target.checked)}/>
+          <span>개인정보와 게시 권한을 확인했고, 가림 적용된 게시용 이미지의 공개에 동의합니다.</span></label>
+        {publishMessage?<p role="status">{publishMessage}</p>:null}
+      </div>:null}
       {error ? <p className="error" role="alert">{error}</p> : null}
       {maskId !== null ? <div ref={maskPanelRef} className="photo-guide-mask" role="group" aria-label="사진 개인정보 가리기">
         <h3>가리고 싶은 부분을 사각형으로 드래그해 주세요</h3>

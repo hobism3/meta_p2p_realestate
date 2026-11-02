@@ -1,0 +1,83 @@
+name: directhome-three-chapter-final-video
+on:
+  push:
+    branches: [feat/three-chapter-hackathon-film-20261103, main]
+    paths:
+      - .github/workflows/assemble-three-chapter-video.yml
+      - web/scripts/assemble-three-chapter-demo.py
+permissions:
+  contents: write
+  actions: read
+jobs:
+  film:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install deterministic video editor
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg poppler-utils
+          python3 -m pip install --quiet --break-system-packages 'Pillow==11.3.0' 'pydub==0.25.1'
+      - name: Retrieve real product recording and natural neural narration
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p web/demo-artifacts/three-chapter web/demo-artifacts/voice
+          cd web
+          gh run download 41547533968 -n directhome-three-chapter-raw -D .
+          gh run download 41548065231 -n directhome-three-chapter-neural-narration -D demo-artifacts/voice
+          test -s demo-artifacts/three-chapter/directhome-three-chapter-draft.mp4
+          test -s demo-artifacts/voice/voice-cues.json
+      - name: Render same fictional educational PDF in original workflow
+        run: |
+          pdftoppm -f 1 -l 1 -singlefile -scale-to 530 -png \
+            web/demo-evidence/rights-study-synthetic.pdf \
+            web/demo-artifacts/educational-rights-preview
+      - name: Create in-app three-chapter video with full natural narration
+        run: |
+          cd web
+          python3 scripts/assemble-three-chapter-demo.py
+      - name: Keep finalized MP4 and documentary evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: directhome-three-chapter-final-video
+          path: |
+            web/demo-artifacts/DirectHome_Three_Chapters_English_Demo_20261103.mp4
+            web/demo-artifacts/three-chapter-edit-manifest.json
+            web/demo-artifacts/three-chapter/chapter-cues.json
+            web/demo-evidence/rights-study-synthetic.pdf
+          retention-days: 90
+          if-no-files-found: error
+      - name: Publish downloadable GitHub Release, video plus evidence
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=directhome-three-chapter-demo-20261103
+          mkdir -p web/demo-artifacts/real-meta-provenance
+          gh release download directhome-real-meta-demo-20261103 \
+            -p 'source_meta_generated.jpg' -p 'empty_view_actual.webp' \
+            -p 'vision_actual.json' -p 'manifest.json' \
+            -D web/demo-artifacts/real-meta-provenance
+          ASSETS=(
+            web/demo-artifacts/DirectHome_Three_Chapters_English_Demo_20261103.mp4
+            web/demo-artifacts/three-chapter-edit-manifest.json
+            web/demo-artifacts/three-chapter/chapter-cues.json
+            web/demo-evidence/rights-study-synthetic.pdf
+            web/demo-artifacts/real-meta-provenance/source_meta_generated.jpg
+            web/demo-artifacts/real-meta-provenance/empty_view_actual.webp
+            web/demo-artifacts/real-meta-provenance/vision_actual.json
+            web/demo-artifacts/real-meta-provenance/manifest.json
+          )
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
+          else
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --target "$GITHUB_SHA" \
+              --title 'DirectHome: 3-minute product demo — listing, Jiptok, registry' \
+              --notes 'Three in-product chapters, 2:55 with English neural narration: (1) educational Mock title-document auto-prefill, genuine previously recorded Meta photo classification and furniture-free edit replayed within the listing studio, (2) synthetic Jiptok bilateral confirmation and next-step tracking, (3) browser-local fictional PDF rights extraction and review. Recorded real app UI, never represented as fresh live model inference. No real people or actual legal registry records. Source hashes, JSON results and fictional PDF included for judging.'
+          fi

@@ -94,6 +94,7 @@ export async function POST(req: Request): Promise<Response> {
         output_format: "webp",
         response_format: "b64_json",
         reasoning_strength: "low",
+        tool_enablement: { enable_image_search: false, enable_web_search: false, enable_shell: false },
       }),
       signal: controller.signal,
       cache: "no-store",

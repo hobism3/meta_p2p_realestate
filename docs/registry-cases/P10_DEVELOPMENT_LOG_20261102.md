@@ -24,3 +24,26 @@
 - PR 생성·CI/실패 원인/보완 커밋/최종 main SHA/실행 스킵을 단계별로 **이 문서 뒤에 append**한다.
 - 사진 시각 AI와 코드 변경 충돌 없는지 GitHub 변경 파일 목록을 재검토.
 - 실 사용자 2인 거래 E2E·실 등기 API/외부 법무 자문·B 본인확인/C 소유권 검증/Production은 별도 OPEN.
+
+## 2026-11-02 · P10 최종 검증 및 main 병합 확정
+
+- PR [#29](https://github.com/hobism3/meta_p2p_realestate/pull/29), head `f2afc8c8f3df9787ba2bb2cdcdf14368caf75249`; GitHub verify-fast **SUCCESS**, verify-e2e **SUCCESS**.
+- **main 병합 완료**: squash commit `74539862ed94639bb6506898e924cdf2a0de201e`.
+- Build 단계에서 `pdfjs-dist@4.10.38` 및 해당 로컬 PDF worker(약 1.42MB) 생성/서빙 성공. `npm ci` lock 검증과 Next.js production build PASS.
+- Node 단위·DAL **328/328 PASS**; API·READ_ONLY **206/206 PASS**; Playwright PC/모바일 **88 PASS / 4 SKIP / 0 FAIL**. **선별된 실사용자 거래 검증과는 별개**.
+- 브라우저 가상 PDF 시연(앱의 ASCII 허구 PDF)이 PDF.js worker를 거쳐 실제 텍스트 textarea에 들어가는 것을 데스크톱·모바일에서 확인. 이 PDF에는 한국어 갑/을구가 없으므로 **'권리 없음'으로 확정하지 않고 구조 불명 처리**하는 것을 확인.
+- 15개 P9 한국어 가상 텍스트/8개 추가 P10 좌표 복원 회귀와 사람의 명시적 검토/일회성 권리 정보 전달을 유지. 실제 한국 법원 PDF/OCR 정답 정확도로 확대 해석 금지.
+- 별도 시각 AI 사진 가이드 PR #25는 최종 확인 당시 OPEN(head `87ff2f3b`), P10 PR #29와 Git changed filenames **교집합 0개**. 상대 브랜치/사진분석 코드는 수정·병합하지 않음.
+- Production URL/실등기 원본·정부 API/법률 자문, 실계정 2인 거래, 스캔 PDF OCR/취소선과 다중등기 완전 복원 검증은 **아직 수행하지 않았음**.
+
+### 원인-수정-검증 기록
+1. 최초 CI 빌드: PDF 좌표 검증 코드의 필터 callback 타입 `implicit any` → 유효하지 않은 조각을 **전면 거부하는 명시적 루프**로 보완, 누락된 문자 객체와 너무 긴 줄의 부분 추출 금지.
+2. 성능 검토: PDF 텍스트 좌표 행 그룹화가 O(N²)로 느려질 수 있음 → Y 정렬 후 버킷 분리 O(N log N)으로 변경. 페이지당 9,000개 객체의 입력 상한 유지.
+3. 최초 Playwright 자동 PDF 시험: 실제 PDF.js 텍스트 추출은 성공했지만 테스트 선택자가 ‘추출 규모:’의 `strong` 요소만 잡아 그 옆 `1페이지` 텍스트를 보지 못함. PC/모바일 **동일 테스트 선택자 오류 2건** → 부모 요소 단위 assertion으로 정정, 최종 88 PASS/4 SKIP.
+4. 브라우저에서 PDF.js를 실행하는 과정에 제3자 PDF CDN을 사용하지 않고 사전복제한 동일 버전 로컬 worker 이용. 샘플 PDF는 **GET**으로 앱 자체 가상 PDF를 읽어왔으며 실제 사용자 문서 업로드 POST는 테스트에서 발생하지 않음.
+5. 사용자 및 원본 문서에서 추출한 문자열·주소·이름은 Git/서버/Meta API/테스트 로그로 보내지 않음. P8으로 전달되는 값은 검토된 allowlist 정형 입력.
+
+### P11 예정 연결
+- 저작권·개인정보 처리가 허용된 **실제 구조를 가진 한국어 합성 PDF**와 사람 검토 정답(페이지/행/문서 좌표/말소선)을 확보.
+- 현행/말소 자동 확정 전에는 근거 crop/원본 위치 시각 확인 UX, 별도 OCR/좌표 정확도 평가 체계가 필요.
+- 정식 외부 등기 API, 본인확인기관, 건축물대장·선순위 임차인 및 세금 권한, 법적 위험 산정/계약 안정성은 후속 별도 게이트로 유지.

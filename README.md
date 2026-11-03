@@ -4,6 +4,8 @@
 
 **Live demo:** https://meta-p2p-realestate.vercel.app/  
 **Repository:** https://github.com/hobism3/meta_p2p_realestate  
+**Recommended 2:55 hackathon video — in-product three-chapter journey (registry prefill → photo AI, Jiptok, local rights check):** https://github.com/hobism3/meta_p2p_realestate/releases/tag/directhome-three-chapter-demo-20261103  
+**3-chapter proof and narration script:** [docs/THREE_CHAPTER_HACKATHON_DEMO_20261103.md](docs/THREE_CHAPTER_HACKATHON_DEMO_20261103.md)  
 **Actual Meta AI demonstration (generated room, Vision air conditioner detection, furniture-free edit):** https://github.com/hobism3/meta_p2p_realestate/releases/tag/directhome-real-meta-demo-20261103  
 **Evidence and model-call audit:** [docs/REAL_META_VERIFICATION_20261103.md](docs/REAL_META_VERIFICATION_20261103.md)  
 

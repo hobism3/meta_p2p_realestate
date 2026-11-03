@@ -4,6 +4,7 @@ import { authHeaders } from "../lib/client-auth";
 import { PHOTO_DEMO_ASSETS } from "../lib/photo-demo-assets";
 import { scrubCanvasJpeg } from "../lib/jpeg-scrub";
 import { useUiLocale } from "../lib/ui-locale";
+import { listingFeatureLabel, listingUiMessage, PHOTO_PRIVACY_EN, SAMPLE_PHOTO_EN } from "../lib/listing-ui-copy";
 import {
   imageDifferenceHash, nearDuplicateHash, photoQualityHints, recommendedPhotoRooms,
   photoCoverageMessages, photoOptionCandidates,
@@ -19,12 +20,6 @@ type Mask = { x: number; y: number; w: number; h: number };
 const ROOM_EN: Record<string,string> = {
  living_room:"Living room",bedroom:"Bedroom",kitchen:"Kitchen",bathroom:"Bathroom",
  entrance:"Entrance",balcony:"Balcony",other:"Other room",unknown:"Uncertain",
-};
-const FEATURE_EN: Record<string,string> = {
- "에어컨":"Air conditioner","시스템에어컨":"Central A/C","냉장고":"Refrigerator",
- "세탁기":"Washing machine","건조기":"Dryer","침대":"Bed","옷장":"Wardrobe",
- "인덕션":"Induction cooktop","가스레인지":"Gas cooktop","전자레인지":"Microwave",
- "비데":"Bidet","싱크대":"Kitchen sink",
 };
 const COVERAGE_EN: Record<string,string> = {
  "욕실":"Bathroom","주방":"Kitchen","생활 공간(거실·침실)":"Living / sleeping area",
@@ -81,8 +76,9 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
   onSuggestOptions?: (values: string[]) => void | Promise<void>; listingId?: string; onPublished?: () => void;
  }) {
   const {tr,en}=useUiLocale();
+  const ui=(message:string)=>listingUiMessage(message,en);
   const roomName=(room:string)=>en?(ROOM_EN[room]??room):PHOTO_ROOM_NAMES[room as keyof typeof PHOTO_ROOM_NAMES];
-  const featureName=(item:string)=>en?(FEATURE_EN[item]??item):item;
+  const featureName=(item:string)=>listingFeatureLabel(item,en);
   const coverageMessage=(message:string)=>{
     if(!en)return message;
     for(const [key,value] of Object.entries(COVERAGE_EN)) if(message.startsWith(key+" 사진은")) return value+" photo is missing. If this area exists, consider adding a photo.";
@@ -384,7 +380,7 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
           <h2>{tr("사진으로 우리 집 정보 정리하기","Organize your home with photos")}</h2>
           <p>{tr("사진을 선택하고, AI가 찾은 정보를 확인해 매물 등록에 활용하세요.","Select photos and review AI findings before including them in your listing.")}</p>
         </div>
-        <span className="photo-guide-count">{items.length}<small>/ 6장</small></span>
+        <span className="photo-guide-count">{items.length}<small>{tr("/ 6장", "/ 6 photos")}</small></span>
       </div>
       <div className="photo-guide-milestones" aria-label={tr("사진 등록 진행 상황","Photo workflow progress")}>
         <span className={items.length ? "is-done" : ""}><b>01</b> {tr("사진 선택","Choose photos")} <small>{items.length}{tr("장"," photos")}</small></span>
@@ -396,7 +392,7 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
           <p>{tr("최대 6장 · JPG, PNG, WebP · 장당 8MB 이하","Up to 6 images · JPG, PNG, WebP · 8MB each")}</p>
         </div>
         <label className="btn photo-guide-upload">
-          + 사진 추가하기
+          {tr("+ 사진 추가하기", "+ Add photos")}
           <input type="file" aria-label={tr("우리 집 사진 추가","Add property photos")} accept="image/jpeg,image/png,image/webp"
             multiple onChange={upload} disabled={locked || items.length >= 6} />
         </label>
@@ -408,12 +404,12 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
       <div className="photo-guide-sample-list" aria-label={tr("매물 사진 예시","Sample listing photos")}>
         {PHOTO_DEMO_ASSETS.map((example) => (
           <button key={example.id} type="button" className="photo-guide-sample"
-            aria-label={example.label + " 예시 사진 추가"}
+            aria-label={en ? `Add ${SAMPLE_PHOTO_EN[example.id].label.toLowerCase()} sample photo` : example.label + " 예시 사진 추가"}
             disabled={locked || items.length >= 6 || items.some((item) => item.name === example.fileName)}
             onClick={() => void loadSyntheticDemo(example)}>
             <img src={example.src} alt="" loading="lazy" />
-            <strong>{tr(example.label,ROOM_EN[example.id==="living"?"living_room":example.id==="kitchen"?"kitchen":"other"]??"Room")} {tr("예시","sample")}</strong>
-            <span>{example.hint}</span>
+            <strong>{tr(example.label,SAMPLE_PHOTO_EN[example.id].label)} {tr("예시","sample")}</strong>
+            <span>{tr(example.hint,SAMPLE_PHOTO_EN[example.id].hint)}</span>
           </button>
         ))}
       </div>
@@ -433,7 +429,7 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
         <div className="photo-guide-permission">
           <span className="photo-guide-permission-icon" aria-hidden="true">▧</span>
           <div>
-            <strong>가구 없는 모습 미리보기 <small>{tr("선택 기능","Optional")}</small></strong>
+            <strong>{tr("가구 없는 모습 미리보기", "Preview a furniture-free room")} <small>{tr("선택 기능","Optional")}</small></strong>
             <p>{tr("AI가 가구를 지운 가상 이미지입니다. 실제 구조·하자 정보로 사용하지 마세요.","A virtual room preview, not evidence of the actual structure or defects.")}</p>
             <label className="photo-guide-consent">
               <input type="checkbox" checked={editConsent} onChange={e => setEditConsent(e.target.checked)} />
@@ -452,14 +448,14 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
           <input type="checkbox" checked={publicationConsent} onChange={e => setPublicationConsent(e.target.checked)} />
           <span>{tr("개인정보와 게시 권한을 확인했고, 검토한 게시용 JPEG 사진 공개에 동의합니다.","I have checked privacy and publishing rights and approve the reviewed JPEG for public display.")}</span>
         </label>
-        {publishMessage ? <p role="status" className="photo-guide-publish-message">{publishMessage}</p> : null}
+        {publishMessage ? <p role="status" className="photo-guide-publish-message">{ui(publishMessage)}</p> : null}
       </div> : <p className="photo-guide-save-note">{tr("사진은 아직 저장·게시되지 않았어요. 매물 등록 후 이 화면에서 같은 사진을 검토하고 공개할 수 있습니다.","Photos are not published. After saving, review and publish them here without reuploading.")}</p>}
-      {analysisProgress ? <p className="photo-guide-progress" role="status" aria-live="polite">{analysisProgress}</p> : null}
+      {analysisProgress ? <p className="photo-guide-progress" role="status" aria-live="polite">{ui(analysisProgress)}</p> : null}
       <div className="photo-guide-grid">
         {items.map((item) => (
           <article className={"photo-guide-item" + (item.reviewed ? " is-reviewed" : "")} key={item.id}>
             <div className="photo-guide-thumbnail">
-              <img src={item.url} alt={"매물 사진 원본 또는 일부 가림 처리본: " + item.name} />
+              <img src={item.url} alt={tr("매물 사진 원본 또는 일부 가림 처리본: ", "Original or privacy-masked property photo: ") + item.name} />
               {item.review ? <span className="photo-guide-room-badge">{roomName(item.review.room)}</span> : null}
             </div>
             <div className="photo-guide-item-text">
@@ -470,18 +466,13 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
                 </span>
               </div>
               <small>{item.metrics.width}×{item.metrics.height} · {Math.round(item.blob.size / 1024)}KB · {item.masked ? tr("개인 영역 가림 적용","Privacy mask applied"):tr("가림 미적용","Not masked")}</small>
-              {item.suggestions.map((hint) => <p className="photo-guide-hint" key={hint}>· {en?({
- "해상도가 낮아요. 더 선명한 사진을 권장해요.":"Low resolution. Try a sharper photo.",
- "전체적으로 어두워 보여요. 조명을 켜고 다시 촬영해 보세요.":"The photo appears dark.",
- "전체적으로 너무 밝아요. 노출을 조절해 보세요.":"The photo appears overexposed.",
- "압축이 강할 수 있어요. 원본 품질을 확인해 주세요.":"Image compression may be high.",
-} as Record<string,string>)[hint]??hint:hint}</p>)}
+              {item.suggestions.map((hint) => <p className="photo-guide-hint" key={hint}>· {ui(hint)}</p>)}
               {item.review ? (
                 <>
                   <p><b>{roomName(item.review.room)}</b> {tr("사진으로 분류했어요.","detected in this photo.")}</p>
                   {item.review.features.length ? <p>{tr("보이는 물건: ","Visible items: ")}{item.review.features.map(featureName).join(", ")}</p> : null}
                   {item.review.privacyFlags.length ? <p className="photo-guide-warning">
-                    {tr("가림 확인이 필요한 부분: ","Privacy areas to check: ")}{item.review.privacyFlags.map((v) => PHOTO_PRIVACY_LABELS[v]).join(", ")}
+                    {tr("가림 확인이 필요한 부분: ","Privacy areas to check: ")}{item.review.privacyFlags.map((v) => en ? PHOTO_PRIVACY_EN[v] : PHOTO_PRIVACY_LABELS[v]).join(", ")}
                   </p> : null}
                 </>
               ) : null}
@@ -499,7 +490,7 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
               </div>
               <div className="photo-guide-actions">
                 <button type="button" className="btn ghost" disabled={locked} onClick={() => { setMaskId(item.id); setMasks([]); }}>
-                  개인 물품 가리기
+                  {tr("개인 물품 가리기", "Mask private items")}
                 </button>
                 {publishedIds.includes(item.id) && listingId ?
                   <a className="btn ghost" href={"/owner/listings/" + encodeURIComponent(listingId) + "#owner-gallery"}>{tr("게시된 사진 관리 →","Manage published photos →")}</a> :
@@ -513,8 +504,8 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
             </div>
             {item.emptyPreview ? (
               <div className="photo-guide-comparison">
-                <figure><img src={item.url} alt="원본 또는 가림 처리한 사진" /><figcaption>{tr("원본 사진","Original photo")}</figcaption></figure>
-                <figure><img src={item.emptyPreview} alt="가구를 없앤 AI 예상 이미지" /><figcaption>{tr("AI 가상 이미지 · 실제 모습 아님","AI simulation · Not the real room")}</figcaption></figure>
+                <figure><img src={item.url} alt={tr("원본 또는 가림 처리한 사진", "Original or privacy-masked photo")} /><figcaption>{tr("원본 사진","Original photo")}</figcaption></figure>
+                <figure><img src={item.emptyPreview} alt={tr("가구를 없앤 AI 예상 이미지", "AI-generated furniture-free simulation")} /><figcaption>{tr("AI 가상 이미지 · 실제 모습 아님","AI simulation · Not the actual condition")}</figcaption></figure>
                 <p>{tr("AI가 보이지 않는 바닥·벽을 추정해 채울 수 있어요. 실제 면적, 구조, 하자 상태 확인 자료로 사용하지 마세요.","AI may invent unseen floors or walls. This preview is not evidence of area, structure or property condition.")}</p>
               </div>
             ) : null}
@@ -529,7 +520,7 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
 
       {reviewed.length ? (
         <section className="photo-guide-suggestions" aria-label={tr("자동으로 찾은 매물 정보","AI-suggested listing details")}>
-          <h3>{en?`AI findings from ${reviewed.length} photo(s)`:`AI가 사진 ${reviewed.length}장에서 찾아낸 내용`}</h3>
+          <h3>{en?`AI findings from ${reviewed.length} ${reviewed.length === 1 ? "photo" : "photos"}`:`AI가 사진 ${reviewed.length}장에서 찾아낸 내용`}</h3>
           <p>{tr("공간: ","Rooms: ")}{Array.from(new Set(reviewed.map((v) => roomName(v.room)))).join(" · ")}</p>
           {options.length ? (
             <>
@@ -543,10 +534,11 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
               </div>
               {onSuggestOptions?<button type="button" className="btn ghost" disabled={!chosenOptions.length || locked}
                 onClick={() => void applyChosenOptions()}>
-                {applyingOptions ? "선택 옵션 저장 중..." : listingId ?
+                {applyingOptions ? tr("선택 옵션 저장 중...", "Saving selected amenities...") : en ?
+                  `Add selected ${chosenOptions.length} ${chosenOptions.length === 1 ? "amenity" : "amenities"} to ${listingId ? "listing" : "draft"}` : listingId ?
                   `선택한 ${chosenOptions.length}개를 실제 매물에 저장` : `선택한 ${chosenOptions.length}개를 매물 옵션 입력란에 추가`}
               </button>:null}
-              {optionMessage ? <p className="photo-guide-option-success" role="status">{optionMessage}</p> : null}
+              {optionMessage ? <p className="photo-guide-option-success" role="status">{ui(optionMessage)}</p> : null}
             </>
           ) : <p className="meta">{tr("제안할 가전·가구 옵션이 아직 확인되지 않았어요.","No amenity candidates were detected.")}</p>}
           {missing.length ? (
@@ -560,7 +552,7 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
       ) : null}
 
       <p className="photo-guide-disclaimer">{tr("AI는 사진에 보이는 내용만 추정해요. 실제 제공 옵션과 공간 상태는 집주인이 확인해야 합니다. 업로드 원본과 AI 편집 이미지는 서버에 영구 저장하지 않습니다.","AI only infers what appears in photos. Owners must confirm real amenities and condition. Original and AI-edited images are not stored permanently.")}</p>
-      {error ? <p className="error" role="alert">{error}</p> : null}
+      {error ? <p className="error" role="alert">{ui(error)}</p> : null}
       {maskId !== null ? <div ref={maskPanelRef} className="photo-guide-mask" role="group" aria-label={tr("사진 개인정보 가리기","Mask personal information")}>
         <h3>{tr("가리고 싶은 부분을 사각형으로 드래그해 주세요","Drag to mask areas containing private information")}</h3>
         <p className="meta">{tr("불투명 색으로 덮으며, 이미 처리된 부분도 다시 그릴 수 있어요. AI 편집 결과에는 동일한 가림 영역을 다시 적용합니다.","Masked areas receive an opaque fill, also applied to AI-edit previews.")}</p>
@@ -582,9 +574,9 @@ export default function ListingPhotoGuide({ onSuggestOptions, listingId, onPubli
           }}
           onPointerCancel={() => { setStart(null); setDraftMask(null); }} />
         <div className="photo-guide-actions">
-          <button type="button" className="btn ghost" onClick={() => setMasks((prev) => prev.slice(0, -1))}>직전 영역 취소</button>
-          <button type="button" className="btn" onClick={() => void saveMask()}>가림 적용</button>
-          <button type="button" className="btn ghost" onClick={() => { setMaskId(null); setMasks([]); }}>닫기</button>
+          <button type="button" className="btn ghost" onClick={() => setMasks((prev) => prev.slice(0, -1))}>{tr("직전 영역 취소", "Undo last mask")}</button>
+          <button type="button" className="btn" onClick={() => void saveMask()}>{tr("가림 적용", "Apply mask")}</button>
+          <button type="button" className="btn ghost" onClick={() => { setMaskId(null); setMasks([]); }}>{tr("닫기", "Close")}</button>
         </div>
       </div> : null}
     </section>

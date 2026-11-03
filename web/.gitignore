@@ -7,3 +7,8 @@ data/
 .playwright-browsers/
 test-results/
 playwright-report/
+
+# Downloaded evidence, render intermediates and local video deliverables.
+demo-artifacts/
+scripts/__pycache__/
+*.tsbuildinfo

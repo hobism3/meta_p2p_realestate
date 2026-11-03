@@ -3,6 +3,8 @@ import {useEffect,useMemo,useRef,useState} from "react";
 import {REGISTRY_TRANSFER_KEY,parseSanitizedTransfer,toSanitizedTransfer} from "../../../lib/registry-extraction-transfer";
 import {authHeaders,getAccessToken} from "../../../lib/client-auth";
 import {useUiLocale} from "../../../lib/ui-locale";
+import {registryEnglishView} from "../../../components/RegistryEnglish";
+import {registryEnglish,formatRegistryAmount} from "../../../lib/registry-english";
 import {REGISTRY_SIGNALS,registryReview,type RegistryFlag} from "../../../lib/registry-review";
 import {
  REVIEW_CHECKS,RIGHT_LABELS,REVIEW_AGE_REMINDER_DAYS,reviewRegistryRights,
@@ -108,19 +110,25 @@ export default function RegistryReadingGuide(){
   finally{setSharing(false);}
  };
  const copy=async()=>{
-  const text=[
+  const text=(en?[
+   "Jiptok rights checklist (user-entered information, not legal verification)",
+   `Entered issue date: ${issuedOn||"Unknown"} / Fictional example: ${example?"Yes":"No"}`,
+   `Mortgages entered as active: ${structured.activeMortgageCount} / Maximum secured amount total: ${structured.activeMortgageMaximumManwon===null?"Incomplete or not applicable":formatRegistryAmount(structured.activeMortgageMaximumManwon)}`,
+   ...structured.findings.map(f=>`[${registryEnglish(f.title)}] ${registryEnglish(f.detail)} Next step: ${registryEnglish(f.nextAction)}`),
+   ...structured.notes.map(registryEnglish),
+  ]:[
    "집톡이 권리관계 자가점검 (사용자 입력 정보, 법적 검증 아님)",
    `등기 발급일(입력): ${issuedOn||"미확인"} / 가상 예시: ${example?"예":"아니오"}`,
    `입력한 현행 근저당권 ${structured.activeMortgageCount}건 / 유효 채권최고액 합계: ${structured.activeMortgageMaximumManwon===null?"금액 불완전":structured.activeMortgageMaximumManwon.toLocaleString("ko-KR")+"만원"}`,
    ...structured.findings.map(f=>`[${f.title}] ${f.detail} 추가 확인: ${f.nextAction}`),
    ...structured.notes,
-  ].join("\n");
+  ]).join("\n");
   try{
    await navigator.clipboard.writeText(text);
    setCopyNotice("분석 메모를 복사했습니다. 외부로 공유하기 전 정보와 개인정보 포함 여부를 확인하세요.");
   }catch{setCopyNotice("복사 기능을 사용할 수 없습니다. 화면에서 직접 내용을 확인해 주세요.");}
  };
- return <div className="grid owner-page registry-review-page">
+ return registryEnglishView(<div className="grid owner-page registry-review-page">
   <div className="owner-hero"><span>REGISTRY REVIEW · LOCAL ONLY</span>
    <h1>{tr("등기부 권리관계 읽기","Review property rights and title records")}</h1>
    <p>공식 등기부의 확인 내용을 바탕으로, 선순위 권리와 추가 서류 확인에 필요한 체크리스트를 만듭니다. 이 화면에서 원본 PDF·소유자명·주소·주민등록번호를 입력받거나 서버에 전송하지 않습니다.</p>
@@ -132,7 +140,7 @@ export default function RegistryReadingGuide(){
    <p className="meta">등기정보 열람과 외부 업체의 상업적 재이용 권한은 다른 문제입니다. 이 도구는 소유권·계약권한 인증이나 법률 자문을 제공하지 않습니다.</p>
    <div style={{display:"flex",flexWrap:"wrap",gap:12,alignItems:"end",marginTop:12}}>
     <label>{tr("문서 발급일 (사용자 확인)","Issue date (self-checked)")}<input aria-label={tr("등기부 발급일","Issue date")} type="date" value={issuedOn} onChange={e=>{setIssuedOn(e.target.value);setExample(false);}}/></label>
-    <label>{tr("예정 보증금 (만원·선택)","Planned deposit (optional)")}<input aria-label={tr("예정 보증금 만원","Planned deposit in ten-thousand KRW")} type="number" min="0" max="100000000" step="1" placeholder={tr("입력하지 않아도 됩니다","Optional")} value={deposit??""} onChange={e=>{setDeposit(optionalNumber(e.target.value));setExample(false);}}/></label>
+    <label>{tr("예정 보증금 (만원·선택)","Planned deposit (× ₩10,000, optional)")}<input aria-label={tr("예정 보증금 만원","Planned deposit in ten-thousand KRW")} type="number" min="0" max="100000000" step="1" placeholder={tr("입력하지 않아도 됩니다","Optional")} value={deposit??""} onChange={e=>{setDeposit(optionalNumber(e.target.value));setExample(false);}}/></label>
    </div>
    <p className="meta">발급 후 {REVIEW_AGE_REMINDER_DAYS}일 알림은 앱 자체의 확인 권고이며, 법에서 정한 등기부 유효기간이 아닙니다. 보증금만으로 안전성을 계산하지 않습니다.</p>
    <a className="btn ghost" href="/registry/cases">유형별 38개 교육 사례 보기 ↗</a>{" "}
@@ -227,5 +235,5 @@ export default function RegistryReadingGuide(){
    {shareNotice?<p role="status">{shareNotice}</p>:null}
    <a className="btn ghost" href={"/listings/"+encodeURIComponent(shareListingId)+"#registry-rights"}>매물 상세에서 안내 확인 →</a>
   </section>:null}
- </div>;
+ </div>,en);
 }

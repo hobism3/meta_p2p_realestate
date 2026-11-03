@@ -1,0 +1,23 @@
+{
+  "status": "approved-for-kinetic-render",
+  "reviewDate": "2026-11-03",
+  "timingNote": "Start times are editorial targets from the existing cut, not measured timings for new speech. Confirm speech duration and picture synchronization after synthesis.",
+  "disclosurePolicy": "Narrate the product workflow. Keep synthetic data, mock extraction, recorded Meta output, and mock Jiptok disclosures legible on screen. Keep virtual-preview and in-app-confirmation context near the relevant feature.",
+  "segments": [
+    {"index": 0, "start": 0, "text": "List smarter. Agree clearly. Check the record. DirectHome."},
+    {"index": 1, "start": 7, "text": "The owner starts by uploading a property registry document. DirectHome brings the address, unit details, and floor area into an editable draft. The owner checks the details against the document before adding them to the listing."},
+    {"index": 2, "start": 24, "text": "The details appear in the listing form, ready to review and edit. Next, the owner adds the deposit and monthly rent."},
+    {"index": 3, "start": 34, "text": "Next, the owner adds a living room photo. Muse Spark identifies the room and visible amenities, turning details in the image into suggestions for the listing."},
+    {"index": 4, "start": 46, "text": "Here, Muse Spark identifies an air conditioner. DirectHome suggests it as an amenity, and the owner checks the photo before selecting it. The owner decides which suggestions become part of the listing."},
+    {"index": 5, "start": 60, "text": "Next, compare the original photo with a furniture-free preview from Muse Image. This virtual view makes it easier to imagine the space with a different layout. The original stays alongside it for comparison."},
+    {"index": 6, "start": 75, "text": "Review the listing, then save it when you are ready."},
+    {"index": 7, "start": 80, "text": "Now, meet Jiptok, the neutral conversation companion. It brings proposals, confirmations, and open questions into view as the owner and visitor talk. Both people can follow the same discussion and see what still needs a decision."},
+    {"index": 8, "start": 96, "text": "The proposed deposit and monthly rent appear together on a versioned card. Both participants can review the same terms before responding."},
+    {"index": 9, "start": 107, "text": "The visitor has confirmed. The owner's response is still pending on the same proposal."},
+    {"index": 10, "start": 116, "text": "Once both confirm the same version, the card updates. Jiptok then highlights the next steps for the participants to review."},
+    {"index": 11, "start": 125, "text": "Next, open the property registry document for a closer review. DirectHome reads its text locally in the browser, bringing recorded entries, dates, and amounts into view. The document stays on the device during this check."},
+    {"index": 12, "start": 141, "text": "Compare each candidate entry with the original document. Check the date and maximum secured amount, then select the items to carry into the checklist. These notes help organize the follow-up checks that still need to be made."},
+    {"index": 13, "start": 157, "text": "The checklist brings the remaining questions together: recorded entries, prior tenants, unpaid taxes, and authority to sign. It helps the participants see what to check next before moving forward."},
+    {"index": 14, "start": 170, "text": "DirectHome. Clearer information. Shared decisions. People in control."}
+  ]
+}

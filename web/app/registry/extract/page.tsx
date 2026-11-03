@@ -11,6 +11,7 @@ import {
 import {REGISTRY_TRANSFER_KEY,toSanitizedTransfer} from "../../../lib/registry-extraction-transfer";
 import {RIGHT_LABELS,type RightStatus} from "../../../lib/registry-rights-analysis";
 import {useUiLocale} from "../../../lib/ui-locale";
+import {registryEnglishView} from "../../../components/RegistryEnglish";
 
 type ReviewSelection={read:boolean;status:RightStatus};
 const sampleCases=samples.cases;
@@ -25,8 +26,8 @@ function CandidateRow({candidate,selection,onUpdate}:{
  selection:ReviewSelection;
  onUpdate:(state:ReviewSelection)=>void;
 }){
- const {tr}=useUiLocale();
- return <article className="card" style={{marginBottom:10}}>
+ const {tr,en}=useUiLocale();
+ return registryEnglishView(<article className="card" style={{marginBottom:10}}>
   <h3>{RIGHT_LABELS[candidate.entry.kind]} · {candidate.entry.section} / 순위번호 {candidate.entry.rankNumber??"불명"}</h3>
   <p className="meta">근거 위치: {candidate.evidence.page===null?"페이지 미지정":candidate.evidence.page+"페이지"} · 복사 텍스트 {candidate.evidence.line}번째 줄 · 구조화 후보 {candidate.id}</p>
   <p className="meta">{tr("확인된 문자열을 그대로 표시하지 않고, 종류·순위·날짜·금액만 재구성합니다.","Only types, ranks, dates and amounts are shown, not the source text.")}</p>
@@ -45,7 +46,7 @@ function CandidateRow({candidate,selection,onUpdate}:{
    <input type="checkbox" checked={selection.read} onChange={ev=>onUpdate({...selection,read:ev.target.checked})}/>
    <span>{tr("원본과 대조했습니다. 이 항목만 다음 권리관계 자가점검으로 가져옵니다. (현행/말소의 법적 진위 인증이 아님)","I compared this item with the source PDF. Import it only as a reviewed candidate (not legal verification).")}</span>
   </label>
- </article>;
+ </article>,en);
 }
 
 export default function LocalRegistryTextExtractor(){
@@ -160,7 +161,7 @@ export default function LocalRegistryTextExtractor(){
  };
  const statusText=chosenExample?"가상의 테스트용 텍스트를 사용 중입니다. 실제 등기가 아닙니다.":"문서나 텍스트를 서버·Meta에 업로드하지 않습니다.";
 
- return <div className="grid owner-page registry-review-page">
+ return registryEnglishView(<div className="grid owner-page registry-review-page">
   <header className="owner-hero"><span>P10 · LOCAL PDF TEXT-LAYER READER</span>
    <h1>{tr("등기 권리기재 후보 추출","Extract title-record evidence")}</h1>
    <p><strong>{tr("PDF를 선택하면","When you select a PDF,")}</strong> 브라우저에 포함된 PDF.js로 글자와 페이지·좌표를 추출해 권리기재 후보를 자동 정리합니다. 결과는 사람이 원문과 대조한 후에만 점검 화면으로 전달할 수 있습니다.</p>
@@ -174,7 +175,7 @@ export default function LocalRegistryTextExtractor(){
     <input type="file" aria-label={tr("로컬 PDF 파일 선택","Choose local PDF")} accept="application/pdf,.pdf" disabled={busy} onChange={ev=>void choosePdf(ev.target.files?.[0]??null)}/>
    </label>
    {pdf&&localUrl?<div style={{marginTop:12}}>
-    <p><strong>{pdf.name}</strong> · {Math.round(pdf.size/1024)}KB · 브라우저 로컬</p>
+    <p><strong data-registry-source>{pdf.name}</strong> · {Math.round(pdf.size/1024)}KB · 브라우저 로컬</p>
     <a className="btn ghost" href={localUrl} target="_blank" rel="noopener noreferrer">원본 PDF 새 탭에서 대조하기 ↗</a>
     <p className="meta">글자가 누락되거나 레이아웃이 섞이면 원문을 직접 확인하세요. 스캔형 PDF에는 OCR이 없으므로 완전한 분석을 진행하지 않습니다.</p>
    </div>:null}
@@ -207,7 +208,7 @@ export default function LocalRegistryTextExtractor(){
   <section className="card">
    <h2>{tr("2. 자동 추출된 텍스트 확인 또는 직접 붙여넣기","2. Review extracted text or paste it")}</h2>
    <label htmlFor="registry-pasted-text">복사된 문자 자료 (최대 {REGISTRY_TEXT_MAX_CHARS.toLocaleString("ko-KR")}자)</label>
-   <textarea id="registry-pasted-text" spellCheck={false}
+   <textarea id="registry-pasted-text" lang="ko" data-registry-source spellCheck={false}
     style={{width:"100%",minHeight:225,padding:14,border:"1px solid #cbdad2",borderRadius:10,font:"inherit",lineHeight:1.5}}
     maxLength={REGISTRY_TEXT_MAX_CHARS+1}
     placeholder={"【갑 구】 소유권에 관한 사항\n1 | 가압류 | 2026.01.01\n【을 구】 소유권 이외의 권리에 관한 사항\n1 | 근저당권설정 | 2026.02.01 | 채권최고액 금1억2천만원정"}
@@ -248,5 +249,5 @@ export default function LocalRegistryTextExtractor(){
    <a className="btn ghost" href="/registry/cases">P8 권리 유형 사례집 보기 ↗</a>{" "}
    <a className="btn ghost" href="/registry/check">직접 권리관계 점검하기 ↗</a>
   </section>
- </div>;
+ </div>,en);
 }

@@ -4,12 +4,22 @@
 
 **Live demo:** https://meta-p2p-realestate.vercel.app/  
 **Repository:** https://github.com/hobism3/meta_p2p_realestate  
-**Recommended 2:55 hackathon video — in-product three-chapter journey (registry prefill → photo AI, Jiptok, local rights check):** https://github.com/hobism3/meta_p2p_realestate/releases/tag/directhome-three-chapter-demo-20261103  
-**Submission video (same demo with source PDF inset + English chat captions):** https://github.com/hobism3/meta_p2p_realestate/releases/download/directhome-three-chapter-demo-20261103/DirectHome_3Chapters_Kokoro_English_Chat_Captions_20261103.mp4  
+**Recommended hackathon release — three-feature kinetic opening, corrected English UI and new narration:** https://github.com/hobism3/meta_p2p_realestate/releases/tag/directhome-kinetic-demo-20261103
+
+**Submission video (2:55, 1080p):** [Watch / download the final film](https://github.com/hobism3/meta_p2p_realestate/releases/download/directhome-kinetic-demo-20261103/DirectHome_Kinetic_Editorial_20261103.mp4)
+
+**7-second opening:** [Preview the three features](https://github.com/hobism3/meta_p2p_realestate/releases/download/directhome-kinetic-demo-20261103/DirectHome_Kinetic_Opening_7s.mp4)
+
 **Submission cut and third-party rights policy:** [docs/FINAL_SUBMISSION_CUT_20261103.md](docs/FINAL_SUBMISSION_CUT_20261103.md)  
 **3-chapter proof and narration script:** [docs/THREE_CHAPTER_HACKATHON_DEMO_20261103.md](docs/THREE_CHAPTER_HACKATHON_DEMO_20261103.md)  
 **Actual Meta AI demonstration (generated room, Vision air conditioner detection, furniture-free edit):** https://github.com/hobism3/meta_p2p_realestate/releases/tag/directhome-real-meta-demo-20261103  
 **Evidence and model-call audit:** [docs/REAL_META_VERIFICATION_20261103.md](docs/REAL_META_VERIFICATION_20261103.md)  
+
+**Earlier dynamic editorial edit (archived):** [Rebuild and review guide](docs/DYNAMIC_DEMO_20261103.md)
+
+**English UI corrected and re-recorded:** [Translation scope and fresh-capture guide](docs/ENGLISH_DEMO_REFRESH_20261103.md)
+
+**Latest submission edit — three-feature kinetic opening + new product-first English voice:** [Scenario, reproduction and validation](docs/ENGLISH_DEMO_REFRESH_20261103.md#세-가지-피처를-먼저-보여주는-키네틱-편집-2026-11-03). Includes the full 2:55 film, a separate 7-second opening, voice-only edition and checksum-pinned rebuild assets. [Earlier submission videos](https://github.com/hobism3/meta_p2p_realestate/releases/tag/directhome-three-chapter-demo-20261103) remain available for provenance.
 
 **2026-11-01 legal review baseline:** `main@94108e1` (legal patch branch changes are not verified production releases)
 

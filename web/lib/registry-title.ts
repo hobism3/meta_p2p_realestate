@@ -12,10 +12,15 @@ function unit(value: string, suffix: "동" | "층" | "호"): string {
 }
 
 /** A draft label for the form; never a validated property identity. */
-export function registryDraftTitle(d: TitleFields): string {
+export function registryDraftTitle(d: TitleFields, en = false): string {
   const name = d.buildingName.value || d.buildingType.value;
   const dong = unit(d.buildingDong.value, "동");
   const unitOrFloor = unit(d.unit.value, "호") || unit(d.floor.value, "층");
+  if (en) {
+    const pieces = [name, dong ? `Building ${dong.slice(0, -1)}` : "",
+      unitOrFloor ? `${unitOrFloor.endsWith("호") ? "Unit" : "Floor"} ${unitOrFloor.slice(0, -1)}` : ""].filter(Boolean);
+    return pieces.length ? `${pieces.join(" · ")} (Needs review)` : "";
+  }
   const pieces = [name, dong, unitOrFloor].filter(Boolean);
   return pieces.length ? `${pieces.join(" ")} (확인 필요)` : "";
 }

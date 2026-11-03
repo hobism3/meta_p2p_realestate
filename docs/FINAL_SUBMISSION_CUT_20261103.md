@@ -1,10 +1,20 @@
-# Submission Cut: Rights-Safe Registry + English Jiptok Captions
+# Submission Cut: Three-Feature Kinetic Demo
 
 **Repository:** https://github.com/hobism3/meta_p2p_realestate  
 **Live product:** https://meta-p2p-realestate.vercel.app/  
-**Release:** https://github.com/hobism3/meta_p2p_realestate/releases/tag/directhome-three-chapter-demo-20261103
+**Current release:** https://github.com/hobism3/meta_p2p_realestate/releases/tag/directhome-kinetic-demo-20261103
 
-## Final preferred video
+## Current preferred video
+
+[DirectHome_Kinetic_Editorial_20261103.mp4](https://github.com/hobism3/meta_p2p_realestate/releases/download/directhome-kinetic-demo-20261103/DirectHome_Kinetic_Editorial_20261103.mp4)
+
+The 175-second, 1080p/30fps film opens with **LIST SMARTER / AGREE CLEARLY / CHECK THE RECORD**, then shows the corrected English listing/photo and registry workflows, and the existing Korean Jiptok conversation with English editorial translations. Product-first English narration is newly synthesized with local Kokoro `af_heart`; original 120 BPM music and kinetic typography support the walkthrough. Educational/Mock/recorded-output disclosures remain on screen. The old Jiptok caption timing discrepancy is corrected by holding genuine recorded frames until the associated English panel changes.
+
+Full-file decoding, narration timing, AAC integrity, audio levels and 13 sampled product rectangles pass; independent QA reviewed the final encoded frames. [Scenario, reproduction and detailed validation](ENGLISH_DEMO_REFRESH_20261103.md). The release also includes a 7-second opening, voice-only version, poster, exact UI/narration rebuild sources, validation summary and SHA-256 checksums.
+
+## Archived previous submission cut
+
+The following records the earlier release and its production method; its unchanged-audio and no-new-TTS statements do not describe the current kinetic film. [Preserved previous release](https://github.com/hobism3/meta_p2p_realestate/releases/tag/directhome-three-chapter-demo-20261103).
 
 `DirectHome_3Chapters_Kokoro_English_Chat_Captions_20261103.mp4`
 
@@ -27,7 +37,7 @@ Merging to the Git-connected `main` branch normally triggers a Vercel Production
 
 The software and site are a prototype. The *registration* PDF auto-fill is a SHA-verified **deterministic educational Mock**, not a real-time Meta registry OCR. Existing actual Meta Vision & Muse Image results were genuinely generated in an earlier captured provider session and then accurately replayed inside the application studio; this film does not spend new credits. Jiptok bilateral agreement is driven by synthetic, authenticated local test actors and persisted proposal state. Independent legal verification, professional title review, and signature handling are out of scope.
 
-## Build and acceptance
+## Archived build and acceptance
 
 - Editor source: `web/scripts/overlay-english-jiptok-captions.py`.
 - Release CI: `.github/workflows/publish-jiptok-english-chat-captions.yml`.

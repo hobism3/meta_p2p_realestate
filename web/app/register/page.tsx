@@ -12,6 +12,7 @@ import {
 import RegistryImport from "../../components/RegistryImport";
 import ListingPhotoGuide from "../../components/ListingPhotoGuide";
 import { useUiLocale } from "../../lib/ui-locale";
+import { listingFeatureLabel, featureInputDisplay, featureInputCanonical, tradeTypeLabel, englishListingPrice, wonFromManwon, listingUiMessage } from "../../lib/listing-ui-copy";
 
 const STORAGE_KEY = "directhome.register.wizard.v1";
 const NUMBER_FIELDS = new Set<keyof RegisterDraft>(["deposit", "rent", "salePrice", "fee", "area"]);
@@ -52,6 +53,9 @@ function FormField({
 
 export default function RegisterPage({ searchParams }: { searchParams: { edit?: string } }) {
   const {tr,en} = useUiLocale();
+  const ui = (message: string) => listingUiMessage(message, en);
+  const sourceText = (value: string) => en && /[가-힣]/.test(value);
+  const displayValue = (value: string) => labelValue(value, tr("아직 입력 전", "Not entered"));
   const editId = searchParams.edit ?? "";
   const [form, setForm] = useState<RegisterDraft>(EMPTY_REGISTER_DRAFT);
   const [stage, setStage] = useState<RegisterStep>(editId ? 1 : 0);
@@ -208,7 +212,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
   };
 
   const resetDraft = () => {
-    if (!window.confirm("이 탭에 임시 저장된 매물 정보를 모두 지울까요?")) return;
+    if (!window.confirm(tr("이 탭에 임시 저장된 매물 정보를 모두 지울까요?", "Clear all listing details saved in this tab?"))) return;
     try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     setForm({ ...EMPTY_REGISTER_DRAFT });
     setStage(0);
@@ -218,7 +222,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
   };
 
   if (loading || !hydrated) return <div className="wizard-loading card" role="status">{tr("매물 정보를 준비하고 있어요...","Preparing your listing...")}</div>;
-  if (editId && !isCustom) return <div className="card">시연용 기본 매물은 수정할 수 없습니다. <a href="/register">{tr("새 매물 등록하기","Create a new listing")}</a></div>;
+  if (editId && !isCustom) return <div className="card">{tr("시연용 기본 매물은 수정할 수 없습니다.", "Built-in demo listings cannot be edited.")} <a href="/register">{tr("새 매물 등록하기","Create a new listing")}</a></div>;
 
   const filled = [form.title, form.address, form.area, form.moveIn, form.publisher].filter((value) => value.trim()).length;
   const stageInfo = en ? {...STAGE_CONTENT[stage],title:STAGE_EN[stage][0],desc:STAGE_EN[stage][1]} : STAGE_CONTENT[stage];
@@ -260,7 +264,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
       ) : null}
 
       <div className={"wizard-layout" + (saved ? " wizard-layout--saved" : "")}>
-        <section id="listing-wizard-content" className="wizard-main" aria-label={saved ? "등록 완료 및 사진 게시" : undefined} aria-labelledby={!saved ? "wizard-stage-heading" : undefined}>
+        <section id="listing-wizard-content" className="wizard-main" aria-label={saved ? tr("등록 완료 및 사진 게시", "Listing saved and photo publishing") : undefined} aria-labelledby={!saved ? "wizard-stage-heading" : undefined}>
           {saved ? (
             <div className="wizard-success wizard-success--inline" role="status" aria-live="polite">
               <div className="wizard-success-mark" aria-hidden="true">✓</div>
@@ -318,10 +322,10 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
               <div className="wizard-fields-grid">
                 <FormField id="title" title={tr("매물 제목 *","Title *")} value={form.title}
                   placeholder={tr("예: 신림역 도보 5분 원룸","E.g. Sunny apartment near station")} className="is-wide" onChange={(v) => set("title", v)}
-                  hint="짧고 구체적으로 작성하면 좋아요." />
+                  hint={tr("짧고 구체적으로 작성하면 좋아요.", "Keep it short and specific.")} />
                 <FormField id="address" title={tr("집 주소 *","Address *")} value={form.address}
                   placeholder={tr("예: 서울 관악구 신림로 100 (가상)","E.g. Fictional Seoul address")} className="is-wide" onChange={(v) => set("address", v)}
-                  hint="시연용 가상 주소를 사용해 주세요." />
+                  hint={tr("시연용 가상 주소를 사용해 주세요.", "Use a fictional address for this demo. Source addresses remain in their original language.")} />
                 <FormField id="area" title={tr("전용 면적 *","Area *")} value={form.area}
                   placeholder={tr("예: 23","E.g. 23")} onChange={(v) => set("area", v)} inputMode="decimal"
                   hint={tr("㎡ 단위 · PDF를 분석했다면 자동으로 입력됩니다.","Square meters (㎡); PDF can prefill.")} />
@@ -332,7 +336,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
             {stage === 2 ? (
               <div className="wizard-deal">
                 <fieldset className="wizard-trade-group">
-                  <legend>거래 유형 {editId ? "(수정 불가)" : ""}</legend>
+                  <legend>{tr("거래 유형", "Transaction type")} {editId ? tr("(수정 불가)", "(cannot be changed)") : ""}</legend>
                   <div className="wizard-trade-cards">
                     {([
                       { name: "월세", desc: "보증금 + 월 임대료", sign: "₩" },
@@ -359,7 +363,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
                   {form.tradeType === "매매" ? <FormField id="salePrice" title={tr("매매가 *","Sale price *")} value={form.salePrice}
                     placeholder={tr("예: 85000","E.g. 85000")} hint={tr("단위: 만원","In ₩10,000")} onChange={(v) => set("salePrice", v)} inputMode="numeric" /> : null}
                 </div>
-                <div className="wizard-tip"><span aria-hidden="true">ⓘ</span> 가격은 문서에서 자동 추출하지 않습니다. 희망 거래 조건을 직접 입력해 주세요.</div>
+                <div className="wizard-tip"><span aria-hidden="true">ⓘ</span> {tr("가격은 문서에서 자동 추출하지 않습니다. 희망 거래 조건을 직접 입력해 주세요.", "Prices are not extracted from the document. Enter your proposed terms yourself.")}</div>
               </div>
             ) : null}
 
@@ -369,7 +373,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
                   <FormField id="moveIn" title={tr("입주 가능일 *","Available date *")} value={form.moveIn}
                     placeholder={tr("예: 2026-11-10 또는 즉시 입주","E.g. 2026-12-01, flexible")} onChange={(v) => set("moveIn", v)}
                     hint={tr("정해진 날짜가 없다면 '협의 가능'이라고 적어도 됩니다.","Write flexible if negotiable.")} />
-                  <FormField id="fee" title={tr("관리비","Fee")} value={form.fee}
+                  <FormField id="fee" title={tr("관리비","Monthly maintenance fee")} value={form.fee}
                     placeholder={tr("예: 8","E.g. 8")} onChange={(v) => set("fee", v)} inputMode="decimal"
                     hint={tr("단위: 만원 / 월 · 없다면 비워두세요.","₩10,000 per month; leave blank if none.")} />
                 </div>
@@ -382,14 +386,14 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
                         aria-pressed={selectedOptions.includes(option)}
                         className={selectedOptions.includes(option) ? "feature-chip is-selected" : "feature-chip"}
                         onClick={() => toggleOption(option)}>
-                        {selectedOptions.includes(option) ? "✓ " : "+ "}{option}
+                        {selectedOptions.includes(option) ? "✓ " : "+ "}{listingFeatureLabel(option, en)}
                       </button>
                     ))}
                   </div>
                   <div className="field wizard-field wizard-options-raw">
                     <label htmlFor="options">{tr("그 밖의 옵션","Other amenities")}</label>
-                    <input id="options" value={form.options} placeholder={tr("예: 에어컨, 냉장고, 반려동물 가능","E.g. air conditioner, refrigerator")}
-                      onChange={(e) => set("options", e.target.value)} />
+                    <input id="options" value={featureInputDisplay(form.options, en)} placeholder={tr("예: 에어컨, 냉장고, 반려동물 가능","E.g. air conditioner, refrigerator")}
+                      onChange={(e) => set("options", featureInputCanonical(e.target.value, en))} />
                     <span className="hint">{tr("쉼표로 구분해 자유롭게 추가할 수 있습니다.","Separate multiple amenities with commas.")}</span>
                   </div>
                 </div>
@@ -411,27 +415,27 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
               <div className="wizard-review">
                 <div className="wizard-review-section">
                   <div><span>01</span><h3>{tr("공간 정보","Property details")}</h3></div>
-                  <button type="button" onClick={() => navigate(1)}>수정 ↗</button>
+                  <button type="button" onClick={() => navigate(1)}>{tr("수정 ↗", "Edit ↗")}</button>
                   <dl>
-                    <div><dt>{tr("매물명","Title")}</dt><dd>{labelValue(form.title)}</dd></div>
-                    <div><dt>{tr("주소","Address")}</dt><dd>{labelValue(form.address)}</dd></div>
+                    <div><dt>{tr("매물명","Title")}</dt><dd><span data-source-text={sourceText(form.title) ? "original" : undefined}>{displayValue(form.title)}</span>{sourceText(form.title) ? <small style={{display:"block",marginTop:4}}>{tr("원문 표기", "Original-language property name")}</small> : null}</dd></div>
+                    <div><dt>{tr("주소","Address")}</dt><dd><span data-source-text={sourceText(form.address) ? "original" : undefined}>{displayValue(form.address)}</span>{sourceText(form.address) ? <small style={{display:"block",marginTop:4}}>{tr("원문 주소", "Address in the original language")}</small> : null}</dd></div>
                     <div><dt>{tr("전용 면적","Floor area")}</dt><dd>{form.area ? form.area + "㎡" : "—"}</dd></div>
                   </dl>
                 </div>
                 <div className="wizard-review-section">
                   <div><span>02</span><h3>{tr("거래 조건","Deal terms")}</h3></div>
-                  <button type="button" onClick={() => navigate(2)}>수정 ↗</button>
-                  <dl><div><dt>{tr("거래유형","Trade type")}</dt><dd>{form.tradeType}</dd></div>
-                    <div><dt>{tr("희망 가격","Asking price")}</dt><dd>{listingPriceLabel(form)}</dd></div></dl>
+                  <button type="button" onClick={() => navigate(2)}>{tr("수정 ↗", "Edit ↗")}</button>
+                  <dl><div><dt>{tr("거래유형","Trade type")}</dt><dd>{tradeTypeLabel(form.tradeType, en)}</dd></div>
+                    <div><dt>{tr("희망 가격","Asking price")}</dt><dd>{en ? englishListingPrice(form) : listingPriceLabel(form)}</dd></div></dl>
                 </div>
                 <div className="wizard-review-section">
                   <div><span>03</span><h3>{tr("생활 정보","Living details")}</h3></div>
-                  <button type="button" onClick={() => navigate(3)}>수정 ↗</button>
+                  <button type="button" onClick={() => navigate(3)}>{tr("수정 ↗", "Edit ↗")}</button>
                   <dl>
-                    <div><dt>{tr("입주 가능일","Move-in availability")}</dt><dd>{labelValue(form.moveIn)}</dd></div>
-                    <div><dt>{tr("관리비","Monthly fee")}</dt><dd>{form.fee ? Number(form.fee).toLocaleString("ko-KR") + "만원" : "미입력"}</dd></div>
-                    <div><dt>{tr("선택 옵션","Amenities")}</dt><dd>{selectedOptions.length ? selectedOptions.join(", ") : "없음"}</dd></div>
-                    <div><dt>{tr("게시자명","Display name")}</dt><dd>{labelValue(form.publisher)}</dd></div>
+                    <div><dt>{tr("입주 가능일","Move-in availability")}</dt><dd>{displayValue(form.moveIn)}</dd></div>
+                    <div><dt>{tr("관리비","Monthly fee")}</dt><dd>{form.fee ? (en ? wonFromManwon(form.fee) + " per month" : Number(form.fee).toLocaleString("ko-KR") + "만원") : tr("미입력", "Not entered")}</dd></div>
+                    <div><dt>{tr("선택 옵션","Amenities")}</dt><dd>{selectedOptions.length ? selectedOptions.map(value => listingFeatureLabel(value, en)).join(", ") : tr("없음", "None")}</dd></div>
+                    <div><dt>{tr("게시자명","Display name")}</dt><dd>{displayValue(form.publisher)}</dd></div>
                     {form.description ? <div><dt>{tr("소개","Description")}</dt><dd>{form.description}</dd></div> : null}
                   </dl>
                 </div>
@@ -478,7 +482,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
 
           {!saved ? (
           <>
-          {error ? <p className="wizard-error" role="alert">{error}</p> : null}
+          {error ? <p className="wizard-error" role="alert">{ui(error)}</p> : null}
           <div className="wizard-action-bar">
             <button type="button" className="wizard-action-back"
               onClick={() => navigate((stage - 1) as RegisterStep)}
@@ -496,23 +500,24 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
 
         {!saved ? <aside className="wizard-aside" aria-label={tr("실시간 매물 미리보기","Live listing preview")}>
           <div className="wizard-preview">
-            <div className="wizard-preview-top"><span>LIVE PREVIEW</span><span className="wizard-preview-live"><i /> 미리보기</span></div>
+            <div className="wizard-preview-top"><span>LIVE PREVIEW</span><span className="wizard-preview-live"><i /> {tr("미리보기", "Preview")}</span></div>
             <div className="wizard-preview-illustration" aria-hidden="true">
               <span className="wizard-building building-back" />
               <span className="wizard-building building-front" />
               <span className="wizard-preview-sun" />
             </div>
-            <span className="wizard-preview-type">{form.tradeType}</span>
-            <h3>{labelValue(form.title, "어떤 공간을 소개할까요?")}</h3>
-            <p className="wizard-preview-address">{labelValue(form.address, "주소를 입력하면 여기에 표시돼요.")}</p>
-            <p className="wizard-preview-price">{listingPriceLabel(form)}</p>
+            <span className="wizard-preview-type">{tradeTypeLabel(form.tradeType, en)}</span>
+            <h3 data-source-text={sourceText(form.title) ? "original" : undefined}>{labelValue(form.title, tr("어떤 공간을 소개할까요?", "Which home will you introduce?"))}</h3>
+            <p className="wizard-preview-address" data-source-text={sourceText(form.address) ? "original" : undefined}>{labelValue(form.address, tr("주소를 입력하면 여기에 표시돼요.", "Your address will appear here."))}</p>
+            {sourceText(form.title) || sourceText(form.address) ? <small style={{display:"block",marginTop:4}}>{tr("원문 표기", "Original-language name / address")}</small> : null}
+            <p className="wizard-preview-price">{en ? englishListingPrice(form) : listingPriceLabel(form)}</p>
             <div className="wizard-preview-details">
               <div><small>{tr("전용면적","Floor area")}</small><strong>{form.area ? form.area + "㎡" : "—"}</strong></div>
               <div><small>{tr("입주 시기","Available")}</small><strong>{labelValue(form.moveIn, "—")}</strong></div>
             </div>
             <div className="wizard-preview-footer">
               <div className="wizard-preview-progress"><span style={{ width: (filled / 5 * 100) + "%" }} /></div>
-              <small>기본 정보 {filled}/5개 입력됨</small>
+              <small>{en ? `${filled}/5 essential details entered` : `기본 정보 ${filled}/5개 입력됨`}</small>
             </div>
           </div>
           <div className="wizard-assurance"><span aria-hidden="true">✧</span>
@@ -521,7 +526,7 @@ export default function RegisterPage({ searchParams }: { searchParams: { edit?: 
           </div>
         </aside> : null}
       </div>
-      {!saved ? <p className="wizard-legal-note">DirectHome은 합성 매물 기반 AI 거래 시연 서비스입니다. 실제 부동산 광고·중개 또는 소유권 검증 서비스가 아닙니다.</p> : null}
+      {!saved ? <p className="wizard-legal-note">{tr("DirectHome은 합성 매물 기반 AI 거래 시연 서비스입니다. 실제 부동산 광고·중개 또는 소유권 검증 서비스가 아닙니다.", "DirectHome demonstrates AI-assisted transactions using synthetic listings. It is not a real property advertising, brokerage or ownership verification service.")}</p> : null}
     </div>
   );
 }

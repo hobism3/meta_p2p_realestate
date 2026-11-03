@@ -30,7 +30,7 @@ jobs:
         run: |
           mkdir -p web/demo-artifacts/three-chapter web/demo-artifacts/voice
           cd web
-          gh run download 41547533968 -n directhome-three-chapter-raw -D .
+          gh run download 41549468183 -n directhome-three-chapter-raw -D .
           gh run download 41548065231 -n directhome-three-chapter-neural-narration -D demo-artifacts/voice
           test -s demo-artifacts/three-chapter/directhome-three-chapter-draft.mp4
           test -s demo-artifacts/voice/voice-cues.json

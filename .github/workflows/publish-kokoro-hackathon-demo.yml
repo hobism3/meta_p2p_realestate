@@ -1,0 +1,66 @@
+name: directhome-licensed-three-chapter-demo
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-kokoro-hackathon-demo.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install offline video editor
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg poppler-utils
+          python3 -m pip install --quiet 'Pillow==11.3.0' 'pydub==0.25.1'
+      - name: Download actual DirectHome UI recording and licensed Kokoro narration
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          mkdir -p web/demo-artifacts/voice
+          cd web
+          gh run download 41549468183 -n directhome-three-chapter-raw -D .
+          gh run download 41549929118 -n directhome-three-chapter-open-weight-natural-voice -D demo-artifacts/voice
+          test -s demo-artifacts/voice/voice-cues.json
+          test -s demo-artifacts/voice/voice_14.mp3
+          test -s demo-evidence/rights-study-synthetic.pdf
+          echo '7624c8384271e6ebd5bc092263066432db3656b74454272d9fb33a5144d59403  demo-evidence/rights-study-synthetic.pdf' | sha256sum -c -
+      - name: Render fictional Korean PDF inset
+        run: pdftoppm -f 1 -l 1 -singlefile -scale-to 530 -png web/demo-evidence/rights-study-synthetic.pdf web/demo-artifacts/educational-rights-preview
+      - name: Assemble 175-second user-interface film with offline Apache-2.0 voice
+        run: |
+          cd web
+          python3 scripts/assemble-three-chapter-demo.py
+          mv demo-artifacts/DirectHome_Three_Chapters_English_Demo_20261103.mp4 demo-artifacts/DirectHome_Three_Chapters_Kokoro_OpenWeight_20261103.mp4
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('demo-artifacts/three-chapter-edit-manifest.json').read_text())
+          assert 'Kokoro-82M' in v['voice'],v['voice']
+          print('LICENSED_KOKORO_VOICE_CONFIRMED',v['voice'])
+          PY
+      - name: Upload full licensed-audio MP4 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: directhome-three-chapter-kokoro-open-weight-video
+          path: |
+            web/demo-artifacts/DirectHome_Three_Chapters_Kokoro_OpenWeight_20261103.mp4
+            web/demo-artifacts/three-chapter-edit-manifest.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Add open-weight voiced edition to existing public GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload directhome-three-chapter-demo-20261103 web/demo-artifacts/DirectHome_Three_Chapters_Kokoro_OpenWeight_20261103.mp4 --clobber
